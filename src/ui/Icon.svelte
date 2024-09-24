@@ -17,7 +17,7 @@
   A component representing an icon.
 
   The `iconId` property specifies the ID of the icon to render.
-  Specify the ID of the Obsidian's built-in icons.
+  The ID of the Obsidian's built-in icons are used.
 
   The `muted` property indicates whether the icon is muted.
   The muted icon is rendered with a faint color.

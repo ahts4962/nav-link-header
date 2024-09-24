@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { NavigationLinkState } from "../navigationLinkState";
+	import Icon from "./Icon.svelte";
 
 	export let state: NavigationLinkState;
 </script>
@@ -8,23 +9,27 @@
   @component
   A component that represents a link to a note.
 
-  The `state` property specifies the state of this component.
-  When `state.fileExists` is `false`, the link will be rendered as an unresolved link.
+  If `state.enabled` is `false`, the placeholder icon will be displayed instead of the link.
+  If `state.fileExists` is `false`, the link will be rendered as an unresolved link.
 -->
-{#if state.annotation}
-	<span>{state.annotation}</span>
+{#if state.enabled}
+	{#if state.annotation}
+		<span>{state.annotation}</span>
+	{/if}
+	<a
+		class:non-existent={!state.fileExists}
+		href="#top"
+		on:click={(e) => {
+			state.clickHandler?.(state, e);
+		}}
+		on:mouseover={(e) => {
+			state.mouseOverHandler?.(state, e);
+		}}
+		on:focus={() => {}}>{state.title}</a
+	>
+{:else}
+	<Icon iconId="minus" muted />
 {/if}
-<a
-	class:non-existent={!state.fileExists}
-	href="#top"
-	on:click={(e) => {
-		state.clickHandler(state, e);
-	}}
-	on:mouseover={(e) => {
-		state.mouseOverHandler(state, e);
-	}}
-	on:focus={() => {}}>{state.title}</a
->
 
 <style>
 	.non-existent {

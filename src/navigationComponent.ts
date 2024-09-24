@@ -1,7 +1,11 @@
 import { Component, TFile } from "obsidian";
 import { searchAnnotatedLinks } from "./annotatedLink";
 import type NavLinkHeader from "./main";
-import { NavigationLinkState } from "./navigationLinkState";
+import {
+	type LinkEventHandler,
+	NavigationLinkState,
+} from "./navigationLinkState";
+import { NavLinkHeaderError } from "./utils";
 import Navigation from "./ui/Navigation.svelte";
 
 /**
@@ -51,76 +55,83 @@ export class NavigationComponent extends Component {
 		}
 		this.currentFilePath = file.path;
 
+		this.navigation?.$set({
+			periodicNoteLinksPromise: Promise.resolve(undefined),
+			annotatedLinksPromise: this.getAnnotatedLinkStates(
+				file,
+				hoverParent
+			),
+			showPlaceholder: false,
+		});
+	}
+
+	private async getAnnotatedLinkStates(
+		file: TFile,
+		hoverParent: Component
+	): Promise<NavigationLinkState[]> {
 		if (!this.plugin.settings?.annotatedLinksEnabled) {
-			return;
+			return [];
 		}
 
+		const filePath = file.path;
 		const annotationStrings = this.plugin.settings.annotationStrings
 			.split(",")
 			.map((s) => s.trim());
 
-		const promise = searchAnnotatedLinks(
+		const annotatedLinks = await searchAnnotatedLinks(
 			this.plugin.app,
 			annotationStrings,
 			file
-		).then((annotatedLinks) => {
-			if (!this.loaded) {
-				throw new Error("The navigation component is not loaded.");
-			}
+		);
 
-			const clickHandler = (
-				target: NavigationLinkState,
-				e: MouseEvent
-			) => {
-				void this.plugin.app.workspace.openLinkText(
-					target.destinationPath,
-					this.currentFilePath!,
-					e.ctrlKey
-				);
-			};
-
-			const mouseOverHandler = (
-				target: NavigationLinkState,
-				e: MouseEvent
-			) => {
-				if (target.fileExists) {
-					this.plugin.app.workspace.trigger("hover-link", {
-						event: e,
-						source: "nav-link-header",
-						hoverParent,
-						targetEl: e.target,
-						linktext: target.destinationPath,
-						sourcePath: this.currentFilePath,
-					});
-				}
-			};
-
-			const links = annotatedLinks.map(
-				(link) =>
-					new NavigationLinkState(
-						link.destinationPath,
-						true,
-						clickHandler,
-						mouseOverHandler,
-						link.annotation
-					)
+		if (!this.loaded) {
+			throw new NavLinkHeaderError(
+				"The navigation component is not loaded."
 			);
+		}
 
-			links.sort((a, b) => {
-				const diff =
-					annotationStrings.indexOf(a.annotation!) -
-					annotationStrings.indexOf(b.annotation!);
-				if (diff !== 0) {
-					return diff;
-				}
-				return a.title.localeCompare(b.title);
+		const clickHandler: LinkEventHandler = (target, e) => {
+			void this.plugin.app.workspace.openLinkText(
+				target.destinationPath!,
+				filePath,
+				e.ctrlKey
+			);
+		};
+
+		const mouseOverHandler: LinkEventHandler = (target, e) => {
+			this.plugin.app.workspace.trigger("hover-link", {
+				event: e,
+				source: "nav-link-header",
+				hoverParent,
+				targetEl: e.target,
+				linktext: target.destinationPath,
+				sourcePath: filePath,
 			});
-			return links;
+		};
+
+		const linkStates = annotatedLinks.map(
+			(link) =>
+				new NavigationLinkState({
+					enabled: true,
+					destinationPath: link.destinationPath,
+					fileExists: true,
+					annotation: link.annotation,
+					clickHandler,
+					mouseOverHandler,
+				})
+		);
+
+		linkStates.sort((a, b) => {
+			const diff =
+				annotationStrings.indexOf(a.annotation!) -
+				annotationStrings.indexOf(b.annotation!);
+			if (diff !== 0) {
+				return diff;
+			}
+			return a.title.localeCompare(b.title);
 		});
 
-		this.navigation?.$set({
-			navigationLinkStates: promise,
-		});
+		return linkStates;
 	}
 
 	/**
