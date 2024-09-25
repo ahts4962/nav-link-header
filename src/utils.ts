@@ -18,6 +18,28 @@ export class NavLinkHeaderError extends Error {
 	}
 }
 
+export class Debouncer {
+	private timer?: number;
+
+	/**
+	 * @param delay The delay in milliseconds.
+	 */
+	constructor(private delay: number) {}
+
+	public run(action: () => void): void {
+		if (this.timer) {
+			window.clearTimeout(this.timer);
+		}
+		this.timer = window.setTimeout(action, this.delay);
+	}
+
+	public cancel(): void {
+		if (this.timer) {
+			window.clearTimeout(this.timer);
+		}
+	}
+}
+
 /**
  * Retrieves the title of a file from a path.
  * @param path The path to the file. This must be normalized beforehand.
