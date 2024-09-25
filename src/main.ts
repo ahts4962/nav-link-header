@@ -8,6 +8,7 @@ import {
 	type HoverParent,
 } from "obsidian";
 import { NavigationComponent } from "./navigationComponent";
+import { PeriodicNotesManager } from "./periodicNotes";
 import {
 	DEFAULT_SETTINGS,
 	NavLinkHeaderSettingTab,
@@ -22,124 +23,139 @@ export default class NavLinkHeader extends Plugin {
 	// This is needed because hover-link event does not directly create a popover.
 	private lastHoverParent?: WeakRef<HoverParent>;
 
+	public periodicNotesManager?: PeriodicNotesManager;
+
 	private layoutReady: boolean = false;
 	private updateDebounceTimer?: number;
 
 	public settings?: NavLinkHeaderSettings;
 
-	/**
-	 * Initializes the plugin.
-	 */
 	public onload(): void {
-		this.loadSettings()
-			.then(() => {
-				this.addSettingTab(new NavLinkHeaderSettingTab(this));
+		void this.initialize();
+	}
 
-				// Initializes all elements once on startup.
-				// Callback is called each time the plugin is enabled or the application is started.
-				this.app.workspace.onLayoutReady(() => {
-					this.layoutReady = true;
+	private async initialize(): Promise<void> {
+		await this.loadSettings();
 
-					this.app.workspace.iterateAllLeaves((leaf) => {
-						this.addObserver(leaf.view.containerEl.closest("body"));
-					});
+		this.addSettingTab(new NavLinkHeaderSettingTab(this));
 
-					this.updateAllMarkdownViewsWithDebounce(true);
-				});
+		this.app.workspace.onLayoutReady(() => {
+			this.layoutReady = true;
 
-				// Adds an observer when a new window is opened.
-				// This observer is used to detect the addition of hover popovers.
-				this.registerEvent(
-					this.app.workspace.on("window-open", (window) => {
-						this.addObserver(window.doc.querySelector("body"));
-					})
-				);
+			if (this.periodicNotesEnabled) {
+				this.periodicNotesManager = new PeriodicNotesManager(this);
+			}
 
-				// Removes the observer when a window is closed.
-				this.registerEvent(
-					this.app.workspace.on("window-close", (window) => {
-						const body = window.doc.querySelector("body");
-						if (body) {
-							const observer = this.observers.get(body);
-							if (observer) {
-								observer.disconnect();
-								this.observers.delete(body);
-							}
+			this.app.workspace.iterateAllLeaves((leaf) => {
+				this.addObserver(leaf.view.containerEl.closest("body"));
+			});
+
+			// Adds an observer when a new window is opened.
+			// This observer is used to detect the addition of hover popovers.
+			this.registerEvent(
+				this.app.workspace.on("window-open", (window) => {
+					this.addObserver(window.doc.querySelector("body"));
+				})
+			);
+
+			// Removes the observer when a window is closed.
+			this.registerEvent(
+				this.app.workspace.on("window-close", (window) => {
+					const body = window.doc.querySelector("body");
+					if (body) {
+						const observer = this.observers.get(body);
+						if (observer) {
+							observer.disconnect();
+							this.observers.delete(body);
 						}
-					})
-				);
+					}
+				})
+			);
 
-				// Updates the navigation links when the layout changes.
-				// This includes the following situations.
-				// - A new note has been opened.
-				// - Current note has been renamed.
-				// - A leaf has been split.
-				// - A new window has been opened.
-				// - Another note has been opened via the link.
-				// ...etc.
-				this.registerEvent(
-					this.app.workspace.on("layout-change", () => {
-						this.updateAllMarkdownViews(false);
-					})
-				);
+			// Updates the navigation links when the layout changes.
+			// This includes the following situations.
+			// - A new note has been opened.
+			// - Current note has been renamed.
+			// - A leaf has been split.
+			// - A new window has been opened.
+			// - Another note has been opened via the link.
+			// ...etc.
+			this.registerEvent(
+				this.app.workspace.on("layout-change", () => {
+					this.updateAllMarkdownViews(false);
+				})
+			);
 
-				// Updates the navigation links when the file changes.
-				// Apply debouncing to the following events.
-				this.registerEvent(
-					this.app.vault.on("create", () => {
-						this.updateAllMarkdownViewsWithDebounce(true);
-					})
-				);
+			// Updates the navigation links when the file changes.
+			// Apply debouncing to the following events.
+			this.registerEvent(
+				this.app.vault.on("create", (file) => {
+					this.periodicNotesManager?.onFileCreated(file);
+					this.updateAllMarkdownViewsWithDebounce(true);
+				})
+			);
 
-				this.registerEvent(
-					this.app.vault.on("rename", () => {
-						this.updateAllMarkdownViewsWithDebounce(true);
-					})
-				);
+			this.registerEvent(
+				this.app.vault.on("delete", (file) => {
+					this.periodicNotesManager?.onFileDeleted(file);
+					this.updateAllMarkdownViewsWithDebounce(true);
+				})
+			);
 
-				this.registerEvent(
-					this.app.vault.on("delete", () => {
-						this.updateAllMarkdownViewsWithDebounce(true);
-					})
-				);
+			this.registerEvent(
+				this.app.vault.on("rename", (file, oldPath) => {
+					this.periodicNotesManager?.onFileRenamed(file, oldPath);
+					this.updateAllMarkdownViewsWithDebounce(true);
+				})
+			);
 
-				this.registerEvent(
-					this.app.vault.on("modify", () => {
-						this.updateAllMarkdownViewsWithDebounce(true);
-					})
-				);
+			this.registerEvent(
+				this.app.vault.on("modify", () => {
+					this.updateAllMarkdownViewsWithDebounce(true);
+				})
+			);
 
-				// Registers the hover link source for the hover popover.
-				this.registerHoverLinkSource("nav-link-header", {
-					defaultMod: true,
-					display: "Nav Link Header",
-				});
-
+			this.registerEvent(
 				this.app.workspace.on(
 					// @ts-expect-error: custom event.
 					"nav-link-header:settings-changed",
 					() => {
+						this.periodicNotesManager?.updateEntireCache();
 						this.updateAllMarkdownViewsWithDebounce(true);
 					}
-				);
+				)
+			);
 
-				// Stores the hover parent when the hover-link event is triggered.
-				// This is used when the hover popover is actually created later.
-				this.registerEvent(
-					// @ts-expect-error: hover-link event is not exposed explicitly.
-					this.app.workspace.on("hover-link", ({ hoverParent }) => {
-						this.lastHoverParent = new WeakRef(hoverParent);
-					})
-				);
-			})
-			.catch((error) => {
-				console.log(error);
+			this.registerEvent(
+				this.app.workspace.on(
+					// @ts-expect-error: custom event.
+					"periodic-notes:settings-updated",
+					() => {
+						this.periodicNotesManager?.updateEntireCache();
+						this.updateAllMarkdownViewsWithDebounce(true);
+					}
+				)
+			);
+
+			// Registers the hover link source for the hover popover.
+			this.registerHoverLinkSource("nav-link-header", {
+				defaultMod: true,
+				display: "Nav Link Header",
 			});
+
+			// Stores the hover parent when the hover-link event is triggered.
+			// This is used when the hover popover is actually created later.
+			this.registerEvent(
+				// @ts-expect-error: hover-link event is not exposed explicitly.
+				this.app.workspace.on("hover-link", ({ hoverParent }) => {
+					this.lastHoverParent = new WeakRef(hoverParent);
+				})
+			);
+
+			this.updateAllMarkdownViewsWithDebounce(true);
+		});
 	}
 
-	/**
-	 * Loads the settings of the plugin.
-	 */
 	private async loadSettings(): Promise<void> {
 		const result = {} as Record<keyof NavLinkHeaderSettings, unknown>;
 		const data = (await this.loadData()) as Record<string, unknown>;
@@ -155,13 +171,24 @@ export default class NavLinkHeader extends Plugin {
 		this.settings = result as NavLinkHeaderSettings;
 	}
 
-	/**
-	 * Saves the settings of the plugin.
-	 */
 	public async saveSettings(): Promise<void> {
 		if (this.settings) {
 			await this.saveData(this.settings);
 		}
+	}
+
+	private get periodicNotesEnabled(): boolean {
+		const settings = this.settings;
+		if (!settings) {
+			return false;
+		}
+		return (
+			settings.dailyNoteLinksEnabled ||
+			settings.weeklyNoteLinksEnabled ||
+			settings.monthlyNoteLinksEnabled ||
+			settings.quarterlyNoteLinksEnabled ||
+			settings.yearlyNoteLinksEnabled
+		);
 	}
 
 	/**
@@ -366,6 +393,8 @@ export default class NavLinkHeader extends Plugin {
 	 */
 	public onunload(): void {
 		this.layoutReady = false;
+
+		this.periodicNotesManager = undefined;
 
 		// Disconnects all observers.
 		for (const observer of this.observers.values()) {

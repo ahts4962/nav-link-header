@@ -26,23 +26,20 @@ export async function searchAnnotatedLinks(
 			continue;
 		}
 
-		let content = await app.vault.cachedRead(backlinkFile);
-
-		// Removes YAML front matter.
-		content = content.replace(/^---\n.*?(?<=\n)---(?:$|\n)/s, "");
-
-		// Removes code blocks.
-		content = content.replace(
-			/(?<=(?:^|\n)) *(```+)[^`\n]*\n.*?(?<=\n) *\1`* *(?:$|\n)/gs,
-			"\n"
-		);
-		content = content.replace(/(?<=(?:^|\n)) *```+[^`\n]*(?:$|\n.*$)/s, "");
-
-		// Removes inline code.
-		content = content.replace(
-			/(`+)(?=[^`])\n?(?:[^\n]|[^\n]\n)*?(?<=[^`])\1(?=(?:$|[^`]))/gs,
-			""
-		);
+		const content = (await app.vault.cachedRead(backlinkFile))
+			// Removes YAML front matter.
+			.replace(/^---\n.*?(?<=\n)---(?:$|\n)/s, "")
+			// Removes code blocks.
+			.replace(
+				/(?<=(?:^|\n)) *(```+)[^`\n]*\n.*?(?<=\n) *\1`* *(?:$|\n)/gs,
+				"\n"
+			)
+			.replace(/(?<=(?:^|\n)) *```+[^`\n]*(?:$|\n.*$)/s, "")
+			// Removes inline code.
+			.replace(
+				/(`+)(?=[^`])\n?(?:[^\n]|[^\n]\n)*?(?<=[^`])\1(?=(?:$|[^`]))/gs,
+				""
+			);
 
 		for (const annotationString of annotationStrings) {
 			const escapedAnnotationString = annotationString.replace(

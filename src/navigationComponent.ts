@@ -1,10 +1,13 @@
+import { type Moment } from "moment";
 import { Component, TFile } from "obsidian";
+import { type IGranularity } from "obsidian-daily-notes-interface";
 import { searchAnnotatedLinks } from "./annotatedLink";
 import type NavLinkHeader from "./main";
 import {
-	type LinkEventHandler,
 	NavigationLinkState,
+	type PeriodicNoteLinkStates,
 } from "./navigationLinkState";
+import { createPeriodicNote } from "./periodicNotes";
 import { NavLinkHeaderError } from "./utils";
 import Navigation from "./ui/Navigation.svelte";
 
@@ -56,7 +59,10 @@ export class NavigationComponent extends Component {
 		this.currentFilePath = file.path;
 
 		this.navigation?.$set({
-			periodicNoteLinksPromise: Promise.resolve(undefined),
+			periodicNoteLinks: this.getPeriodicNoteLinkStates(
+				file,
+				hoverParent
+			),
 			annotatedLinksPromise: this.getAnnotatedLinkStates(
 				file,
 				hoverParent
@@ -90,25 +96,6 @@ export class NavigationComponent extends Component {
 			);
 		}
 
-		const clickHandler: LinkEventHandler = (target, e) => {
-			void this.plugin.app.workspace.openLinkText(
-				target.destinationPath!,
-				filePath,
-				e.ctrlKey
-			);
-		};
-
-		const mouseOverHandler: LinkEventHandler = (target, e) => {
-			this.plugin.app.workspace.trigger("hover-link", {
-				event: e,
-				source: "nav-link-header",
-				hoverParent,
-				targetEl: e.target,
-				linktext: target.destinationPath,
-				sourcePath: filePath,
-			});
-		};
-
 		const linkStates = annotatedLinks.map(
 			(link) =>
 				new NavigationLinkState({
@@ -116,8 +103,23 @@ export class NavigationComponent extends Component {
 					destinationPath: link.destinationPath,
 					fileExists: true,
 					annotation: link.annotation,
-					clickHandler,
-					mouseOverHandler,
+					clickHandler: (target, e) => {
+						void this.plugin.app.workspace.openLinkText(
+							target.destinationPath!,
+							filePath,
+							e.ctrlKey
+						);
+					},
+					mouseOverHandler: (target, e) => {
+						this.plugin.app.workspace.trigger("hover-link", {
+							event: e,
+							source: "nav-link-header",
+							hoverParent,
+							targetEl: e.target,
+							linktext: target.destinationPath,
+							sourcePath: filePath,
+						});
+					},
 				})
 		);
 
@@ -134,9 +136,75 @@ export class NavigationComponent extends Component {
 		return linkStates;
 	}
 
-	/**
-	 * Destroys the navigation component.
-	 */
+	private getPeriodicNoteLinkStates(
+		file: TFile,
+		hoverParent: Component
+	): PeriodicNoteLinkStates | undefined {
+		const filePath = file.path;
+
+		const periodicNoteLinks =
+			this.plugin.periodicNotesManager?.searchAdjacentNotes(file);
+
+		if (!periodicNoteLinks) {
+			return undefined;
+		}
+
+		const convert = (
+			path: string,
+			date: Moment | undefined,
+			granularity: IGranularity | undefined
+		): NavigationLinkState => {
+			if (path) {
+				return new NavigationLinkState({
+					enabled: true,
+					destinationPath: path,
+					fileExists: date === undefined,
+					clickHandler: (target, e) => {
+						if (target.fileExists) {
+							void this.plugin.app.workspace.openLinkText(
+								target.destinationPath!,
+								filePath,
+								e.ctrlKey
+							);
+						} else {
+							void createPeriodicNote(granularity!, date!);
+						}
+					},
+					mouseOverHandler: (target, e) => {
+						if (target.fileExists) {
+							this.plugin.app.workspace.trigger("hover-link", {
+								event: e,
+								source: "nav-link-header",
+								hoverParent,
+								targetEl: e.target,
+								linktext: target.destinationPath,
+								sourcePath: filePath,
+							});
+						}
+					},
+				});
+			} else {
+				return new NavigationLinkState({
+					enabled: false,
+				});
+			}
+		};
+
+		return {
+			previous: convert(
+				periodicNoteLinks.previousPath,
+				undefined,
+				undefined
+			),
+			next: convert(periodicNoteLinks.nextPath, undefined, undefined),
+			up: convert(
+				periodicNoteLinks.upPath,
+				periodicNoteLinks.upDate,
+				periodicNoteLinks.upGranularity
+			),
+		};
+	}
+
 	public onunload(): void {
 		this.navigation?.$destroy();
 		this.currentFilePath = undefined;

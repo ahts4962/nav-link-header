@@ -5,6 +5,12 @@ export type LinkEventHandler = (
 	e: MouseEvent
 ) => void;
 
+export type PeriodicNoteLinkStates = {
+	previous: NavigationLinkState;
+	next: NavigationLinkState;
+	up: NavigationLinkState;
+};
+
 /**
  * Represents a state of the `NavigationLink`.
  */
