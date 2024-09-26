@@ -32,6 +32,33 @@ const ALL_GRANULARITIES: IGranularity[] = [
 	"year",
 ];
 
+export function getActiveGranularities(plugin: NavLinkHeader): IGranularity[] {
+	const settings = plugin.settings;
+	if (!settings) {
+		return [];
+	}
+	const periodicNotesSettingFunctions = {
+		day: appHasDailyNotesPluginLoaded,
+		week: appHasWeeklyNotesPluginLoaded,
+		month: appHasMonthlyNotesPluginLoaded,
+		quarter: appHasQuarterlyNotesPluginLoaded,
+		year: appHasYearlyNotesPluginLoaded,
+	};
+	const pluginSettings = {
+		day: settings.dailyNoteLinksEnabled,
+		week: settings.weeklyNoteLinksEnabled,
+		month: settings.monthlyNoteLinksEnabled,
+		quarter: settings.quarterlyNoteLinksEnabled,
+		year: settings.yearlyNoteLinksEnabled,
+	};
+	return ALL_GRANULARITIES.filter((granularity) => {
+		return (
+			periodicNotesSettingFunctions[granularity]() &&
+			pluginSettings[granularity]
+		);
+	});
+}
+
 function getAllPeriodicNotes(granularity: IGranularity): Record<string, TFile> {
 	return {
 		day: getAllDailyNotes,
@@ -240,26 +267,6 @@ export class PeriodicNotesManager {
 	}
 
 	private getActiveGranularities(): IGranularity[] {
-		const periodicNotesSettingFunctions = {
-			day: appHasDailyNotesPluginLoaded,
-			week: appHasWeeklyNotesPluginLoaded,
-			month: appHasMonthlyNotesPluginLoaded,
-			quarter: appHasQuarterlyNotesPluginLoaded,
-			year: appHasYearlyNotesPluginLoaded,
-		};
-		const settings = this.plugin.settings;
-		const pluginSettings = {
-			day: settings?.dailyNoteLinksEnabled,
-			week: settings?.weeklyNoteLinksEnabled,
-			month: settings?.monthlyNoteLinksEnabled,
-			quarter: settings?.quarterlyNoteLinksEnabled,
-			year: settings?.yearlyNoteLinksEnabled,
-		};
-		return ALL_GRANULARITIES.filter((granularity) => {
-			return (
-				periodicNotesSettingFunctions[granularity]() &&
-				pluginSettings[granularity]
-			);
-		});
+		return getActiveGranularities(this.plugin);
 	}
 }

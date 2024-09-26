@@ -1,7 +1,7 @@
 import { Plugin, type HoverParent } from "obsidian";
 import { HoverPopoverUpdater } from "./hoverPopoverUpdater";
 import { MarkdownViewUpdater } from "./markdownViewUpdater";
-import { PeriodicNotesManager } from "./periodicNotes";
+import { getActiveGranularities, PeriodicNotesManager } from "./periodicNotes";
 import {
 	DEFAULT_SETTINGS,
 	NavLinkHeaderSettingTab,
@@ -15,7 +15,7 @@ export default class NavLinkHeader extends Plugin {
 	public periodicNotesManager?: PeriodicNotesManager;
 
 	public settings?: NavLinkHeaderSettings;
-	private debouncer: Debouncer = new Debouncer(1000);
+	private debouncer: Debouncer = new Debouncer(500);
 
 	public onload(): void {
 		void this.initialize();
@@ -27,10 +27,15 @@ export default class NavLinkHeader extends Plugin {
 		this.addSettingTab(new NavLinkHeaderSettingTab(this));
 
 		this.app.workspace.onLayoutReady(() => {
-			this.markdownViewUpdater = new MarkdownViewUpdater(this);
-			this.hoverPopoverUpdater = new HoverPopoverUpdater(this);
+			if (this.settings!.displayInMarkdownViews) {
+				this.markdownViewUpdater = new MarkdownViewUpdater(this);
+			}
 
-			if (this.periodicNotesEnabled) {
+			if (this.settings!.displayInHoverPopovers) {
+				this.hoverPopoverUpdater = new HoverPopoverUpdater(this);
+			}
+
+			if (this.periodicNotesActive) {
 				this.periodicNotesManager = new PeriodicNotesManager(this);
 			}
 
@@ -94,21 +99,13 @@ export default class NavLinkHeader extends Plugin {
 				})
 			);
 
-			const onSettingsChange = () => {
-				if (this.periodicNotesManager) {
-					this.debouncer.run(() => {
-						this.periodicNotesManager?.updateEntireCache();
-						this.markdownViewUpdater?.onVaultChange();
-					});
-				}
-				this.markdownViewUpdater?.onSettingsChange();
-			};
-
 			this.registerEvent(
 				this.app.workspace.on(
 					// @ts-expect-error: custom event.
 					"nav-link-header:settings-changed",
-					onSettingsChange
+					() => {
+						this.onSettingsChange();
+					}
 				)
 			);
 
@@ -116,7 +113,9 @@ export default class NavLinkHeader extends Plugin {
 				this.app.workspace.on(
 					// @ts-expect-error: custom event.
 					"periodic-notes:settings-updated",
-					onSettingsChange
+					() => {
+						this.onSettingsChange();
+					}
 				)
 			);
 		});
@@ -124,7 +123,7 @@ export default class NavLinkHeader extends Plugin {
 
 	private async loadSettings(): Promise<void> {
 		const result = {} as Record<keyof NavLinkHeaderSettings, unknown>;
-		const data = (await this.loadData()) as Record<string, unknown>;
+		const data = ((await this.loadData()) ?? {}) as Record<string, unknown>;
 		for (const key of Object.keys(
 			DEFAULT_SETTINGS
 		) as (keyof NavLinkHeaderSettings)[]) {
@@ -135,6 +134,7 @@ export default class NavLinkHeader extends Plugin {
 			}
 		}
 		this.settings = result as NavLinkHeaderSettings;
+		await this.saveSettings();
 	}
 
 	public async saveSettings(): Promise<void> {
@@ -143,18 +143,47 @@ export default class NavLinkHeader extends Plugin {
 		}
 	}
 
-	private get periodicNotesEnabled(): boolean {
-		const settings = this.settings;
-		if (!settings) {
-			return false;
-		}
-		return (
-			settings.dailyNoteLinksEnabled ||
-			settings.weeklyNoteLinksEnabled ||
-			settings.monthlyNoteLinksEnabled ||
-			settings.quarterlyNoteLinksEnabled ||
-			settings.yearlyNoteLinksEnabled
-		);
+	private get periodicNotesActive(): boolean {
+		return getActiveGranularities(this).length > 0;
+	}
+
+	private onSettingsChange(): void {
+		this.debouncer.run(() => {
+			if (
+				this.settings!.displayInMarkdownViews &&
+				!this.markdownViewUpdater
+			) {
+				this.markdownViewUpdater = new MarkdownViewUpdater(this);
+			} else if (
+				!this.settings!.displayInMarkdownViews &&
+				this.markdownViewUpdater
+			) {
+				this.markdownViewUpdater.dispose();
+				this.markdownViewUpdater = undefined;
+			}
+
+			if (
+				this.settings!.displayInHoverPopovers &&
+				!this.hoverPopoverUpdater
+			) {
+				this.hoverPopoverUpdater = new HoverPopoverUpdater(this);
+			} else if (
+				!this.settings!.displayInHoverPopovers &&
+				this.hoverPopoverUpdater
+			) {
+				this.hoverPopoverUpdater.dispose();
+				this.hoverPopoverUpdater = undefined;
+			}
+
+			if (this.periodicNotesActive && !this.periodicNotesManager) {
+				this.periodicNotesManager = new PeriodicNotesManager(this);
+			} else if (!this.periodicNotesActive && this.periodicNotesManager) {
+				this.periodicNotesManager = undefined;
+			}
+
+			this.periodicNotesManager?.updateEntireCache();
+			this.markdownViewUpdater?.onVaultChange();
+		});
 	}
 
 	/**
@@ -166,13 +195,13 @@ export default class NavLinkHeader extends Plugin {
 		if (this.markdownViewUpdater) {
 			this.markdownViewUpdater.dispose();
 			this.markdownViewUpdater = undefined;
-
-			if (this.hoverPopoverUpdater) {
-				this.hoverPopoverUpdater.dispose();
-				this.hoverPopoverUpdater = undefined;
-			}
-
-			this.periodicNotesManager = undefined;
 		}
+
+		if (this.hoverPopoverUpdater) {
+			this.hoverPopoverUpdater.dispose();
+			this.hoverPopoverUpdater = undefined;
+		}
+
+		this.periodicNotesManager = undefined;
 	}
 }

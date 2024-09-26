@@ -5,7 +5,7 @@ import { Debouncer } from "./utils";
 import { Updater } from "./updater";
 
 export class MarkdownViewUpdater extends Updater {
-	private debouncer: Debouncer = new Debouncer(1500);
+	private debouncer: Debouncer = new Debouncer(1000);
 
 	constructor(plugin: NavLinkHeader) {
 		super(plugin);
@@ -28,9 +28,7 @@ export class MarkdownViewUpdater extends Updater {
 
 	public onSettingsChange(): void {
 		// Updates the navigation links when the settings change
-		this.debouncer.run(() => {
-			this.updateAll({ forced: true });
-		});
+		this.updateAll({ forced: true });
 	}
 
 	/**

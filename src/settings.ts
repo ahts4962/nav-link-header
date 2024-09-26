@@ -2,6 +2,8 @@ import { PluginSettingTab, Setting } from "obsidian";
 import type NavLinkHeader from "./main";
 
 export interface NavLinkHeaderSettings {
+	displayInMarkdownViews: boolean;
+	displayInHoverPopovers: boolean;
 	annotatedLinksEnabled: boolean;
 	annotationStrings: string;
 	dailyNoteLinksEnabled: boolean;
@@ -9,9 +11,13 @@ export interface NavLinkHeaderSettings {
 	monthlyNoteLinksEnabled: boolean;
 	quarterlyNoteLinksEnabled: boolean;
 	yearlyNoteLinksEnabled: boolean;
+	displayPlaceholder: boolean;
+	confirmFileCreation: boolean;
 }
 
 export const DEFAULT_SETTINGS: NavLinkHeaderSettings = {
+	displayInMarkdownViews: true,
+	displayInHoverPopovers: true,
 	annotatedLinksEnabled: false,
 	annotationStrings: "",
 	dailyNoteLinksEnabled: false,
@@ -19,6 +25,8 @@ export const DEFAULT_SETTINGS: NavLinkHeaderSettings = {
 	monthlyNoteLinksEnabled: false,
 	quarterlyNoteLinksEnabled: false,
 	yearlyNoteLinksEnabled: false,
+	displayPlaceholder: false,
+	confirmFileCreation: true,
 };
 
 export class NavLinkHeaderSettingTab extends PluginSettingTab {
@@ -29,6 +37,34 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
 	display(): void {
 		const { containerEl } = this;
 		containerEl.empty();
+
+		new Setting(containerEl)
+			.setName("Display navigation links in each view")
+			.addToggle((toggle) => {
+				toggle
+					.setValue(this.plugin.settings!.displayInMarkdownViews)
+					.onChange(async (value) => {
+						this.plugin.settings!.displayInMarkdownViews = value;
+						this.plugin.app.workspace.trigger(
+							"nav-link-header:settings-changed"
+						);
+						await this.plugin.saveSettings();
+					});
+			});
+
+		new Setting(containerEl)
+			.setName("Display navigation links in page preview")
+			.addToggle((toggle) => {
+				toggle
+					.setValue(this.plugin.settings!.displayInHoverPopovers)
+					.onChange(async (value) => {
+						this.plugin.settings!.displayInHoverPopovers = value;
+						this.plugin.app.workspace.trigger(
+							"nav-link-header:settings-changed"
+						);
+						await this.plugin.saveSettings();
+					});
+			});
 
 		new Setting(containerEl)
 			.setName("Enable annotated links")
@@ -55,8 +91,9 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
 			.setName("Annotation strings")
 			.setDesc(
 				"Define the annotation strings. " +
-					"Any string, including emoji, is acceptable as an annotation " +
-					"string. To specify multiple annotations, separate them with commas."
+					"Any string, including emoji, is acceptable as long as " +
+					"the following link is recognized as a backlink. " +
+					"To specify multiple annotations, separate them with commas."
 			)
 			.addText((text) => {
 				text.setValue(this.plugin.settings!.annotationStrings).onChange(
@@ -141,6 +178,36 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
 						this.plugin.app.workspace.trigger(
 							"nav-link-header:settings-changed"
 						);
+						await this.plugin.saveSettings();
+					});
+			});
+
+		new Setting(containerEl)
+			.setName("Display placeholder")
+			.setDesc(
+				"Display a placeholder when there is nothing to display. " +
+					"This prevents the contents of the view from being " +
+					"rattled when the link is loaded."
+			)
+			.addToggle((toggle) => {
+				toggle
+					.setValue(this.plugin.settings!.displayPlaceholder)
+					.onChange(async (value) => {
+						this.plugin.settings!.displayPlaceholder = value;
+						this.plugin.app.workspace.trigger(
+							"nav-link-header:settings-changed"
+						);
+						await this.plugin.saveSettings();
+					});
+			});
+
+		new Setting(containerEl)
+			.setName("Confirm when creating a new file")
+			.addToggle((toggle) => {
+				toggle
+					.setValue(this.plugin.settings!.confirmFileCreation)
+					.onChange(async (value) => {
+						this.plugin.settings!.confirmFileCreation = value;
 						await this.plugin.saveSettings();
 					});
 			});

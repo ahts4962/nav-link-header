@@ -2,6 +2,7 @@ import { type Moment } from "moment";
 import { Component, TFile } from "obsidian";
 import { type IGranularity } from "obsidian-daily-notes-interface";
 import { searchAnnotatedLinks } from "./annotatedLink";
+import { FileCreationModal } from "./fileCreationModal";
 import type NavLinkHeader from "./main";
 import {
 	NavigationLinkState,
@@ -67,7 +68,7 @@ export class NavigationComponent extends Component {
 				file,
 				hoverParent
 			),
-			showPlaceholder: false,
+			displayPlaceholder: this.plugin.settings?.displayPlaceholder,
 		});
 	}
 
@@ -75,14 +76,18 @@ export class NavigationComponent extends Component {
 		file: TFile,
 		hoverParent: Component
 	): Promise<NavigationLinkState[]> {
-		if (!this.plugin.settings?.annotatedLinksEnabled) {
+		if (!this.plugin.settings!.annotatedLinksEnabled) {
 			return [];
 		}
 
 		const filePath = file.path;
-		const annotationStrings = this.plugin.settings.annotationStrings
-			.split(",")
-			.map((s) => s.trim());
+		const annotationStrings = this.plugin
+			.settings!.annotationStrings.split(",")
+			.map((s) => s.trim())
+			.filter((s) => s.length > 0);
+		if (annotationStrings.length === 0) {
+			return [];
+		}
 
 		const annotatedLinks = await searchAnnotatedLinks(
 			this.plugin.app,
@@ -167,7 +172,21 @@ export class NavigationComponent extends Component {
 								e.ctrlKey
 							);
 						} else {
-							void createPeriodicNote(granularity!, date!);
+							console.log("Creating new periodic note");
+							if (this.plugin.settings!.confirmFileCreation) {
+								new FileCreationModal(
+									this.plugin,
+									target.title,
+									() => {
+										void createPeriodicNote(
+											granularity!,
+											date!
+										);
+									}
+								).open();
+							} else {
+								void createPeriodicNote(granularity!, date!);
+							}
 						}
 					},
 					mouseOverHandler: (target, e) => {

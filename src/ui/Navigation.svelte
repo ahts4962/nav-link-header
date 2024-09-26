@@ -33,10 +33,10 @@
 			}
 		});
 
-	export let showPlaceholder: boolean = true;
+	export let displayPlaceholder: boolean = true;
 
 	$: containerVisible =
-		showPlaceholder ||
+		displayPlaceholder ||
 		periodicNoteLinks !== undefined ||
 		(annotatedLinks.hasValue && annotatedLinks.value!.length > 0);
 
@@ -75,10 +75,10 @@
 					<NavigationLink state={link} />
 				</span>
 			{/each}
-		{:else if showPlaceholder}
+		{:else if displayPlaceholder}
 			<span class="muted">Searching...</span>
 		{/if}
-		{#if showPlaceholder && noLinkExists}
+		{#if displayPlaceholder && noLinkExists}
 			<span class="muted">No links</span>
 		{/if}
 	</div>

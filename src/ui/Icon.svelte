@@ -28,8 +28,6 @@
 	.container {
 		display: inline-block;
 		vertical-align: middle;
-		position: relative;
-		top: -0.05em;
 		color: var(--text-normal);
 
 		& > svg {
