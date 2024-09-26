@@ -1,6 +1,7 @@
 # Nav Link Header
 
-The Nav Link Header plugin displays navigation links at the top of the notes. These links include
+The Nav Link Header is a plugin for [Obsidian](https://obsidian.md/) that displays navigation
+links at the top of the notes. These links include
 backlinks annotated by a specific string, or previous, next, and up links of the daily notes.
 This plugin makes it easier to move between notes.
 
