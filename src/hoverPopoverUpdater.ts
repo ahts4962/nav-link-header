@@ -127,17 +127,12 @@ export class HoverPopoverUpdater extends Updater {
 					}
 				}
 
-				// It is not assumed that `child.containerEl.parentElement` is `null`,
-				// but if it is, use `child.containerEl` and its child element instead.
 				this.updateNavigation({
 					parent: child,
-					container:
-						child.containerEl.parentElement ?? child.containerEl,
-					nextSibling: child.containerEl.parentElement
-						? child.containerEl
-						: child.containerEl.querySelector(
-								".markdown-embed-content"
-						  ),
+					container: child.containerEl,
+					nextSibling: child.containerEl.querySelector(
+						".markdown-embed-content"
+					),
 					file: child.file,
 					hoverParent,
 					forced: true,

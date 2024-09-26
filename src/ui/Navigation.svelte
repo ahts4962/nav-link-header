@@ -57,36 +57,42 @@
   If `showPlaceholder` is `true`, a placeholder message is displayed while links are unavailable.
 -->
 {#if containerVisible}
-	<div class="container">
-		{#if periodicNoteLinks}
-			<Icon iconId="chevrons-left" />
-			<NavigationLink state={periodicNoteLinks.previous} />
-			<span>||</span>
-			{#if periodicNoteLinks.up.enabled}
-				<NavigationLink state={periodicNoteLinks.up} />
+	<div class="background">
+		<div class="container">
+			{#if periodicNoteLinks}
+				<Icon iconId="chevrons-left" />
+				<NavigationLink state={periodicNoteLinks.previous} />
 				<span>||</span>
+				{#if periodicNoteLinks.up.enabled}
+					<NavigationLink state={periodicNoteLinks.up} />
+					<span>||</span>
+				{/if}
+				<NavigationLink state={periodicNoteLinks.next} />
+				<Icon iconId="chevrons-right" />
 			{/if}
-			<NavigationLink state={periodicNoteLinks.next} />
-			<Icon iconId="chevrons-right" />
-		{/if}
-		{#if annotatedLinks.hasValue && annotatedLinks.value}
-			{#each annotatedLinks.value as link}
-				<span class="annotated-link">
-					<NavigationLink state={link} />
-				</span>
-			{/each}
-		{:else if displayPlaceholder}
-			<span class="muted">Searching...</span>
-		{/if}
-		{#if displayPlaceholder && noLinkExists}
-			<span class="muted">No links</span>
-		{/if}
+			{#if annotatedLinks.hasValue && annotatedLinks.value}
+				{#each annotatedLinks.value as link}
+					<span class="annotated-link">
+						<NavigationLink state={link} />
+					</span>
+				{/each}
+			{:else if displayPlaceholder}
+				<span class="muted">Searching...</span>
+			{/if}
+			{#if displayPlaceholder && noLinkExists}
+				<span class="muted">No links</span>
+			{/if}
+		</div>
 	</div>
 {/if}
 
 <style>
+	.background {
+		padding: 0.4em;
+		background-color: var(--background-primary);
+	}
+
 	.container {
-		margin: 0.4em;
 		padding: 0.4em;
 		border: 1px solid var(--background-modifier-border);
 		border-radius: 0.4em;

@@ -1,5 +1,6 @@
 /* Styles for the hover popover container element */
-.popover.hover-popover:has(> .nav-link-header-navigation) {
-	display: flex;
-	flex-direction: column;
+.popover.hover-popover .nav-link-header-navigation {
+	position: sticky;
+	top: 0;
+	z-index: 100;
 }
