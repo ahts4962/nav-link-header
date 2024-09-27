@@ -95,6 +95,7 @@ export class PeriodicNotesManager {
 	public updateEntireCache(): void {
 		const granularities = this.getActiveGranularities();
 		this.noteCache.clear();
+		this.noteUIDCache.clear();
 		for (const granularity of granularities) {
 			const allNotes = getAllPeriodicNotes(granularity);
 			this.noteCache.set(granularity, allNotes);
