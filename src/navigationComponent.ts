@@ -172,7 +172,6 @@ export class NavigationComponent extends Component {
 								e.ctrlKey
 							);
 						} else {
-							console.log("Creating new periodic note");
 							if (this.plugin.settings!.confirmFileCreation) {
 								new FileCreationModal(
 									this.plugin,
