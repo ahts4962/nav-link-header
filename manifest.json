@@ -1,7 +1,7 @@
 {
 	"id": "nav-link-header",
 	"name": "Nav Link Header",
-	"version": "1.0.0",
+	"version": "1.0.1",
 	"minAppVersion": "0.15.0",
 	"description": "Display navigation links at the top of the notes.",
 	"author": "ahts4962",

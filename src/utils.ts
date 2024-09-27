@@ -77,3 +77,22 @@ export function joinPaths(path1: string, path2: string): string {
 		return normalized1 + "/" + normalized2;
 	}
 }
+
+/**
+ * Removes YAML front matter, code blocks and inline code from the note content.
+ */
+export function removeCode(content: string): string {
+	return (
+		content
+			// Removes YAML front matter.
+			.replace(/^---\n(?:.*?\n)?---(?:$|\n)/s, "")
+			// Removes code blocks (leaves the last line break for the processing of inline code).
+			.replace(/^ *(```+)[^`\n]*\n(?:.*?\n)? *\1`* *$/gms, "")
+			.replace(/(^|\n) *```+[^`\n]*(?:$|\n.*$)/s, "$1")
+			// Removes inline code.
+			.replace(
+				/(`+)(?=[^`])(?:[^\n]|\n[^\n])*?[^`]\1(?=(?:$|[^`]))/gs,
+				""
+			)
+	);
+}

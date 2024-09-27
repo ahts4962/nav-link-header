@@ -34,7 +34,3 @@ so settings for daily notes or [periodic notes](https://github.com/liamcain/obsi
 After installing the plugin, enable the options you need in the plugin settings page.
 You can customize whether to show annotated links and periodic note links in markdown views and page previews individually.
 Specify the annotation strings if you use the annotated links.
-
-# Requirements
-
-This plugin uses lookbehind in regular expressions, so iOS before 16.4 is not supported.

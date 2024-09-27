@@ -1,4 +1,5 @@
 import { App, TFile } from "obsidian";
+import { removeCode } from "./utils";
 
 /**
  * Searches the annotated links from the content of the backlinks of the specified file.
@@ -26,20 +27,7 @@ export async function searchAnnotatedLinks(
 			continue;
 		}
 
-		const content = (await app.vault.cachedRead(backlinkFile))
-			// Removes YAML front matter.
-			.replace(/^---\n.*?(?<=\n)---(?:$|\n)/s, "")
-			// Removes code blocks.
-			.replace(
-				/(?<=(?:^|\n)) *(```+)[^`\n]*\n.*?(?<=\n) *\1`* *(?:$|\n)/gs,
-				"\n"
-			)
-			.replace(/(?<=(?:^|\n)) *```+[^`\n]*(?:$|\n.*$)/s, "")
-			// Removes inline code.
-			.replace(
-				/(`+)(?=[^`])\n?(?:[^\n]|[^\n]\n)*?(?<=[^`])\1(?=(?:$|[^`]))/gs,
-				""
-			);
+		const content = removeCode(await app.vault.cachedRead(backlinkFile));
 
 		for (const annotationString of annotationStrings) {
 			const escapedAnnotationString = annotationString.replace(
