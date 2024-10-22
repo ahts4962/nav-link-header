@@ -1,18 +1,12 @@
-import { Component, MarkdownRenderer, MarkdownView } from "obsidian";
+import { Component, debounce, MarkdownRenderer, MarkdownView } from "obsidian";
 import type NavLinkHeader from "./main";
 import { NavigationComponent } from "./navigationComponent";
-import { Debouncer } from "./utils";
 import { Updater } from "./updater";
 
 export class MarkdownViewUpdater extends Updater {
-	private debouncer: Debouncer = new Debouncer(1000);
-
 	constructor(plugin: NavLinkHeader) {
 		super(plugin);
-
-		this.debouncer.run(() => {
-			this.updateAll({ forced: true });
-		});
+		this.debouncedUpdateAll();
 	}
 
 	public onLayoutChange(): void {
@@ -21,15 +15,21 @@ export class MarkdownViewUpdater extends Updater {
 
 	public onVaultChange(): void {
 		// Updates the navigation links when the file changes.
-		this.debouncer.run(() => {
-			this.updateAll({ forced: true });
-		});
+		this.debouncedUpdateAll();
 	}
 
 	public onSettingsChange(): void {
 		// Updates the navigation links when the settings change
 		this.updateAll({ forced: true });
 	}
+
+	private debouncedUpdateAll = debounce(
+		() => {
+			this.updateAll({ forced: true });
+		},
+		1000,
+		true
+	);
 
 	/**
 	 * Updates the navigation links for all markdown views.
@@ -73,7 +73,7 @@ export class MarkdownViewUpdater extends Updater {
 	}
 
 	public dispose(): void {
-		this.debouncer.cancel();
+		this.debouncedUpdateAll.cancel();
 
 		this.plugin.app.workspace.iterateAllLeaves((leaf) => {
 			const view = leaf.view;

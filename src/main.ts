@@ -1,4 +1,4 @@
-import { Plugin, type HoverParent } from "obsidian";
+import { debounce, Plugin, type HoverParent } from "obsidian";
 import { HoverPopoverUpdater } from "./hoverPopoverUpdater";
 import { MarkdownViewUpdater } from "./markdownViewUpdater";
 import { getActiveGranularities, PeriodicNotesManager } from "./periodicNotes";
@@ -7,7 +7,6 @@ import {
 	NavLinkHeaderSettingTab,
 	type NavLinkHeaderSettings,
 } from "./settings";
-import { Debouncer } from "./utils";
 
 export default class NavLinkHeader extends Plugin {
 	private markdownViewUpdater?: MarkdownViewUpdater;
@@ -15,7 +14,6 @@ export default class NavLinkHeader extends Plugin {
 	public periodicNotesManager?: PeriodicNotesManager;
 
 	public settings?: NavLinkHeaderSettings;
-	private debouncer: Debouncer = new Debouncer(500);
 
 	public onload(): void {
 		void this.initialize();
@@ -147,8 +145,8 @@ export default class NavLinkHeader extends Plugin {
 		return getActiveGranularities(this).length > 0;
 	}
 
-	private onSettingsChange(): void {
-		this.debouncer.run(() => {
+	private onSettingsChange = debounce(
+		() => {
 			if (
 				this.settings!.displayInMarkdownViews &&
 				!this.markdownViewUpdater
@@ -183,14 +181,16 @@ export default class NavLinkHeader extends Plugin {
 
 			this.periodicNotesManager?.updateEntireCache();
 			this.markdownViewUpdater?.onVaultChange();
-		});
-	}
+		},
+		500,
+		true
+	);
 
 	/**
 	 * Cleans up the plugin.
 	 */
 	public onunload(): void {
-		this.debouncer.cancel();
+		this.onSettingsChange.cancel();
 
 		if (this.markdownViewUpdater) {
 			this.markdownViewUpdater.dispose();
