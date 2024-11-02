@@ -103,7 +103,7 @@ test("remove code blocks", () => {
 	expected = "\n";
 	expect(removeCode(content)).toEqual(expected);
 
-	content = "````\n```code```\n````\n";
+	content = "````\n```\ncode\n```\n````\n";
 	expected = "\n";
 	expect(removeCode(content)).toEqual(expected);
 
