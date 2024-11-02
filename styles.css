@@ -3,4 +3,8 @@
 	position: sticky;
 	top: 0;
 	z-index: 100;
+
+	~ .markdown-embed-content {
+		height: auto;
+	}
 }
