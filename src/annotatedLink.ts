@@ -5,12 +5,15 @@ import { removeCode } from "./utils";
  * Searches the annotated links from the content of the backlinks of the specified file.
  * @param app The application instance.
  * @param annotationStrings The links annotated with these strings will be searched.
+ * @param allowSpace If true, the link is still recognized as an annotated link
+ *     even if there is a space between the annotation string and the link.
  * @param file The file from which the annotated links will be searched.
  * @returns The array of the annotated links.
  */
 export async function searchAnnotatedLinks(
 	app: App,
 	annotationStrings: string[],
+	allowSpace: boolean,
 	file: TFile
 ): Promise<{ destinationPath: string; annotation: string }[]> {
 	const backlinks = Object.entries(app.metadataCache.resolvedLinks)
@@ -20,6 +23,7 @@ export async function searchAnnotatedLinks(
 		.map(([source]) => source);
 
 	const result: { destinationPath: string; annotation: string }[] = [];
+	const optionalSpace = allowSpace ? " ?" : "";
 
 	for (const backlink of backlinks) {
 		const backlinkFile = app.vault.getFileByPath(backlink);
@@ -39,7 +43,7 @@ export async function searchAnnotatedLinks(
 				// Wiki style links with annotation.
 				{
 					re: new RegExp(
-						String.raw`${escapedAnnotationString}\!?\[\[([^\[\]]+)\]\]`,
+						String.raw`${escapedAnnotationString}${optionalSpace}\!?\[\[([^\[\]]+)\]\]`,
 						"g"
 					),
 					extractor: (matchString: string) =>
@@ -48,7 +52,7 @@ export async function searchAnnotatedLinks(
 				// Markdown style links with annotation.
 				{
 					re: new RegExp(
-						String.raw`${escapedAnnotationString}\!?\[[^\[\]]+\]\(([^\(\)]+)\)`,
+						String.raw`${escapedAnnotationString}${optionalSpace}\!?\[[^\[\]]+\]\(([^\(\)]+)\)`,
 						"g"
 					),
 					extractor: (matchString: string) =>

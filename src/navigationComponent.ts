@@ -92,6 +92,7 @@ export class NavigationComponent extends Component {
 		const annotatedLinks = await searchAnnotatedLinks(
 			this.plugin.app,
 			annotationStrings,
+			this.plugin.settings!.allowSpaceAfterAnnotationString,
 			file
 		);
 

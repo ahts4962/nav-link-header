@@ -6,6 +6,7 @@ export interface NavLinkHeaderSettings {
 	displayInHoverPopovers: boolean;
 	annotatedLinksEnabled: boolean;
 	annotationStrings: string;
+	allowSpaceAfterAnnotationString: boolean;
 	dailyNoteLinksEnabled: boolean;
 	weeklyNoteLinksEnabled: boolean;
 	monthlyNoteLinksEnabled: boolean;
@@ -20,6 +21,7 @@ export const DEFAULT_SETTINGS: NavLinkHeaderSettings = {
 	displayInHoverPopovers: true,
 	annotatedLinksEnabled: false,
 	annotationStrings: "",
+	allowSpaceAfterAnnotationString: false,
 	dailyNoteLinksEnabled: false,
 	weeklyNoteLinksEnabled: false,
 	monthlyNoteLinksEnabled: false,
@@ -105,6 +107,27 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					}
 				);
+			});
+
+		new Setting(containerEl)
+			.setName("Allow a space between the annotation string and the link")
+			.setDesc(
+				"Even if there is a space between the annotation string and the link, " +
+					"the link is still recognized as an annotated link."
+			)
+			.addToggle((toggle) => {
+				toggle
+					.setValue(
+						this.plugin.settings!.allowSpaceAfterAnnotationString
+					)
+					.onChange(async (value) => {
+						this.plugin.settings!.allowSpaceAfterAnnotationString =
+							value;
+						this.plugin.app.workspace.trigger(
+							"nav-link-header:settings-changed"
+						);
+						await this.plugin.saveSettings();
+					});
 			});
 
 		new Setting(containerEl)

@@ -1,6 +1,6 @@
 {
 	"name": "nav-link-header",
-	"version": "1.0.3",
+	"version": "1.0.4",
 	"description": "Display navigation links at the top of the notes.",
 	"main": "main.js",
 	"scripts": {
