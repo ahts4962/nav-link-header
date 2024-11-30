@@ -38,6 +38,6 @@ Specify the annotation strings if you use the annotated links.
 ## Examples of annotated links
 
 In the case of the screenshot above, "⚓,📅" is set in the "Annotation strings" field on the settings page.
-And one of the annotation strings is placed before the links in the "MOC1" note (e.g. ⚓[[Note1]]).
+And one of the annotation strings is placed before the links in the "MOC1" note (e.g. `⚓[[Note 1]]`).
 The links to "MOC1" will then appear at the top of the target note (e.g. ⚓MOC1 in "Note 1").
 This feature allows you to create links that navigate to the MOC by simply adding an annotation string to the MOC.
