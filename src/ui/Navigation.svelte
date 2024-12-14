@@ -63,19 +63,19 @@
 		<div class="container">
 			{#if periodicNoteLinks}
 				<Icon iconId="chevrons-left" />
-				<NavigationLink state={periodicNoteLinks.previous} {...settings} />
+				<NavigationLink state={periodicNoteLinks.previous} {settings} />
 				<span>||</span>
 				{#if periodicNoteLinks.up.enabled}
-					<NavigationLink state={periodicNoteLinks.up} {...settings} />
+					<NavigationLink state={periodicNoteLinks.up} {settings} />
 					<span>||</span>
 				{/if}
-				<NavigationLink state={periodicNoteLinks.next} {...settings} />
+				<NavigationLink state={periodicNoteLinks.next} {settings} />
 				<Icon iconId="chevrons-right" />
 			{/if}
 			{#if annotatedLinks.hasValue && annotatedLinks.value}
 				{#each annotatedLinks.value as link}
 					<span class="annotated-link">
-						<NavigationLink state={link} {...settings} />
+						<NavigationLink state={link} {settings} />
 					</span>
 				{/each}
 			{:else if displayPlaceholder}

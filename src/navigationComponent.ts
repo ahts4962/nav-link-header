@@ -35,6 +35,9 @@ export class NavigationComponent extends Component {
 	public onload(): void {
 		this.navigation = new Navigation({
 			target: this.containerEl,
+			props: {
+				settings: this.plugin.settings,
+			},
 		});
 		this.loaded = true;
 	}
@@ -186,6 +189,7 @@ export class NavigationComponent extends Component {
 							destinationPath: linkedFile.path,
 							fileExists: true,
 							annotation: property,
+							isPropertyLink: true,
 							clickHandler: (target, e) => {
 								void this.plugin.app.workspace.openLinkText(
 									target.destinationPath!,

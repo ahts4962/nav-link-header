@@ -16,7 +16,11 @@
 -->
 {#if state.enabled}
 	{#if state.annotation}
-		<span>{settings?.propertyLinkEmoji || "🔗"}</span>
+		{#if state.isPropertyLink}
+			<span>{settings?.propertyLinkEmoji || "⬆️"}</span>
+		{:else}
+			<span>{state.annotation}</span>
+		{/if}
 	{/if}
 	<a
 		class:non-existent={!state.fileExists}
