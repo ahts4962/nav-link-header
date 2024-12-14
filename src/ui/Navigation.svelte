@@ -4,11 +4,13 @@
 		type PeriodicNoteLinkStates,
 	} from "../navigationLinkState";
 	import { NavLinkHeaderError, type AsyncValue } from "../utils";
+	import type { NavLinkHeaderSettings } from "../settings";
 	import Icon from "./Icon.svelte";
 	import NavigationLink from "./NavigationLink.svelte";
 
 	// `undefined` is used to indicate that the entire periodic note links are disabled.
 	export let periodicNoteLinks: PeriodicNoteLinkStates | undefined;
+	export let settings: NavLinkHeaderSettings;
 
 	// The input of annotated links.
 	// Receives a promise and sets the value to `AsyncValue` when the promise is resolved.
@@ -61,19 +63,19 @@
 		<div class="container">
 			{#if periodicNoteLinks}
 				<Icon iconId="chevrons-left" />
-				<NavigationLink state={periodicNoteLinks.previous} />
+				<NavigationLink state={periodicNoteLinks.previous} {...settings} />
 				<span>||</span>
 				{#if periodicNoteLinks.up.enabled}
-					<NavigationLink state={periodicNoteLinks.up} />
+					<NavigationLink state={periodicNoteLinks.up} {...settings} />
 					<span>||</span>
 				{/if}
-				<NavigationLink state={periodicNoteLinks.next} />
+				<NavigationLink state={periodicNoteLinks.next} {...settings} />
 				<Icon iconId="chevrons-right" />
 			{/if}
 			{#if annotatedLinks.hasValue && annotatedLinks.value}
 				{#each annotatedLinks.value as link}
 					<span class="annotated-link">
-						<NavigationLink state={link} />
+						<NavigationLink state={link} {...settings} />
 					</span>
 				{/each}
 			{:else if displayPlaceholder}

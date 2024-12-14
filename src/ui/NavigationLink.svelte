@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { NavigationLinkState } from "../navigationLinkState";
 	import Icon from "./Icon.svelte";
+	import type { NavLinkHeaderSettings } from "../settings";
 
 	export let state: NavigationLinkState;
+	export let settings: NavLinkHeaderSettings;
 </script>
 
 <!--
@@ -14,7 +16,7 @@
 -->
 {#if state.enabled}
 	{#if state.annotation}
-		<span>{state.annotation}</span>
+		<span>{settings?.propertyLinkEmoji || "🔗"}</span>
 	{/if}
 	<a
 		class:non-existent={!state.fileExists}

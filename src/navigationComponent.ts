@@ -69,6 +69,7 @@ export class NavigationComponent extends Component {
 				this.getPropertyLinks(file, hoverParent)
 			]).then(([annotated, property]) => [...annotated, ...property]),
 			displayPlaceholder: this.plugin.settings?.displayPlaceholder,
+			settings: this.plugin.settings,
 		});
 	}
 

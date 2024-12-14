@@ -15,7 +15,7 @@ export interface NavLinkHeaderSettings {
 	displayPlaceholder: boolean;
 	confirmFileCreation: boolean;
 	upLinkProperties: string;
-	metadataLinkEmoji: string;
+	propertyLinkEmoji: string;
 }
 
 export const DEFAULT_SETTINGS: NavLinkHeaderSettings = {
@@ -32,7 +32,7 @@ export const DEFAULT_SETTINGS: NavLinkHeaderSettings = {
 	displayPlaceholder: false,
 	confirmFileCreation: true,
 	upLinkProperties: "up",
-	metadataLinkEmoji: "🔗",
+	propertyLinkEmoji: "⬆️",
 };
 
 export class NavLinkHeaderSettingTab extends PluginSettingTab {
@@ -241,23 +241,35 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName("Up link properties")
-			.setDesc("Specify the properties to display for up links.")
+			.setDesc(
+				"Define the properties to use for up links. " +
+					"To specify multiple properties, separate them with commas."
+			)
 			.addText((text) => {
 				text.setValue(this.plugin.settings!.upLinkProperties).onChange(
 					async (value) => {
 						this.plugin.settings!.upLinkProperties = value;
+						this.plugin.app.workspace.trigger(
+							"nav-link-header:settings-changed"
+						);
 						await this.plugin.saveSettings();
 					}
 				);
 			});
 
 		new Setting(containerEl)
-			.setName("Metadata link emoji")
-			.setDesc("Specify the emoji to display for metadata links.")
+			.setName("Property link emoji")
+			.setDesc(
+				"The emoji to display for property links. " +
+					"This will replace the property name in the navigation."
+			)
 			.addText((text) => {
-				text.setValue(this.plugin.settings!.metadataLinkEmoji).onChange(
+				text.setValue(this.plugin.settings!.propertyLinkEmoji).onChange(
 					async (value) => {
-						this.plugin.settings!.metadataLinkEmoji = value;
+						this.plugin.settings!.propertyLinkEmoji = value;
+						this.plugin.app.workspace.trigger(
+							"nav-link-header:settings-changed"
+						);
 						await this.plugin.saveSettings();
 					}
 				);
