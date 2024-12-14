@@ -150,40 +150,42 @@ export class NavigationComponent extends Component {
 		file: TFile,
 		hoverParent: Component
 	): Promise<NavigationLinkState[]> {
-		const properties = this.plugin.settings!.upLinkProperties.split(",").map(p => p.trim()).filter(p => p.length > 0);
+		const cache = this.plugin.app.metadataCache.getFileCache(file);
+		if (!cache || !cache.frontmatter) {
+			return [];
+		}
+
+		const links: NavigationLinkState[] = [];
+		const seenPaths = new Set<string>();
+
+		// 确保 settings 存在并且 upLinkProperties 是一个数组
+		const properties = this.plugin.settings?.upLinkProperties?.split(",").map(p => p.trim()).filter(p => p.length > 0) || [];
 		if (properties.length === 0) {
 			return [];
 		}
 
-		const content = await this.plugin.app.vault.cachedRead(file);
-		const frontmatter = this.plugin.app.metadataCache.getFileCache(file)?.frontmatter;
-		if (!frontmatter) {
-			return [];
-		}
+		const linkedFiles = this.plugin.app.metadataCache.resolvedLinks[file.path] || {};
 
-		const result: NavigationLinkState[] = [];
-		const filePath = file.path;
+		for (const [linkedPath, _] of Object.entries(linkedFiles)) {
+			const linkedFile = this.plugin.app.vault.getAbstractFileByPath(linkedPath);
+			if (!(linkedFile instanceof TFile)) {
+				continue;
+			}
 
-		for (const property of properties) {
-			const propertyValue = frontmatter[property];
-			if (!propertyValue) continue;
+			// 如果这个文件路径已经被添加过了，就跳过
+			if (seenPaths.has(linkedFile.path)) {
+				continue;
+			}
 
-			// Convert property value to string if it's not
-			const propertyStr = String(propertyValue);
-			
-			// Find all wiki links in the property value
-			const linkRegex = /\[\[([^\[\]]+)\]\]/g;
-			let match;
+			// 检查这个链接是否来自指定的属性
+			for (const property of properties) {
+				const value = cache.frontmatter[property];
+				if (!value) continue;
 
-			while ((match = linkRegex.exec(propertyStr)) !== null) {
-				const linkPath = match[1].split("|")[0].split("#")[0].trim();
-				const linkedFile = this.plugin.app.metadataCache.getFirstLinkpathDest(
-					linkPath,
-					file.path
-				);
-
-				if (linkedFile) {
-					result.push(
+				const propertyValue = String(value);
+				if (propertyValue.includes(linkedFile.basename)) {
+					seenPaths.add(linkedFile.path);
+					links.push(
 						new NavigationLinkState({
 							enabled: true,
 							destinationPath: linkedFile.path,
@@ -193,7 +195,7 @@ export class NavigationComponent extends Component {
 							clickHandler: (target, e) => {
 								void this.plugin.app.workspace.openLinkText(
 									target.destinationPath!,
-									filePath,
+									file.path,
 									e.ctrlKey
 								);
 							},
@@ -204,7 +206,7 @@ export class NavigationComponent extends Component {
 									hoverParent,
 									targetEl: e.target,
 									linktext: target.destinationPath,
-									sourcePath: filePath,
+									sourcePath: file.path,
 								});
 							},
 						})
@@ -213,7 +215,7 @@ export class NavigationComponent extends Component {
 			}
 		}
 
-		return result;
+		return links;
 	}
 
 	private getPeriodicNoteLinkStates(

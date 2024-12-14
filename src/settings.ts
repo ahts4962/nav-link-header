@@ -16,6 +16,7 @@ export interface NavLinkHeaderSettings {
 	confirmFileCreation: boolean;
 	upLinkProperties: string;
 	propertyLinkEmoji: string;
+	filterDuplicateNotes: boolean;
 }
 
 export const DEFAULT_SETTINGS: NavLinkHeaderSettings = {
@@ -33,6 +34,7 @@ export const DEFAULT_SETTINGS: NavLinkHeaderSettings = {
 	confirmFileCreation: true,
 	upLinkProperties: "up",
 	propertyLinkEmoji: "⬆️",
+	filterDuplicateNotes: true,
 };
 
 export class NavLinkHeaderSettingTab extends PluginSettingTab {
@@ -273,6 +275,21 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					}
 				);
+			});
+
+		new Setting(containerEl)
+			.setName("Filter duplicate notes")
+			.setDesc("Filter out duplicate notes in the navigation.")
+			.addToggle((toggle) => {
+				toggle
+					.setValue(this.plugin.settings!.filterDuplicateNotes)
+					.onChange(async (value) => {
+						this.plugin.settings!.filterDuplicateNotes = value;
+						this.plugin.app.workspace.trigger(
+							"nav-link-header:settings-changed"
+						);
+						await this.plugin.saveSettings();
+					});
 			});
 	}
 }

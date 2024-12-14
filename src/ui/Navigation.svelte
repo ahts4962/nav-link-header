@@ -46,6 +46,14 @@
 		!periodicNoteLinks &&
 		annotatedLinks.hasValue &&
 		annotatedLinks.value!.length === 0;
+
+	$: filteredAnnotatedLinks = settings?.filterDuplicateNotes
+		? annotatedLinks.value?.filter((link, index) => {
+			// 只保留第一次出现的笔记
+			if (!link.destinationPath) return true;
+			return annotatedLinks.value?.findIndex(l => l.destinationPath === link.destinationPath) === index;
+		})
+		: annotatedLinks.value;
 </script>
 
 <!--
@@ -72,8 +80,8 @@
 				<NavigationLink state={periodicNoteLinks.next} {settings} />
 				<Icon iconId="chevrons-right" />
 			{/if}
-			{#if annotatedLinks.hasValue && annotatedLinks.value}
-				{#each annotatedLinks.value as link}
+			{#if filteredAnnotatedLinks}
+				{#each filteredAnnotatedLinks as link}
 					<span class="annotated-link">
 						<NavigationLink state={link} {settings} />
 					</span>
