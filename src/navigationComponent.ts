@@ -64,10 +64,10 @@ export class NavigationComponent extends Component {
 				file,
 				hoverParent
 			),
-			annotatedLinksPromise: this.getAnnotatedLinkStates(
-				file,
-				hoverParent
-			),
+			annotatedLinksPromise: Promise.all([
+				this.getAnnotatedLinkStates(file, hoverParent),
+				this.getPropertyLinks(file, hoverParent)
+			]).then(([annotated, property]) => [...annotated, ...property]),
 			displayPlaceholder: this.plugin.settings?.displayPlaceholder,
 		});
 	}
@@ -140,6 +140,75 @@ export class NavigationComponent extends Component {
 		});
 
 		return linkStates;
+	}
+
+	private async getPropertyLinks(
+		file: TFile,
+		hoverParent: Component
+	): Promise<NavigationLinkState[]> {
+		const properties = this.plugin.settings!.upLinkProperties.split(",").map(p => p.trim()).filter(p => p.length > 0);
+		if (properties.length === 0) {
+			return [];
+		}
+
+		const content = await this.plugin.app.vault.cachedRead(file);
+		const frontmatter = this.plugin.app.metadataCache.getFileCache(file)?.frontmatter;
+		if (!frontmatter) {
+			return [];
+		}
+
+		const result: NavigationLinkState[] = [];
+		const filePath = file.path;
+
+		for (const property of properties) {
+			const propertyValue = frontmatter[property];
+			if (!propertyValue) continue;
+
+			// Convert property value to string if it's not
+			const propertyStr = String(propertyValue);
+			
+			// Find all wiki links in the property value
+			const linkRegex = /\[\[([^\[\]]+)\]\]/g;
+			let match;
+
+			while ((match = linkRegex.exec(propertyStr)) !== null) {
+				const linkPath = match[1].split("|")[0].split("#")[0].trim();
+				const linkedFile = this.plugin.app.metadataCache.getFirstLinkpathDest(
+					linkPath,
+					file.path
+				);
+
+				if (linkedFile) {
+					result.push(
+						new NavigationLinkState({
+							enabled: true,
+							destinationPath: linkedFile.path,
+							fileExists: true,
+							annotation: property,
+							clickHandler: (target, e) => {
+								void this.plugin.app.workspace.openLinkText(
+									target.destinationPath!,
+									filePath,
+									e.ctrlKey
+								);
+							},
+							mouseOverHandler: (target, e) => {
+								this.plugin.app.workspace.trigger("hover-link", {
+									event: e,
+									source: "nav-link-header",
+									hoverParent,
+									targetEl: e.target,
+									linktext: target.destinationPath,
+									sourcePath: filePath,
+								});
+							},
+						})
+					);
+				}
+			}
+		}
+
+		return result;
 	}
 
 	private getPeriodicNoteLinkStates(

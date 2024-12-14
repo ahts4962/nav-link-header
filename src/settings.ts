@@ -14,6 +14,8 @@ export interface NavLinkHeaderSettings {
 	yearlyNoteLinksEnabled: boolean;
 	displayPlaceholder: boolean;
 	confirmFileCreation: boolean;
+	upLinkProperties: string;
+	metadataLinkEmoji: string;
 }
 
 export const DEFAULT_SETTINGS: NavLinkHeaderSettings = {
@@ -29,6 +31,8 @@ export const DEFAULT_SETTINGS: NavLinkHeaderSettings = {
 	yearlyNoteLinksEnabled: false,
 	displayPlaceholder: false,
 	confirmFileCreation: true,
+	upLinkProperties: "up",
+	metadataLinkEmoji: "🔗",
 };
 
 export class NavLinkHeaderSettingTab extends PluginSettingTab {
@@ -233,6 +237,30 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
 						this.plugin.settings!.confirmFileCreation = value;
 						await this.plugin.saveSettings();
 					});
+			});
+
+		new Setting(containerEl)
+			.setName("Up link properties")
+			.setDesc("Specify the properties to display for up links.")
+			.addText((text) => {
+				text.setValue(this.plugin.settings!.upLinkProperties).onChange(
+					async (value) => {
+						this.plugin.settings!.upLinkProperties = value;
+						await this.plugin.saveSettings();
+					}
+				);
+			});
+
+		new Setting(containerEl)
+			.setName("Metadata link emoji")
+			.setDesc("Specify the emoji to display for metadata links.")
+			.addText((text) => {
+				text.setValue(this.plugin.settings!.metadataLinkEmoji).onChange(
+					async (value) => {
+						this.plugin.settings!.metadataLinkEmoji = value;
+						await this.plugin.saveSettings();
+					}
+				);
 			});
 	}
 }
