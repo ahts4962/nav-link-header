@@ -1,7 +1,7 @@
 import { type Moment } from "moment";
 import { Component, TFile } from "obsidian";
 import { type IGranularity } from "obsidian-daily-notes-interface";
-import { searchAnnotatedLinks } from "./annotatedLink";
+import { searchAnnotatedLinks, getPropertyLinks } from "./annotatedLink";
 import { FileCreationModal } from "./fileCreationModal";
 import type NavLinkHeader from "./main";
 import {
@@ -67,10 +67,7 @@ export class NavigationComponent extends Component {
 				file,
 				hoverParent
 			),
-			annotatedLinksPromise: Promise.all([
-				this.getAnnotatedLinkStates(file, hoverParent),
-				this.getPropertyLinks(file, hoverParent)
-			]).then(([annotated, property]) => [...annotated, ...property]),
+			annotatedLinksPromise: this.getAnnotatedLinkStates(file, hoverParent),
 			displayPlaceholder: this.plugin.settings?.displayPlaceholder,
 			settings: this.plugin.settings,
 		});
@@ -89,24 +86,41 @@ export class NavigationComponent extends Component {
 			.settings!.annotationStrings.split(",")
 			.map((s) => s.trim())
 			.filter((s) => s.length > 0);
-		if (annotationStrings.length === 0) {
-			return [];
-		}
 
-		const annotatedLinks = await searchAnnotatedLinks(
-			this.plugin.app,
-			annotationStrings,
-			this.plugin.settings!.allowSpaceAfterAnnotationString,
-			file
-		);
+		const propertyNames = this.plugin.settings?.upLinkProperties?.split(",")
+			.map(p => p.trim())
+			.filter(p => p.length > 0) || [];
 
-		if (!this.loaded) {
-			throw new NavLinkHeaderError(
-				"The navigation component is not loaded."
-			);
-		}
+		// Get both annotated links and property links
+		const [annotatedLinks, propertyLinks] = await Promise.all([
+			searchAnnotatedLinks(
+				this.plugin.app,
+				annotationStrings,
+				this.plugin.settings!.allowSpaceAfterAnnotationString,
+				file
+			),
+			getPropertyLinks(
+				this.plugin.app,
+				propertyNames,
+				file
+			)
+		]);
 
-		const linkStates = annotatedLinks.map(
+		// Combine all links
+		const allLinks = [...annotatedLinks, ...propertyLinks];
+
+		// Filter duplicates if needed
+		const seenPaths = new Set<string>();
+		const uniqueLinks = allLinks.filter(link => {
+			if (seenPaths.has(link.destinationPath)) {
+				return false;
+			}
+			seenPaths.add(link.destinationPath);
+			return true;
+		});
+
+		// Convert to NavigationLinkState
+		return uniqueLinks.map(
 			(link) =>
 				new NavigationLinkState({
 					enabled: true,
@@ -132,90 +146,6 @@ export class NavigationComponent extends Component {
 					},
 				})
 		);
-
-		linkStates.sort((a, b) => {
-			const diff =
-				annotationStrings.indexOf(a.annotation!) -
-				annotationStrings.indexOf(b.annotation!);
-			if (diff !== 0) {
-				return diff;
-			}
-			return a.title.localeCompare(b.title);
-		});
-
-		return linkStates;
-	}
-
-	private async getPropertyLinks(
-		file: TFile,
-		hoverParent: Component
-	): Promise<NavigationLinkState[]> {
-		const cache = this.plugin.app.metadataCache.getFileCache(file);
-		if (!cache || !cache.frontmatter) {
-			return [];
-		}
-
-		const links: NavigationLinkState[] = [];
-		const seenPaths = new Set<string>();
-
-		// 确保 settings 存在并且 upLinkProperties 是一个数组
-		const properties = this.plugin.settings?.upLinkProperties?.split(",").map(p => p.trim()).filter(p => p.length > 0) || [];
-		if (properties.length === 0) {
-			return [];
-		}
-
-		const linkedFiles = this.plugin.app.metadataCache.resolvedLinks[file.path] || {};
-
-		for (const [linkedPath, _] of Object.entries(linkedFiles)) {
-			const linkedFile = this.plugin.app.vault.getAbstractFileByPath(linkedPath);
-			if (!(linkedFile instanceof TFile)) {
-				continue;
-			}
-
-			// 如果这个文件路径已经被添加过了，就跳过
-			if (seenPaths.has(linkedFile.path)) {
-				continue;
-			}
-
-			// 检查这个链接是否来自指定的属性
-			for (const property of properties) {
-				const value = cache.frontmatter[property];
-				if (!value) continue;
-
-				const propertyValue = String(value);
-				if (propertyValue.includes(linkedFile.basename)) {
-					seenPaths.add(linkedFile.path);
-					links.push(
-						new NavigationLinkState({
-							enabled: true,
-							destinationPath: linkedFile.path,
-							fileExists: true,
-							annotation: property,
-							isPropertyLink: true,
-							clickHandler: (target, e) => {
-								void this.plugin.app.workspace.openLinkText(
-									target.destinationPath!,
-									file.path,
-									e.ctrlKey
-								);
-							},
-							mouseOverHandler: (target, e) => {
-								this.plugin.app.workspace.trigger("hover-link", {
-									event: e,
-									source: "nav-link-header",
-									hoverParent,
-									targetEl: e.target,
-									linktext: target.destinationPath,
-									sourcePath: file.path,
-								});
-							},
-						})
-					);
-				}
-			}
-		}
-
-		return links;
 	}
 
 	private getPeriodicNoteLinkStates(
