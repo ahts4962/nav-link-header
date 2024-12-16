@@ -14,6 +14,9 @@ export interface NavLinkHeaderSettings {
 	yearlyNoteLinksEnabled: boolean;
 	displayPlaceholder: boolean;
 	confirmFileCreation: boolean;
+	upLinkProperties: string;
+	propertyLinkEmoji: string;
+	filterDuplicateNotes: boolean;
 }
 
 export const DEFAULT_SETTINGS: NavLinkHeaderSettings = {
@@ -29,6 +32,9 @@ export const DEFAULT_SETTINGS: NavLinkHeaderSettings = {
 	yearlyNoteLinksEnabled: false,
 	displayPlaceholder: false,
 	confirmFileCreation: true,
+	upLinkProperties: "up",
+	propertyLinkEmoji: "⬆️",
+	filterDuplicateNotes: true,
 };
 
 export class NavLinkHeaderSettingTab extends PluginSettingTab {
@@ -231,6 +237,57 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
 					.setValue(this.plugin.settings!.confirmFileCreation)
 					.onChange(async (value) => {
 						this.plugin.settings!.confirmFileCreation = value;
+						await this.plugin.saveSettings();
+					});
+			});
+
+		new Setting(containerEl)
+			.setName("Up link properties")
+			.setDesc(
+				"Define the properties to use for up links. " +
+					"To specify multiple properties, separate them with commas."
+			)
+			.addText((text) => {
+				text.setValue(this.plugin.settings!.upLinkProperties).onChange(
+					async (value) => {
+						this.plugin.settings!.upLinkProperties = value;
+						this.plugin.app.workspace.trigger(
+							"nav-link-header:settings-changed"
+						);
+						await this.plugin.saveSettings();
+					}
+				);
+			});
+
+		new Setting(containerEl)
+			.setName("Property link emoji")
+			.setDesc(
+				"The emoji to display for property links. " +
+					"This will replace the property name in the navigation."
+			)
+			.addText((text) => {
+				text.setValue(this.plugin.settings!.propertyLinkEmoji).onChange(
+					async (value) => {
+						this.plugin.settings!.propertyLinkEmoji = value;
+						this.plugin.app.workspace.trigger(
+							"nav-link-header:settings-changed"
+						);
+						await this.plugin.saveSettings();
+					}
+				);
+			});
+
+		new Setting(containerEl)
+			.setName("Filter duplicate notes")
+			.setDesc("Filter out duplicate notes in the navigation.")
+			.addToggle((toggle) => {
+				toggle
+					.setValue(this.plugin.settings!.filterDuplicateNotes)
+					.onChange(async (value) => {
+						this.plugin.settings!.filterDuplicateNotes = value;
+						this.plugin.app.workspace.trigger(
+							"nav-link-header:settings-changed"
+						);
 						await this.plugin.saveSettings();
 					});
 			});

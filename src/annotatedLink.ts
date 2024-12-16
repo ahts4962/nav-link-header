@@ -78,3 +78,46 @@ export async function searchAnnotatedLinks(
 
 	return result;
 }
+
+/**
+ * Gets links from the frontmatter properties of the specified file.
+ * @param app The application instance.
+ * @param propertyNames The properties to search for links.
+ * @param file The file to search in.
+ * @returns The array of links with their annotations.
+ */
+export async function getPropertyLinks(
+	app: App,
+	propertyNames: string[],
+	file: TFile
+): Promise<{ destinationPath: string; annotation: string }[]> {
+	const cache = app.metadataCache.getFileCache(file);
+	if (!cache?.frontmatter || propertyNames.length === 0) {
+		return [];
+	}
+
+	const result: { destinationPath: string; annotation: string }[] = [];
+	const linkedFiles = app.metadataCache.resolvedLinks[file.path] || {};
+
+	for (const [linkedPath, _] of Object.entries(linkedFiles)) {
+		const linkedFile = app.vault.getAbstractFileByPath(linkedPath);
+		if (!(linkedFile instanceof TFile)) {
+			continue;
+		}
+
+		for (const property of propertyNames) {
+			const value = cache.frontmatter[property];
+			if (!value) continue;
+
+			const propertyValue = String(value);
+			if (propertyValue.includes(linkedFile.basename)) {
+				result.push({
+					destinationPath: linkedFile.path,
+					annotation: property
+				});
+			}
+		}
+	}
+
+	return result;
+}

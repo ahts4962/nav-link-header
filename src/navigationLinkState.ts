@@ -21,6 +21,7 @@ export class NavigationLinkState {
 	public annotation?: string;
 	public clickHandler?: LinkEventHandler;
 	public mouseOverHandler?: LinkEventHandler;
+	public isPropertyLink?: boolean;
 
 	/**
 	 * @param enabled If `false`, this object does not represent a valid navigation link,
@@ -28,6 +29,7 @@ export class NavigationLinkState {
 	 * @param destinationPath The path to the destination file. This must be normalized beforehand.
 	 * @param fileExists Whether the destination file exists in the vault.
 	 * @param annotation The annotation string.
+	 * @param isPropertyLink Whether this link is extracted from a property.
 	 */
 	constructor({
 		enabled,
@@ -36,6 +38,7 @@ export class NavigationLinkState {
 		annotation,
 		clickHandler,
 		mouseOverHandler,
+		isPropertyLink,
 	}: {
 		enabled: boolean;
 		destinationPath?: string;
@@ -43,6 +46,7 @@ export class NavigationLinkState {
 		annotation?: string;
 		clickHandler?: LinkEventHandler;
 		mouseOverHandler?: LinkEventHandler;
+		isPropertyLink?: boolean;
 	}) {
 		this.enabled = enabled;
 		this.destinationPath = destinationPath;
@@ -50,6 +54,7 @@ export class NavigationLinkState {
 		this.annotation = annotation;
 		this.clickHandler = clickHandler;
 		this.mouseOverHandler = mouseOverHandler;
+		this.isPropertyLink = isPropertyLink;
 	}
 
 	/**

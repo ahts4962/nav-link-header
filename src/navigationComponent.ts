@@ -1,7 +1,7 @@
 import { type Moment } from "moment";
 import { Component, TFile } from "obsidian";
 import { type IGranularity } from "obsidian-daily-notes-interface";
-import { searchAnnotatedLinks } from "./annotatedLink";
+import { searchAnnotatedLinks, getPropertyLinks } from "./annotatedLink";
 import { FileCreationModal } from "./fileCreationModal";
 import type NavLinkHeader from "./main";
 import {
@@ -35,6 +35,9 @@ export class NavigationComponent extends Component {
 	public onload(): void {
 		this.navigation = new Navigation({
 			target: this.containerEl,
+			props: {
+				settings: this.plugin.settings,
+			},
 		});
 		this.loaded = true;
 	}
@@ -64,11 +67,9 @@ export class NavigationComponent extends Component {
 				file,
 				hoverParent
 			),
-			annotatedLinksPromise: this.getAnnotatedLinkStates(
-				file,
-				hoverParent
-			),
+			annotatedLinksPromise: this.getAnnotatedLinkStates(file, hoverParent),
 			displayPlaceholder: this.plugin.settings?.displayPlaceholder,
+			settings: this.plugin.settings,
 		});
 	}
 
@@ -85,24 +86,41 @@ export class NavigationComponent extends Component {
 			.settings!.annotationStrings.split(",")
 			.map((s) => s.trim())
 			.filter((s) => s.length > 0);
-		if (annotationStrings.length === 0) {
-			return [];
-		}
 
-		const annotatedLinks = await searchAnnotatedLinks(
-			this.plugin.app,
-			annotationStrings,
-			this.plugin.settings!.allowSpaceAfterAnnotationString,
-			file
-		);
+		const propertyNames = this.plugin.settings?.upLinkProperties?.split(",")
+			.map(p => p.trim())
+			.filter(p => p.length > 0) || [];
 
-		if (!this.loaded) {
-			throw new NavLinkHeaderError(
-				"The navigation component is not loaded."
-			);
-		}
+		// Get both annotated links and property links
+		const [annotatedLinks, propertyLinks] = await Promise.all([
+			searchAnnotatedLinks(
+				this.plugin.app,
+				annotationStrings,
+				this.plugin.settings!.allowSpaceAfterAnnotationString,
+				file
+			),
+			getPropertyLinks(
+				this.plugin.app,
+				propertyNames,
+				file
+			)
+		]);
 
-		const linkStates = annotatedLinks.map(
+		// Combine all links
+		const allLinks = [...annotatedLinks, ...propertyLinks];
+
+		// Filter duplicates if needed
+		const seenPaths = new Set<string>();
+		const uniqueLinks = allLinks.filter(link => {
+			if (seenPaths.has(link.destinationPath)) {
+				return false;
+			}
+			seenPaths.add(link.destinationPath);
+			return true;
+		});
+
+		// Convert to NavigationLinkState
+		return uniqueLinks.map(
 			(link) =>
 				new NavigationLinkState({
 					enabled: true,
@@ -128,18 +146,6 @@ export class NavigationComponent extends Component {
 					},
 				})
 		);
-
-		linkStates.sort((a, b) => {
-			const diff =
-				annotationStrings.indexOf(a.annotation!) -
-				annotationStrings.indexOf(b.annotation!);
-			if (diff !== 0) {
-				return diff;
-			}
-			return a.title.localeCompare(b.title);
-		});
-
-		return linkStates;
 	}
 
 	private getPeriodicNoteLinkStates(

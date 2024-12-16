@@ -58,6 +58,8 @@ export function joinPaths(path1: string, path2: string): string {
 
 /**
  * Removes YAML front matter, code blocks and inline code from the note content.
+ * @param content The content to remove code from.
+ * @returns The content without code.
  */
 export function removeCode(content: string): string {
 	return (
