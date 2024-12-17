@@ -56,12 +56,6 @@ export class NavigationLinkState {
 		if (!this.destinationPath) {
 			return "";
 		}
-		console.log('NavigationLinkState displayTitle:', {
-			destinationPath: this.destinationPath,
-			propertyValue: this.propertyValue,
-			title: this.title,
-			isPropertyLink: this.isPropertyLink
-		});
 		if (this.propertyValue) {
 			if (Array.isArray(this.propertyValue)) {
 				return this.propertyValue[0] || this.title;

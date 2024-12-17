@@ -128,25 +128,15 @@ export async function getPropertyLinks(
 			// Get the display property value from the linked file (target)
 			const linkedFileCache = app.metadataCache.getFileCache(linkedFile);
 			let displayValue: string | string[] | undefined;
-			console.log('Debug getPropertyLinks:', {
-				linkedFile: linkedFile.path,
-				frontmatter: linkedFileCache?.frontmatter,
-				displayPropertyName,
-				hasProperty: linkedFileCache?.frontmatter && displayPropertyName 
-					? displayPropertyName in (linkedFileCache.frontmatter || {})
-					: false
-			});
 
 			// Make sure we get the title from frontmatter
 			if (linkedFileCache?.frontmatter && displayPropertyName) {
 				if (displayPropertyName === 'title' && !linkedFileCache.frontmatter['title']) {
 					// If title is not in frontmatter, use the file title
 					displayValue = linkedFile.basename;
-					console.log('Using file basename as title:', displayValue);
 				} else if (displayPropertyName in linkedFileCache.frontmatter) {
 					const value = linkedFileCache.frontmatter[displayPropertyName];
 					displayValue = value;
-					console.log('Found display value in frontmatter:', displayValue);
 				}
 			}
 

@@ -5,14 +5,6 @@
 
 	export let state: NavigationLinkState;
 	export let settings: NavLinkHeaderSettings;
-
-	$: console.log('NavigationLink Debug:', {
-		usePropertyAsDisplayName: settings?.usePropertyAsDisplayName,
-		isPropertyLink: state.isPropertyLink,
-		propertyValue: state.propertyValue,
-		displayTitle: state.displayTitle,
-		title: state.title
-	});
 </script>
 
 <!--
@@ -34,7 +26,24 @@
 		class:non-existent={!state.fileExists}
 		href="#top"
 		on:click={(e) => {
+			e.preventDefault();
 			state.clickHandler?.(state, e);
+		}}
+		on:mousedown={(e) => {
+			// 阻止中键点击的默认滚动行为
+			if (e.button === 1) {
+				e.preventDefault();
+			}
+		}}
+		on:auxclick={(e) => {
+			// 处理中键点击，模拟 Ctrl+点击行为
+			if (e.button === 1) {
+				const simulatedEvent = new MouseEvent('click', {
+					...e,
+					ctrlKey: true
+				});
+				state.clickHandler?.(state, simulatedEvent);
+			}
 		}}
 		on:mouseover={(e) => {
 			state.mouseOverHandler?.(state, e);

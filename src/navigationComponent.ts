@@ -109,14 +109,6 @@ export class NavigationComponent extends Component {
 			)
 		]);
 
-		console.log('Debug navigationComponent:', {
-			settings: {
-				usePropertyAsDisplayName: this.plugin.settings?.usePropertyAsDisplayName,
-				displayPropertyName: this.plugin.settings?.displayPropertyName
-			},
-			propertyLinks
-		});
-
 		// Get property values for all links if needed
 		const propertyValuesForAnnotatedLinks = this.plugin.settings?.usePropertyAsDisplayName
 			? await Promise.all(
