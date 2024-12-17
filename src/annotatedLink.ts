@@ -1,6 +1,7 @@
 import { App, TFile } from "obsidian";
 import { removeCode } from "./utils";
 import type NavLinkHeader from "./main";
+import { Debug } from "./utils/debug";
 
 /**
  * Searches the annotated links from the content of the backlinks of the specified file.
@@ -94,34 +95,58 @@ export async function getPropertyLinks(
 	file: TFile,
 	displayPropertyName?: string
 ): Promise<{ destinationPath: string; annotation: string; propertyValue?: string | string[] }[]> {
-	const cache = app.metadataCache.getFileCache(file);
-	if (!cache?.frontmatter || propertyNames.length === 0) {
-		return [];
+	const result: { destinationPath: string; annotation: string; propertyValue?: string | string[] }[] = [];
+	const fileCache = app.metadataCache.getFileCache(file);
+
+	Debug.log('getPropertyLinks input', {
+		propertyNames,
+		filePath: file.path,
+		displayPropertyName
+	});
+
+	if (!fileCache?.frontmatter) {
+		Debug.log('getPropertyLinks', 'No frontmatter found');
+		return result;
 	}
 
-	const result: { destinationPath: string; annotation: string; propertyValue?: string | string[] }[] = [];
-	const linkedFiles = app.metadataCache.resolvedLinks[file.path] || {};
-
 	for (const propertyName of propertyNames) {
-		const propertyValue = cache.frontmatter[propertyName];
-		if (!propertyValue) {
+		if (!(propertyName in fileCache.frontmatter)) {
+			Debug.log('getPropertyLinks', `Property ${propertyName} not found in frontmatter`);
 			continue;
 		}
 
-		const links = Array.isArray(propertyValue)
-			? propertyValue
-			: [propertyValue];
+		const propertyValue = fileCache.frontmatter[propertyName];
+		const paths = Array.isArray(propertyValue) ? propertyValue : [propertyValue];
 
-		for (const link of links) {
-			if (typeof link !== "string") {
-				continue;
-			}
+		Debug.log('getPropertyLinks property', {
+			propertyName,
+			propertyValue,
+			paths
+		});
 
-			const linkedFile = app.metadataCache.getFirstLinkpathDest(
-				link,
-				file.path
-			);
-			if (!linkedFile || !linkedFiles[linkedFile.path]) {
+		for (const path of paths) {
+			if (!path || typeof path !== 'string') continue;
+
+			Debug.log('getPropertyLinks path', {
+				originalPath: path,
+				isWikiLink: path.startsWith('[[') && path.endsWith(']]')
+			});
+
+			// 处理 wiki 链接格式
+			const actualPath = parseWikiLink(path);
+			Debug.log('getPropertyLinks parsed path', {
+				originalPath: path,
+				actualPath: actualPath
+			});
+
+			const linkedFile = app.metadataCache.getFirstLinkpathDest(actualPath, file.path);
+			if (!linkedFile) {
+				Debug.log('getPropertyLinks', {
+					error: 'File not found',
+					originalPath: path,
+					parsedPath: actualPath,
+					currentFilePath: file.path
+				});
 				continue;
 			}
 
@@ -129,14 +154,25 @@ export async function getPropertyLinks(
 			const linkedFileCache = app.metadataCache.getFileCache(linkedFile);
 			let displayValue: string | string[] | undefined;
 
+			Debug.log('getPropertyLinks linked file', {
+				linkedFile: linkedFile.path,
+				frontmatter: linkedFileCache?.frontmatter,
+				displayPropertyName,
+				hasProperty: linkedFileCache?.frontmatter && displayPropertyName 
+					? displayPropertyName in (linkedFileCache.frontmatter || {})
+					: false
+			});
+
 			// Make sure we get the title from frontmatter
 			if (linkedFileCache?.frontmatter && displayPropertyName) {
 				if (displayPropertyName === 'title' && !linkedFileCache.frontmatter['title']) {
 					// If title is not in frontmatter, use the file title
 					displayValue = linkedFile.basename;
+					Debug.log('getPropertyLinks', `Using file basename as title: ${displayValue}`);
 				} else if (displayPropertyName in linkedFileCache.frontmatter) {
 					const value = linkedFileCache.frontmatter[displayPropertyName];
 					displayValue = value;
+					Debug.log('getPropertyLinks', `Found display value in frontmatter: ${displayValue}`);
 				}
 			}
 
@@ -148,5 +184,17 @@ export async function getPropertyLinks(
 		}
 	}
 
+	Debug.log('getPropertyLinks result', result);
 	return result;
+}
+
+// 解析 wiki 链接格式，返回实际路径
+function parseWikiLink(path: string): string {
+	// 匹配 [[文件名|显示名]] 或 [[文件名]] 格式
+	const wikiLinkRegex = /^\[\[([^|\]]+)(?:\|[^\]]+)?\]\]$/;
+	const match = path.match(wikiLinkRegex);
+	if (match) {
+		return match[1];  // 返回实际文件名部分
+	}
+	return path;
 }
