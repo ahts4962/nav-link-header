@@ -154,7 +154,7 @@ export class NavigationComponent extends Component {
 			: allLinks;
 
 		// Convert to NavigationLinkState
-		return uniqueLinks.map(
+		let linkStates = uniqueLinks.map(
 			(link) =>
 				new NavigationLinkState({
 					enabled: true,
@@ -182,7 +182,20 @@ export class NavigationComponent extends Component {
 					},
 				})
 		);
-	}
+
+		linkStates.sort((a, b) => {
+			const diff =
+				annotationStrings.indexOf(a.annotation!) -
+				annotationStrings.indexOf(b.annotation!);
+			if (diff !== 0) {
+				return diff;
+			}
+			return a.title.localeCompare(b.title);
+		});
+
+		return linkStates;
+
+	}	
 
 	private getPeriodicNoteLinkStates(
 		file: TFile,
