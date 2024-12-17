@@ -17,6 +17,8 @@ export interface NavLinkHeaderSettings {
 	upLinkProperties: string;
 	propertyLinkEmoji: string;
 	filterDuplicateNotes: boolean;
+	usePropertyAsDisplayName: boolean;
+	displayPropertyName: string;
 }
 
 export const DEFAULT_SETTINGS: NavLinkHeaderSettings = {
@@ -35,6 +37,8 @@ export const DEFAULT_SETTINGS: NavLinkHeaderSettings = {
 	upLinkProperties: "up",
 	propertyLinkEmoji: "⬆️",
 	filterDuplicateNotes: true,
+	usePropertyAsDisplayName: false,
+	displayPropertyName: "title",
 };
 
 export class NavLinkHeaderSettingTab extends PluginSettingTab {
@@ -291,5 +295,46 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
 						await this.plugin.saveSettings();
 					});
 			});
+
+		new Setting(containerEl)
+			.setName("Use property as display name")
+			.setDesc(
+				"Use the property value as the display name for property links."
+			)
+			.addToggle((toggle) => {
+				toggle
+					.setValue(this.plugin.settings!.usePropertyAsDisplayName)
+					.onChange(async (value) => {
+						this.plugin.settings!.usePropertyAsDisplayName = value;
+						this.plugin.app.workspace.trigger(
+							"nav-link-header:settings-changed"
+						);
+						await this.plugin.saveSettings();
+						// Force refresh the settings panel to show/hide the property name setting
+						this.display();
+					});
+			});
+
+		if (this.plugin.settings!.usePropertyAsDisplayName) {
+			new Setting(containerEl)
+				.setName("Display property name")
+				.setDesc(
+					"The property name to display for property links. " +
+						"If left blank, the property name will not be displayed."
+				)
+				.addText((text) => {
+					text
+						.setValue(this.plugin.settings!.displayPropertyName)
+						.onChange(
+							async (value) => {
+								this.plugin.settings!.displayPropertyName = value;
+								this.plugin.app.workspace.trigger(
+									"nav-link-header:settings-changed"
+								);
+								await this.plugin.saveSettings();
+							}
+						);
+				});
+		}
 	}
 }

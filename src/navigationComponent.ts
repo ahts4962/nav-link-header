@@ -102,22 +102,64 @@ export class NavigationComponent extends Component {
 			getPropertyLinks(
 				this.plugin.app,
 				propertyNames,
-				file
+				file,
+				this.plugin.settings?.usePropertyAsDisplayName 
+					? this.plugin.settings?.displayPropertyName 
+					: undefined
 			)
 		]);
 
-		// Combine all links
-		const allLinks = [...annotatedLinks, ...propertyLinks];
+		console.log('Debug navigationComponent:', {
+			settings: {
+				usePropertyAsDisplayName: this.plugin.settings?.usePropertyAsDisplayName,
+				displayPropertyName: this.plugin.settings?.displayPropertyName
+			},
+			propertyLinks
+		});
+
+		// Get property values for all links if needed
+		const propertyValuesForAnnotatedLinks = this.plugin.settings?.usePropertyAsDisplayName
+			? await Promise.all(
+				annotatedLinks.map(async (link) => {
+					const linkedFile = this.plugin.app.metadataCache.getFirstLinkpathDest(
+						link.destinationPath,
+						file.path
+					);
+					if (!linkedFile) return undefined;
+					
+					const linkedFileCache = this.plugin.app.metadataCache.getFileCache(linkedFile);
+					if (linkedFileCache?.frontmatter && this.plugin.settings?.displayPropertyName) {
+						return linkedFileCache.frontmatter[this.plugin.settings.displayPropertyName];
+					}
+					return undefined;
+				})
+			)
+			: annotatedLinks.map(() => undefined);
+
+		// Combine all links and convert to NavigationLinkState
+		const allLinks = [
+			...annotatedLinks.map((link, index) => ({ 
+				...link, 
+				isPropertyLink: false,
+				propertyValue: propertyValuesForAnnotatedLinks[index]
+			})),
+			...propertyLinks.map(link => ({ 
+				...link, 
+				isPropertyLink: true 
+			}))
+		];
 
 		// Filter duplicates if needed
 		const seenPaths = new Set<string>();
-		const uniqueLinks = allLinks.filter(link => {
-			if (seenPaths.has(link.destinationPath)) {
-				return false;
-			}
-			seenPaths.add(link.destinationPath);
-			return true;
-		});
+		const uniqueLinks = this.plugin.settings?.filterDuplicateNotes 
+			? allLinks.filter(link => {
+				if (seenPaths.has(link.destinationPath)) {
+					return false;
+				}
+				seenPaths.add(link.destinationPath);
+				return true;
+			})
+			: allLinks;
 
 		// Convert to NavigationLinkState
 		return uniqueLinks.map(
@@ -127,6 +169,8 @@ export class NavigationComponent extends Component {
 					destinationPath: link.destinationPath,
 					fileExists: true,
 					annotation: link.annotation,
+					isPropertyLink: link.isPropertyLink,
+					propertyValue: link.propertyValue,
 					clickHandler: (target, e) => {
 						void this.plugin.app.workspace.openLinkText(
 							target.destinationPath!,

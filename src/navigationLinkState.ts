@@ -1,15 +1,22 @@
 import { getTitleFromPath } from "./utils";
+import { TFile } from "obsidian";
 
-export type LinkEventHandler = (
-	target: NavigationLinkState,
-	e: MouseEvent
-) => void;
+export interface NavigationLinkStateOptions {
+	enabled: boolean;
+	destinationPath?: string;
+	fileExists?: boolean;
+	annotation?: string;
+	isPropertyLink?: boolean;
+	propertyValue?: string | string[];
+	clickHandler?: (target: NavigationLinkState, e: MouseEvent) => void;
+	mouseOverHandler?: (target: NavigationLinkState, e: MouseEvent) => void;
+}
 
-export type PeriodicNoteLinkStates = {
+export interface PeriodicNoteLinkStates {
 	previous: NavigationLinkState;
 	next: NavigationLinkState;
 	up: NavigationLinkState;
-};
+}
 
 /**
  * Represents a state of the `NavigationLink`.
@@ -19,50 +26,48 @@ export class NavigationLinkState {
 	public destinationPath?: string;
 	public fileExists?: boolean;
 	public annotation?: string;
-	public clickHandler?: LinkEventHandler;
-	public mouseOverHandler?: LinkEventHandler;
 	public isPropertyLink?: boolean;
+	public propertyValue?: string | string[];
+	public clickHandler?: (target: NavigationLinkState, e: MouseEvent) => void;
+	public mouseOverHandler?: (
+		target: NavigationLinkState,
+		e: MouseEvent
+	) => void;
 
-	/**
-	 * @param enabled If `false`, this object does not represent a valid navigation link,
-	 *     and the other properties are ignored.
-	 * @param destinationPath The path to the destination file. This must be normalized beforehand.
-	 * @param fileExists Whether the destination file exists in the vault.
-	 * @param annotation The annotation string.
-	 * @param isPropertyLink Whether this link is extracted from a property.
-	 */
-	constructor({
-		enabled,
-		destinationPath,
-		fileExists,
-		annotation,
-		clickHandler,
-		mouseOverHandler,
-		isPropertyLink,
-	}: {
-		enabled: boolean;
-		destinationPath?: string;
-		fileExists?: boolean;
-		annotation?: string;
-		clickHandler?: LinkEventHandler;
-		mouseOverHandler?: LinkEventHandler;
-		isPropertyLink?: boolean;
-	}) {
-		this.enabled = enabled;
-		this.destinationPath = destinationPath;
-		this.fileExists = fileExists;
-		this.annotation = annotation;
-		this.clickHandler = clickHandler;
-		this.mouseOverHandler = mouseOverHandler;
-		this.isPropertyLink = isPropertyLink;
+	constructor(options: NavigationLinkStateOptions) {
+		this.enabled = options.enabled;
+		this.destinationPath = options.destinationPath;
+		this.fileExists = options.fileExists;
+		this.annotation = options.annotation;
+		this.isPropertyLink = options.isPropertyLink;
+		this.propertyValue = options.propertyValue;
+		this.clickHandler = options.clickHandler;
+		this.mouseOverHandler = options.mouseOverHandler;
 	}
 
-	/**
-	 * The title of the destination file. The extension is not included.
-	 */
 	public get title(): string {
-		return this.destinationPath
-			? getTitleFromPath(this.destinationPath)
-			: "";
+		if (!this.destinationPath) {
+			return "";
+		}
+		return getTitleFromPath(this.destinationPath);
+	}
+
+	public get displayTitle(): string {
+		if (!this.destinationPath) {
+			return "";
+		}
+		console.log('NavigationLinkState displayTitle:', {
+			destinationPath: this.destinationPath,
+			propertyValue: this.propertyValue,
+			title: this.title,
+			isPropertyLink: this.isPropertyLink
+		});
+		if (this.propertyValue) {
+			if (Array.isArray(this.propertyValue)) {
+				return this.propertyValue[0] || this.title;
+			}
+			return this.propertyValue || this.title;
+		}
+		return this.title;
 	}
 }

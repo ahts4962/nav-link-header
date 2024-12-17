@@ -5,6 +5,14 @@
 
 	export let state: NavigationLinkState;
 	export let settings: NavLinkHeaderSettings;
+
+	$: console.log('NavigationLink Debug:', {
+		usePropertyAsDisplayName: settings?.usePropertyAsDisplayName,
+		isPropertyLink: state.isPropertyLink,
+		propertyValue: state.propertyValue,
+		displayTitle: state.displayTitle,
+		title: state.title
+	});
 </script>
 
 <!--
@@ -31,7 +39,7 @@
 		on:mouseover={(e) => {
 			state.mouseOverHandler?.(state, e);
 		}}
-		on:focus={() => {}}>{state.title}</a
+		on:focus={() => {}}>{settings?.usePropertyAsDisplayName && state.propertyValue ? state.displayTitle : state.title}</a
 	>
 {:else}
 	<Icon iconId="minus" muted />
