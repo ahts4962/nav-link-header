@@ -14,8 +14,7 @@ export interface NavLinkHeaderSettings {
 	yearlyNoteLinksEnabled: boolean;
 	displayPlaceholder: boolean;
 	confirmFileCreation: boolean;
-	upLinkProperties: string;
-	propertyLinkEmoji: string;
+	propertyMappings: Array<{property: string, emoji: string}>;
 	filterDuplicateNotes: boolean;
 	usePropertyAsDisplayName: boolean;
 	displayPropertyName: string;
@@ -35,8 +34,7 @@ export const DEFAULT_SETTINGS: NavLinkHeaderSettings = {
 	yearlyNoteLinksEnabled: false,
 	displayPlaceholder: false,
 	confirmFileCreation: true,
-	upLinkProperties: "up",
-	propertyLinkEmoji: "⬆️",
+	propertyMappings: [{property: "up", emoji: "⬆️"}],
 	filterDuplicateNotes: true,
 	usePropertyAsDisplayName: false,
 	displayPropertyName: "title",
@@ -248,39 +246,32 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
 			});
 
 		new Setting(containerEl)
-			.setName("Up link properties")
+			.setName("Property mappings")
 			.setDesc(
-				"Define the properties to use for up links. " +
-					"To specify multiple properties, separate them with commas."
+				"Define the property mappings. " +
+					"Each mapping consists of a property and an emoji. " +
+					"Each line should be in the format 'property:emoji'."
 			)
-			.addText((text) => {
-				text.setValue(this.plugin.settings!.upLinkProperties).onChange(
-					async (value) => {
-						this.plugin.settings!.upLinkProperties = value;
+			.addTextArea((text) => {
+				const mappings = this.plugin.settings!.propertyMappings
+					.map((mapping) => `${mapping.property}:${mapping.emoji}`)
+					.join("\n");
+				text.setValue(mappings)
+					.setPlaceholder("up:⬆️\nparent:👆\nsource:📚")
+					.onChange(async (value) => {
+						const newMappings = value.split("\n")
+							.map(line => line.trim())
+							.filter(line => line.length > 0)
+							.map((mapping) => {
+								const [property, emoji] = mapping.split(":");
+								return { property: property.trim(), emoji: emoji?.trim() || "⬆️" };
+							});
+						this.plugin.settings!.propertyMappings = newMappings;
 						this.plugin.app.workspace.trigger(
 							"nav-link-header:settings-changed"
 						);
 						await this.plugin.saveSettings();
-					}
-				);
-			});
-
-		new Setting(containerEl)
-			.setName("Property link emoji")
-			.setDesc(
-				"The emoji to display for property links. " +
-					"This will replace the property name in the navigation."
-			)
-			.addText((text) => {
-				text.setValue(this.plugin.settings!.propertyLinkEmoji).onChange(
-					async (value) => {
-						this.plugin.settings!.propertyLinkEmoji = value;
-						this.plugin.app.workspace.trigger(
-							"nav-link-header:settings-changed"
-						);
-						await this.plugin.saveSettings();
-					}
-				);
+					});
 			});
 
 		new Setting(containerEl)

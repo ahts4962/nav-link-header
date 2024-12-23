@@ -29,7 +29,11 @@
 {#if state.enabled}
 	{#if state.annotation}
 		{#if state.isPropertyLink}
-			<span>{settings?.propertyLinkEmoji || "⬆️"}</span>
+			{#each settings?.propertyMappings || [] as mapping}
+				{#if mapping.property === state.annotation}
+					<span>{mapping.emoji || "⬆️"}</span>
+				{/if}
+			{/each}
 		{:else}
 			<span>{state.annotation}</span>
 		{/if}

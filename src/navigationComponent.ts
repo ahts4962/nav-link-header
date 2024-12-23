@@ -82,14 +82,8 @@ export class NavigationComponent extends Component {
 		}
 
 		const filePath = file.path;
-		const annotationStrings = this.plugin
-			.settings!.annotationStrings.split(",")
-			.map((s) => s.trim())
-			.filter((s) => s.length > 0);
-
-		const propertyNames = this.plugin.settings?.upLinkProperties?.split(",")
-			.map(p => p.trim())
-			.filter(p => p.length > 0) || [];
+		const annotationStrings = this.plugin.settings!.annotationStrings.split(",");
+		const propertyNames = this.plugin.settings!.propertyMappings.map(mapping => mapping.property);
 
 		// If no annotation strings are specified, return an empty array
 		if (annotationStrings.length + propertyNames.length === 0) {
@@ -101,8 +95,7 @@ export class NavigationComponent extends Component {
 				"The navigation component is not loaded."
 			);
 		}
-
-		// Get both annotated links and property links
+		
 		const [annotatedLinks, propertyLinks] = await Promise.all([
 			searchAnnotatedLinks(
 				this.plugin.app,
