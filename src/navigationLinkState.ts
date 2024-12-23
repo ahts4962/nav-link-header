@@ -1,6 +1,11 @@
 import { getTitleFromPath } from "./utils";
 import { TFile } from "obsidian";
 
+export type LinkEventHandler = (
+	target: NavigationLinkState,
+	e: MouseEvent
+) => void;
+
 export interface NavigationLinkStateOptions {
 	enabled: boolean;
 	destinationPath?: string;
@@ -34,6 +39,13 @@ export class NavigationLinkState {
 		e: MouseEvent
 	) => void;
 
+	/**
+	 * @param enabled If `false`, this object does not represent a valid navigation link,
+	 *     and the other properties are ignored.
+	 * @param destinationPath The path to the destination file. This must be normalized beforehand.
+	 * @param fileExists Whether the destination file exists in the vault.
+	 * @param annotation The annotation string.
+	 */
 	constructor(options: NavigationLinkStateOptions) {
 		this.enabled = options.enabled;
 		this.destinationPath = options.destinationPath;

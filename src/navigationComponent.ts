@@ -91,6 +91,17 @@ export class NavigationComponent extends Component {
 			.map(p => p.trim())
 			.filter(p => p.length > 0) || [];
 
+		// If no annotation strings are specified, return an empty array
+		if (annotationStrings.length + propertyNames.length === 0) {
+			return [];
+		}
+
+		if (!this.loaded) {
+			throw new NavLinkHeaderError(
+				"The navigation component is not loaded."
+			);
+		}
+
 		// Get both annotated links and property links
 		const [annotatedLinks, propertyLinks] = await Promise.all([
 			searchAnnotatedLinks(
