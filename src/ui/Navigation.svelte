@@ -49,10 +49,14 @@
 
 	$: filteredAnnotatedLinks = settings?.filterDuplicateNotes
 		? annotatedLinks.value?.filter((link, index) => {
-			// 只保留第一次出现的笔记
-			if (!link.destinationPath) return true;
-			return annotatedLinks.value?.findIndex(l => l.destinationPath === link.destinationPath) === index;
-		})
+				// 只保留第一次出现的笔记
+				if (!link.destinationPath) return true;
+				return (
+					annotatedLinks.value?.findIndex(
+						(l) => l.destinationPath === link.destinationPath,
+					) === index
+				);
+			})
 		: annotatedLinks.value;
 </script>
 

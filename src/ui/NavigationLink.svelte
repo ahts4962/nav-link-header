@@ -9,12 +9,12 @@
 
 	$: {
 		Debug.init(settings);
-		Debug.log('NavigationLink', {
+		Debug.log("NavigationLink", {
 			usePropertyAsDisplayName: settings?.usePropertyAsDisplayName,
 			isPropertyLink: state.isPropertyLink,
 			propertyValue: state.propertyValue,
 			displayTitle: state.displayTitle,
-			title: state.title
+			title: state.title,
 		});
 	}
 </script>
@@ -54,9 +54,9 @@
 		on:auxclick={(e) => {
 			// 处理中键点击，模拟 Ctrl+点击行为
 			if (e.button === 1) {
-				const simulatedEvent = new MouseEvent('click', {
+				const simulatedEvent = new MouseEvent("click", {
 					...e,
-					ctrlKey: true
+					ctrlKey: true,
 				});
 				state.clickHandler?.(state, simulatedEvent);
 			}
@@ -64,7 +64,10 @@
 		on:mouseover={(e) => {
 			state.mouseOverHandler?.(state, e);
 		}}
-		on:focus={() => {}}>{settings?.usePropertyAsDisplayName && state.propertyValue ? state.displayTitle : state.title}</a
+		on:focus={() => {}}
+		>{settings?.usePropertyAsDisplayName && state.propertyValue
+			? state.displayTitle
+			: state.title}</a
 	>
 {:else}
 	<Icon iconId="minus" muted />

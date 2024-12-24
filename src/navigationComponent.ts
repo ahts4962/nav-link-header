@@ -36,7 +36,9 @@ export class NavigationComponent extends Component {
 		this.navigation = new Navigation({
 			target: this.containerEl,
 			props: {
-				settings: this.plugin.settings,
+				periodicNoteLinks: undefined,
+				annotatedLinksPromise: undefined,
+				settings: this.plugin.settings!,
 			},
 		});
 		this.loaded = true;
@@ -67,7 +69,10 @@ export class NavigationComponent extends Component {
 				file,
 				hoverParent
 			),
-			annotatedLinksPromise: this.getAnnotatedLinkStates(file, hoverParent),
+			annotatedLinksPromise: this.getAnnotatedLinkStates(
+				file,
+				hoverParent
+			),
 			displayPlaceholder: this.plugin.settings?.displayPlaceholder,
 			settings: this.plugin.settings,
 		});
@@ -82,8 +87,11 @@ export class NavigationComponent extends Component {
 		}
 
 		const filePath = file.path;
-		const annotationStrings = this.plugin.settings!.annotationStrings.split(",");
-		const propertyNames = this.plugin.settings!.propertyMappings.map(mapping => mapping.property);
+		const annotationStrings =
+			this.plugin.settings!.annotationStrings.split(",");
+		const propertyNames = this.plugin.settings!.propertyMappings.map(
+			(mapping) => mapping.property
+		);
 
 		// If no annotation strings are specified, return an empty array
 		if (annotationStrings.length + propertyNames.length === 0) {
@@ -95,7 +103,7 @@ export class NavigationComponent extends Component {
 				"The navigation component is not loaded."
 			);
 		}
-		
+
 		const [annotatedLinks, propertyLinks] = await Promise.all([
 			searchAnnotatedLinks(
 				this.plugin.app,
@@ -107,58 +115,69 @@ export class NavigationComponent extends Component {
 				this.plugin.app,
 				propertyNames,
 				file,
-				this.plugin.settings?.usePropertyAsDisplayName 
-					? this.plugin.settings?.displayPropertyName 
+				this.plugin.settings?.usePropertyAsDisplayName
+					? this.plugin.settings?.displayPropertyName
 					: undefined
-			)
+			),
 		]);
 
 		// Get property values for all links if needed
-		const propertyValuesForAnnotatedLinks = this.plugin.settings?.usePropertyAsDisplayName
-			? await Promise.all(
-				annotatedLinks.map(async (link) => {
-					const linkedFile = this.plugin.app.metadataCache.getFirstLinkpathDest(
-						link.destinationPath,
-						file.path
-					);
+		const propertyValuesForAnnotatedLinks = this.plugin.settings
+			?.usePropertyAsDisplayName
+			? annotatedLinks.map((link) => {
+					const linkedFile =
+						this.plugin.app.metadataCache.getFirstLinkpathDest(
+							link.destinationPath,
+							file.path
+						);
 					if (!linkedFile) return undefined;
-					
-					const linkedFileCache = this.plugin.app.metadataCache.getFileCache(linkedFile);
-					if (linkedFileCache?.frontmatter && this.plugin.settings?.displayPropertyName) {
-						return linkedFileCache.frontmatter[this.plugin.settings.displayPropertyName];
+
+					const linkedFileCache =
+						this.plugin.app.metadataCache.getFileCache(linkedFile);
+					if (
+						linkedFileCache?.frontmatter &&
+						this.plugin.settings?.displayPropertyName
+					) {
+						const result = linkedFileCache.frontmatter[
+							this.plugin.settings.displayPropertyName
+						] as unknown;
+						if (typeof result === "string") {
+							return result;
+						} else {
+							return undefined;
+						}
 					}
 					return undefined;
-				})
-			)
+			  })
 			: annotatedLinks.map(() => undefined);
 
 		// Combine all links and convert to NavigationLinkState
 		const allLinks = [
-			...annotatedLinks.map((link, index) => ({ 
-				...link, 
+			...annotatedLinks.map((link, index) => ({
+				...link,
 				isPropertyLink: false,
-				propertyValue: propertyValuesForAnnotatedLinks[index]
+				propertyValue: propertyValuesForAnnotatedLinks[index],
 			})),
-			...propertyLinks.map(link => ({ 
-				...link, 
-				isPropertyLink: true 
-			}))
+			...propertyLinks.map((link) => ({
+				...link,
+				isPropertyLink: true,
+			})),
 		];
 
 		// Filter duplicates if needed
 		const seenPaths = new Set<string>();
-		const uniqueLinks = this.plugin.settings?.filterDuplicateNotes 
-			? allLinks.filter(link => {
-				if (seenPaths.has(link.destinationPath)) {
-					return false;
-				}
-				seenPaths.add(link.destinationPath);
-				return true;
-			})
+		const uniqueLinks = this.plugin.settings?.filterDuplicateNotes
+			? allLinks.filter((link) => {
+					if (seenPaths.has(link.destinationPath)) {
+						return false;
+					}
+					seenPaths.add(link.destinationPath);
+					return true;
+			  })
 			: allLinks;
 
 		// Convert to NavigationLinkState
-		let linkStates = uniqueLinks.map(
+		const linkStates = uniqueLinks.map(
 			(link) =>
 				new NavigationLinkState({
 					enabled: true,
@@ -198,8 +217,7 @@ export class NavigationComponent extends Component {
 		});
 
 		return linkStates;
-
-	}	
+	}
 
 	private getPeriodicNoteLinkStates(
 		file: TFile,

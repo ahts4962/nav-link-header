@@ -14,7 +14,7 @@ export interface NavLinkHeaderSettings {
 	yearlyNoteLinksEnabled: boolean;
 	displayPlaceholder: boolean;
 	confirmFileCreation: boolean;
-	propertyMappings: Array<{property: string, emoji: string}>;
+	propertyMappings: Array<{ property: string; emoji: string }>;
 	filterDuplicateNotes: boolean;
 	usePropertyAsDisplayName: boolean;
 	displayPropertyName: string;
@@ -34,7 +34,7 @@ export const DEFAULT_SETTINGS: NavLinkHeaderSettings = {
 	yearlyNoteLinksEnabled: false,
 	displayPlaceholder: false,
 	confirmFileCreation: true,
-	propertyMappings: [{property: "up", emoji: "⬆️"}],
+	propertyMappings: [{ property: "up", emoji: "⬆️" }],
 	filterDuplicateNotes: true,
 	usePropertyAsDisplayName: false,
 	displayPropertyName: "title",
@@ -253,18 +253,24 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
 					"Each line should be in the format 'property:emoji'."
 			)
 			.addTextArea((text) => {
-				const mappings = this.plugin.settings!.propertyMappings
-					.map((mapping) => `${mapping.property}:${mapping.emoji}`)
+				const mappings = this.plugin
+					.settings!.propertyMappings.map(
+						(mapping) => `${mapping.property}:${mapping.emoji}`
+					)
 					.join("\n");
 				text.setValue(mappings)
 					.setPlaceholder("up:⬆️\nparent:👆\nsource:📚")
 					.onChange(async (value) => {
-						const newMappings = value.split("\n")
-							.map(line => line.trim())
-							.filter(line => line.length > 0)
+						const newMappings = value
+							.split("\n")
+							.map((line) => line.trim())
+							.filter((line) => line.length > 0)
 							.map((mapping) => {
 								const [property, emoji] = mapping.split(":");
-								return { property: property.trim(), emoji: emoji?.trim() || "⬆️" };
+								return {
+									property: property.trim(),
+									emoji: emoji?.trim() || "⬆️",
+								};
 							});
 						this.plugin.settings!.propertyMappings = newMappings;
 						this.plugin.app.workspace.trigger(
@@ -316,17 +322,15 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
 						"If left blank, the property name will not be displayed."
 				)
 				.addText((text) => {
-					text
-						.setValue(this.plugin.settings!.displayPropertyName)
-						.onChange(
-							async (value) => {
-								this.plugin.settings!.displayPropertyName = value;
-								this.plugin.app.workspace.trigger(
-									"nav-link-header:settings-changed"
-								);
-								await this.plugin.saveSettings();
-							}
+					text.setValue(
+						this.plugin.settings!.displayPropertyName
+					).onChange(async (value) => {
+						this.plugin.settings!.displayPropertyName = value;
+						this.plugin.app.workspace.trigger(
+							"nav-link-header:settings-changed"
 						);
+						await this.plugin.saveSettings();
+					});
 				});
 		}
 

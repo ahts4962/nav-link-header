@@ -1,5 +1,4 @@
 import { getTitleFromPath } from "./utils";
-import { TFile } from "obsidian";
 
 export type LinkEventHandler = (
 	target: NavigationLinkState,
