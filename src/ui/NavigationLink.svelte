@@ -1,8 +1,22 @@
 <script lang="ts">
 	import { NavigationLinkState } from "../navigationLinkState";
+	import { Debug } from "../utils/debug";
 	import Icon from "./Icon.svelte";
+	import type { NavLinkHeaderSettings } from "../settings";
 
 	export let state: NavigationLinkState;
+	export let settings: NavLinkHeaderSettings;
+
+	$: {
+		Debug.init(settings);
+		Debug.log('NavigationLink', {
+			usePropertyAsDisplayName: settings?.usePropertyAsDisplayName,
+			isPropertyLink: state.isPropertyLink,
+			propertyValue: state.propertyValue,
+			displayTitle: state.displayTitle,
+			title: state.title
+		});
+	}
 </script>
 
 <!--
@@ -14,18 +28,43 @@
 -->
 {#if state.enabled}
 	{#if state.annotation}
-		<span>{state.annotation}</span>
+		{#if state.isPropertyLink}
+			{#each settings?.propertyMappings || [] as mapping}
+				{#if mapping.property === state.annotation}
+					<span>{mapping.emoji || "⬆️"}</span>
+				{/if}
+			{/each}
+		{:else}
+			<span>{state.annotation}</span>
+		{/if}
 	{/if}
 	<a
 		class:non-existent={!state.fileExists}
 		href="#top"
 		on:click={(e) => {
+			e.preventDefault();
 			state.clickHandler?.(state, e);
+		}}
+		on:mousedown={(e) => {
+			// 阻止中键点击的默认滚动行为
+			if (e.button === 1) {
+				e.preventDefault();
+			}
+		}}
+		on:auxclick={(e) => {
+			// 处理中键点击，模拟 Ctrl+点击行为
+			if (e.button === 1) {
+				const simulatedEvent = new MouseEvent('click', {
+					...e,
+					ctrlKey: true
+				});
+				state.clickHandler?.(state, simulatedEvent);
+			}
 		}}
 		on:mouseover={(e) => {
 			state.mouseOverHandler?.(state, e);
 		}}
-		on:focus={() => {}}>{state.title}</a
+		on:focus={() => {}}>{settings?.usePropertyAsDisplayName && state.propertyValue ? state.displayTitle : state.title}</a
 	>
 {:else}
 	<Icon iconId="minus" muted />

@@ -1,7 +1,7 @@
 import { type Moment } from "moment";
 import { Component, TFile } from "obsidian";
 import { type IGranularity } from "obsidian-daily-notes-interface";
-import { searchAnnotatedLinks } from "./annotatedLink";
+import { searchAnnotatedLinks, getPropertyLinks } from "./annotatedLink";
 import { FileCreationModal } from "./fileCreationModal";
 import type NavLinkHeader from "./main";
 import {
@@ -35,6 +35,9 @@ export class NavigationComponent extends Component {
 	public onload(): void {
 		this.navigation = new Navigation({
 			target: this.containerEl,
+			props: {
+				settings: this.plugin.settings,
+			},
 		});
 		this.loaded = true;
 	}
@@ -64,11 +67,9 @@ export class NavigationComponent extends Component {
 				file,
 				hoverParent
 			),
-			annotatedLinksPromise: this.getAnnotatedLinkStates(
-				file,
-				hoverParent
-			),
+			annotatedLinksPromise: this.getAnnotatedLinkStates(file, hoverParent),
 			displayPlaceholder: this.plugin.settings?.displayPlaceholder,
+			settings: this.plugin.settings,
 		});
 	}
 
@@ -81,34 +82,91 @@ export class NavigationComponent extends Component {
 		}
 
 		const filePath = file.path;
-		const annotationStrings = this.plugin
-			.settings!.annotationStrings.split(",")
-			.map((s) => s.trim())
-			.filter((s) => s.length > 0);
-		if (annotationStrings.length === 0) {
+		const annotationStrings = this.plugin.settings!.annotationStrings.split(",");
+		const propertyNames = this.plugin.settings!.propertyMappings.map(mapping => mapping.property);
+
+		// If no annotation strings are specified, return an empty array
+		if (annotationStrings.length + propertyNames.length === 0) {
 			return [];
 		}
-
-		const annotatedLinks = await searchAnnotatedLinks(
-			this.plugin.app,
-			annotationStrings,
-			this.plugin.settings!.allowSpaceAfterAnnotationString,
-			file
-		);
 
 		if (!this.loaded) {
 			throw new NavLinkHeaderError(
 				"The navigation component is not loaded."
 			);
 		}
+		
+		const [annotatedLinks, propertyLinks] = await Promise.all([
+			searchAnnotatedLinks(
+				this.plugin.app,
+				annotationStrings,
+				this.plugin.settings!.allowSpaceAfterAnnotationString,
+				file
+			),
+			getPropertyLinks(
+				this.plugin.app,
+				propertyNames,
+				file,
+				this.plugin.settings?.usePropertyAsDisplayName 
+					? this.plugin.settings?.displayPropertyName 
+					: undefined
+			)
+		]);
 
-		const linkStates = annotatedLinks.map(
+		// Get property values for all links if needed
+		const propertyValuesForAnnotatedLinks = this.plugin.settings?.usePropertyAsDisplayName
+			? await Promise.all(
+				annotatedLinks.map(async (link) => {
+					const linkedFile = this.plugin.app.metadataCache.getFirstLinkpathDest(
+						link.destinationPath,
+						file.path
+					);
+					if (!linkedFile) return undefined;
+					
+					const linkedFileCache = this.plugin.app.metadataCache.getFileCache(linkedFile);
+					if (linkedFileCache?.frontmatter && this.plugin.settings?.displayPropertyName) {
+						return linkedFileCache.frontmatter[this.plugin.settings.displayPropertyName];
+					}
+					return undefined;
+				})
+			)
+			: annotatedLinks.map(() => undefined);
+
+		// Combine all links and convert to NavigationLinkState
+		const allLinks = [
+			...annotatedLinks.map((link, index) => ({ 
+				...link, 
+				isPropertyLink: false,
+				propertyValue: propertyValuesForAnnotatedLinks[index]
+			})),
+			...propertyLinks.map(link => ({ 
+				...link, 
+				isPropertyLink: true 
+			}))
+		];
+
+		// Filter duplicates if needed
+		const seenPaths = new Set<string>();
+		const uniqueLinks = this.plugin.settings?.filterDuplicateNotes 
+			? allLinks.filter(link => {
+				if (seenPaths.has(link.destinationPath)) {
+					return false;
+				}
+				seenPaths.add(link.destinationPath);
+				return true;
+			})
+			: allLinks;
+
+		// Convert to NavigationLinkState
+		let linkStates = uniqueLinks.map(
 			(link) =>
 				new NavigationLinkState({
 					enabled: true,
 					destinationPath: link.destinationPath,
 					fileExists: true,
 					annotation: link.annotation,
+					isPropertyLink: link.isPropertyLink,
+					propertyValue: link.propertyValue,
 					clickHandler: (target, e) => {
 						void this.plugin.app.workspace.openLinkText(
 							target.destinationPath!,
@@ -140,7 +198,8 @@ export class NavigationComponent extends Component {
 		});
 
 		return linkStates;
-	}
+
+	}	
 
 	private getPeriodicNoteLinkStates(
 		file: TFile,

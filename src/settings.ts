@@ -14,6 +14,11 @@ export interface NavLinkHeaderSettings {
 	yearlyNoteLinksEnabled: boolean;
 	displayPlaceholder: boolean;
 	confirmFileCreation: boolean;
+	propertyMappings: Array<{property: string, emoji: string}>;
+	filterDuplicateNotes: boolean;
+	usePropertyAsDisplayName: boolean;
+	displayPropertyName: string;
+	devMode: boolean;
 }
 
 export const DEFAULT_SETTINGS: NavLinkHeaderSettings = {
@@ -29,6 +34,11 @@ export const DEFAULT_SETTINGS: NavLinkHeaderSettings = {
 	yearlyNoteLinksEnabled: false,
 	displayPlaceholder: false,
 	confirmFileCreation: true,
+	propertyMappings: [{property: "up", emoji: "⬆️"}],
+	filterDuplicateNotes: true,
+	usePropertyAsDisplayName: false,
+	displayPropertyName: "title",
+	devMode: false,
 };
 
 export class NavLinkHeaderSettingTab extends PluginSettingTab {
@@ -231,6 +241,103 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
 					.setValue(this.plugin.settings!.confirmFileCreation)
 					.onChange(async (value) => {
 						this.plugin.settings!.confirmFileCreation = value;
+						await this.plugin.saveSettings();
+					});
+			});
+
+		new Setting(containerEl)
+			.setName("Property mappings")
+			.setDesc(
+				"Define the property mappings. " +
+					"Each mapping consists of a property and an emoji. " +
+					"Each line should be in the format 'property:emoji'."
+			)
+			.addTextArea((text) => {
+				const mappings = this.plugin.settings!.propertyMappings
+					.map((mapping) => `${mapping.property}:${mapping.emoji}`)
+					.join("\n");
+				text.setValue(mappings)
+					.setPlaceholder("up:⬆️\nparent:👆\nsource:📚")
+					.onChange(async (value) => {
+						const newMappings = value.split("\n")
+							.map(line => line.trim())
+							.filter(line => line.length > 0)
+							.map((mapping) => {
+								const [property, emoji] = mapping.split(":");
+								return { property: property.trim(), emoji: emoji?.trim() || "⬆️" };
+							});
+						this.plugin.settings!.propertyMappings = newMappings;
+						this.plugin.app.workspace.trigger(
+							"nav-link-header:settings-changed"
+						);
+						await this.plugin.saveSettings();
+					});
+			});
+
+		new Setting(containerEl)
+			.setName("Filter duplicate notes")
+			.setDesc("Filter out duplicate notes in the navigation.")
+			.addToggle((toggle) => {
+				toggle
+					.setValue(this.plugin.settings!.filterDuplicateNotes)
+					.onChange(async (value) => {
+						this.plugin.settings!.filterDuplicateNotes = value;
+						this.plugin.app.workspace.trigger(
+							"nav-link-header:settings-changed"
+						);
+						await this.plugin.saveSettings();
+					});
+			});
+
+		new Setting(containerEl)
+			.setName("Use property as display name")
+			.setDesc(
+				"Use the property value as the display name for property links."
+			)
+			.addToggle((toggle) => {
+				toggle
+					.setValue(this.plugin.settings!.usePropertyAsDisplayName)
+					.onChange(async (value) => {
+						this.plugin.settings!.usePropertyAsDisplayName = value;
+						this.plugin.app.workspace.trigger(
+							"nav-link-header:settings-changed"
+						);
+						await this.plugin.saveSettings();
+						// Force refresh the settings panel to show/hide the property name setting
+						this.display();
+					});
+			});
+
+		if (this.plugin.settings!.usePropertyAsDisplayName) {
+			new Setting(containerEl)
+				.setName("Display property name")
+				.setDesc(
+					"The property name to display for property links. " +
+						"If left blank, the property name will not be displayed."
+				)
+				.addText((text) => {
+					text
+						.setValue(this.plugin.settings!.displayPropertyName)
+						.onChange(
+							async (value) => {
+								this.plugin.settings!.displayPropertyName = value;
+								this.plugin.app.workspace.trigger(
+									"nav-link-header:settings-changed"
+								);
+								await this.plugin.saveSettings();
+							}
+						);
+				});
+		}
+
+		new Setting(containerEl)
+			.setName("Development mode")
+			.setDesc("Enable development mode for debugging purposes.")
+			.addToggle((toggle) => {
+				toggle
+					.setValue(this.plugin.settings!.devMode)
+					.onChange(async (value) => {
+						this.plugin.settings!.devMode = value;
 						await this.plugin.saveSettings();
 					});
 			});
