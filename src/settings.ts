@@ -18,7 +18,6 @@ export interface NavLinkHeaderSettings {
 	filterDuplicateNotes: boolean;
 	usePropertyAsDisplayName: boolean;
 	displayPropertyName: string;
-	devMode: boolean;
 }
 
 export const DEFAULT_SETTINGS: NavLinkHeaderSettings = {
@@ -38,7 +37,6 @@ export const DEFAULT_SETTINGS: NavLinkHeaderSettings = {
 	filterDuplicateNotes: true,
 	usePropertyAsDisplayName: false,
 	displayPropertyName: "title",
-	devMode: false,
 };
 
 export class NavLinkHeaderSettingTab extends PluginSettingTab {
@@ -333,17 +331,5 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
 					});
 				});
 		}
-
-		new Setting(containerEl)
-			.setName("Development mode")
-			.setDesc("Enable development mode for debugging purposes.")
-			.addToggle((toggle) => {
-				toggle
-					.setValue(this.plugin.settings!.devMode)
-					.onChange(async (value) => {
-						this.plugin.settings!.devMode = value;
-						await this.plugin.saveSettings();
-					});
-			});
 	}
 }

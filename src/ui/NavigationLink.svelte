@@ -1,22 +1,10 @@
 <script lang="ts">
 	import { NavigationLinkState } from "../navigationLinkState";
-	import { Debug } from "../utils/debug";
 	import Icon from "./Icon.svelte";
 	import type { NavLinkHeaderSettings } from "../settings";
 
 	export let state: NavigationLinkState;
 	export let settings: NavLinkHeaderSettings;
-
-	$: {
-		Debug.init(settings);
-		Debug.log("NavigationLink", {
-			usePropertyAsDisplayName: settings?.usePropertyAsDisplayName,
-			isPropertyLink: state.isPropertyLink,
-			propertyValue: state.propertyValue,
-			displayTitle: state.displayTitle,
-			title: state.title,
-		});
-	}
 </script>
 
 <!--
