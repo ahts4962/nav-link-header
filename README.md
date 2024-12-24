@@ -28,6 +28,7 @@ so settings for daily notes or [periodic notes](https://github.com/liamcain/obsi
 - Display links in page previews.
 - Wikilinks and markdown format links are supported.
 - Create a new periodic note by clicking the link if it doesn't exist.
+- The note to be displayed in the navigation can also be specified using properties.
 
 # Usage
 
