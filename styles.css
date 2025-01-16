@@ -1,3 +1,7 @@
+.nav-link-header-navigation {
+	z-index: 1;
+}
+
 /* Styles for the hover popover container element */
 .popover.hover-popover .nav-link-header-navigation {
 	position: sticky;
