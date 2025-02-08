@@ -265,11 +265,12 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
 				
 				const inputContainer = text.inputEl.parentElement;
 				if (inputContainer) {
-					inputContainer.style.width = "80%";
+					inputContainer.style.width = "75%";
 				}
 				
 				text.inputEl.style.minHeight = "80px";
 				text.inputEl.style.width = "100%";
+				text.inputEl.style.resize = "vertical";
 				
 				text.setValue(mappings)
 					.setPlaceholder("up:⬆️\nparent:👆\nsource:📚")
