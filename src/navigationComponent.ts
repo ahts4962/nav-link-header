@@ -187,13 +187,30 @@ export class NavigationComponent extends Component {
 				})
 		);
 
+		// Sort the links
 		linkStates.sort((a, b) => {
-			const diff =
-				annotationStrings.indexOf(a.annotation!) -
-				annotationStrings.indexOf(b.annotation!);
-			if (diff !== 0) {
-				return diff;
+			// First, sort by whether it is a property link
+			if (a.isPropertyLink !== b.isPropertyLink) {
+				return a.isPropertyLink ? 1 : -1;
 			}
+
+			// If both are property links, sort by the order in propertyMappings
+			if (a.isPropertyLink && b.isPropertyLink) {
+				const propertyNames = this.plugin.settings!.propertyMappings.map(m => m.property);
+				const indexA = propertyNames.indexOf(a.annotation!);
+				const indexB = propertyNames.indexOf(b.annotation!);
+				return indexA - indexB;
+			}
+
+			// If both are annotated links, sort by the order of annotation strings
+			const annotationStrings = this.plugin.settings!.annotationStrings.split(",");
+			const indexA = annotationStrings.indexOf(a.annotation!);
+			const indexB = annotationStrings.indexOf(b.annotation!);
+			if (indexA !== indexB) {
+				return indexA - indexB;
+			}
+
+			// Finally, sort alphabetically by title
 			return a.title.localeCompare(b.title);
 		});
 
