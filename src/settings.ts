@@ -257,14 +257,12 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
 					.map((mapping) => `${mapping.property}:${mapping.emoji}`)
 					.join("\n");
 				
-				// 设置 setting-item 的样式以调整布局
 				const settingItem = text.inputEl.parentElement?.parentElement;
 				if (settingItem) {
 					settingItem.style.alignItems = "flex-start";
 					settingItem.style.display = "flex";
 				}
 				
-				// 调整输入框容器样式
 				const inputContainer = text.inputEl.parentElement;
 				if (inputContainer) {
 					inputContainer.style.width = "80%";
