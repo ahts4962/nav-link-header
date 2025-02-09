@@ -10,13 +10,26 @@ import {
 } from "./navigationLinkState";
 import { createPeriodicNote } from "./periodicNotes";
 import { NavLinkHeaderError } from "./utils";
+import { mount, unmount } from "svelte";
 import Navigation from "./ui/Navigation.svelte";
+import type { NavLinkHeaderSettings } from "./settings";
 
 /**
  * Navigation component to add the navigation links to.
  */
 export class NavigationComponent extends Component {
-	private navigation?: Navigation;
+	private navigation?: ReturnType<typeof Navigation>;
+	private navigationProps: {
+		periodicNoteLinks: PeriodicNoteLinkStates | undefined;
+		annotatedLinksPromise: Promise<NavigationLinkState[]> | undefined;
+		displayPlaceholder: boolean;
+		settings: NavLinkHeaderSettings;
+	} = $state() as {
+		periodicNoteLinks: PeriodicNoteLinkStates | undefined;
+		annotatedLinksPromise: Promise<NavigationLinkState[]> | undefined;
+		displayPlaceholder: boolean;
+		settings: NavLinkHeaderSettings;
+	};
 	private currentFilePath?: string;
 	private loaded: boolean = false;
 
@@ -33,13 +46,15 @@ export class NavigationComponent extends Component {
 	 * Initializes the navigation component.
 	 */
 	public onload(): void {
-		this.navigation = new Navigation({
+		this.navigationProps = {
+			periodicNoteLinks: undefined,
+			annotatedLinksPromise: undefined,
+			displayPlaceholder: false,
+			settings: this.plugin.settings!,
+		};
+		this.navigation = mount(Navigation, {
 			target: this.containerEl,
-			props: {
-				periodicNoteLinks: undefined,
-				annotatedLinksPromise: undefined,
-				settings: this.plugin.settings!,
-			},
+			props: this.navigationProps,
 		});
 		this.loaded = true;
 	}
@@ -64,18 +79,15 @@ export class NavigationComponent extends Component {
 		}
 		this.currentFilePath = file.path;
 
-		this.navigation?.$set({
-			periodicNoteLinks: this.getPeriodicNoteLinkStates(
-				file,
-				hoverParent
-			),
-			annotatedLinksPromise: this.getAnnotatedLinkStates(
-				file,
-				hoverParent
-			),
-			displayPlaceholder: this.plugin.settings?.displayPlaceholder,
-			settings: this.plugin.settings,
-		});
+		this.navigationProps.periodicNoteLinks = this.getPeriodicNoteLinkStates(
+			file,
+			hoverParent
+		);
+		this.navigationProps.annotatedLinksPromise =
+			this.getAnnotatedLinkStates(file, hoverParent);
+		this.navigationProps.displayPlaceholder =
+			this.plugin.settings!.displayPlaceholder;
+		this.navigationProps.settings = this.plugin.settings!;
 	}
 
 	private async getAnnotatedLinkStates(
@@ -302,7 +314,10 @@ export class NavigationComponent extends Component {
 	}
 
 	public onunload(): void {
-		this.navigation?.$destroy();
+		if (this.navigation) {
+			void unmount(this.navigation);
+			this.navigation = undefined;
+		}
 		this.currentFilePath = undefined;
 		this.loaded = false;
 	}

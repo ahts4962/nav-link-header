@@ -1,5 +1,5 @@
 import { Component, TFile } from "obsidian";
-import { NavigationComponent } from "./navigationComponent";
+import { NavigationComponent } from "./navigationComponent.svelte";
 import type NavLinkHeader from "./main";
 
 /**

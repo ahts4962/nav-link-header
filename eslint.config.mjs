@@ -37,7 +37,7 @@ export default tsEslint.config(
 	},
 	{
 		languageOptions: {
-			ecmaVersion: 2018,
+			ecmaVersion: 2022,
 			sourceType: "module",
 			globals: globals.node,
 		},

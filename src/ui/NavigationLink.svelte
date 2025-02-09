@@ -3,8 +3,11 @@
 	import Icon from "./Icon.svelte";
 	import type { NavLinkHeaderSettings } from "../settings";
 
-	export let state: NavigationLinkState;
-	export let settings: NavLinkHeaderSettings;
+	const {
+		state,
+		settings,
+	}: { state: NavigationLinkState; settings: NavLinkHeaderSettings } =
+		$props();
 </script>
 
 <!--
@@ -29,17 +32,17 @@
 	<a
 		class:non-existent={!state.fileExists}
 		href="#top"
-		on:click={(e) => {
+		onclick={(e) => {
 			e.preventDefault();
 			state.clickHandler?.(state, e);
 		}}
-		on:mousedown={(e) => {
+		onmousedown={(e) => {
 			// 阻止中键点击的默认滚动行为
 			if (e.button === 1) {
 				e.preventDefault();
 			}
 		}}
-		on:auxclick={(e) => {
+		onauxclick={(e) => {
 			// 处理中键点击，模拟 Ctrl+点击行为
 			if (e.button === 1) {
 				const simulatedEvent = new MouseEvent("click", {
@@ -49,10 +52,10 @@
 				state.clickHandler?.(state, simulatedEvent);
 			}
 		}}
-		on:mouseover={(e) => {
+		onmouseover={(e) => {
 			state.mouseOverHandler?.(state, e);
 		}}
-		on:focus={() => {}}
+		onfocus={() => {}}
 		>{settings?.usePropertyAsDisplayName && state.propertyValue
 			? state.displayTitle
 			: state.title}</a

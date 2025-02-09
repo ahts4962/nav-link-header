@@ -1,6 +1,6 @@
 import { Component, debounce, MarkdownRenderer, MarkdownView } from "obsidian";
 import type NavLinkHeader from "./main";
-import { NavigationComponent } from "./navigationComponent";
+import { NavigationComponent } from "./navigationComponent.svelte";
 import { Updater } from "./updater";
 
 export class MarkdownViewUpdater extends Updater {

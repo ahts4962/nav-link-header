@@ -2,8 +2,8 @@
 	import { setIcon } from "obsidian";
 	import { onMount } from "svelte";
 
-	export let iconId: string;
-	export let muted: boolean = false;
+	const { iconId, muted = false }: { iconId: string; muted?: boolean } =
+		$props();
 
 	let container: HTMLDivElement;
 
@@ -30,7 +30,7 @@
 		vertical-align: middle;
 		color: var(--text-normal);
 
-		& > svg {
+		& > :global(svg) {
 			display: block;
 		}
 	}

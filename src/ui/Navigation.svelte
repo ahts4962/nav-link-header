@@ -8,56 +8,66 @@
 	import Icon from "./Icon.svelte";
 	import NavigationLink from "./NavigationLink.svelte";
 
-	// `undefined` is used to indicate that the entire periodic note links are disabled.
-	export let periodicNoteLinks: PeriodicNoteLinkStates | undefined;
-	export let settings: NavLinkHeaderSettings;
+	// `undefined` for `periodicNoteLinks` is used to indicate that
+	// the entire periodic note links are disabled.
+	// `annotatedLinksPromise represents the input of annotated links.
+	// This receives a promise and sets the value to `AsyncValue` when the promise is resolved.
+	const {
+		periodicNoteLinks,
+		annotatedLinksPromise,
+		displayPlaceholder = true,
+		settings,
+	}: {
+		periodicNoteLinks?: PeriodicNoteLinkStates;
+		annotatedLinksPromise?: Promise<NavigationLinkState[]>;
+		displayPlaceholder?: boolean;
+		settings: NavLinkHeaderSettings;
+	} = $props();
 
-	// The input of annotated links.
-	// Receives a promise and sets the value to `AsyncValue` when the promise is resolved.
-	let annotatedLinks: AsyncValue<NavigationLinkState[]> = {
+	let annotatedLinks: AsyncValue<NavigationLinkState[]> = $state({
 		hasValue: false,
-	};
+	});
 
-	export let annotatedLinksPromise:
-		| Promise<NavigationLinkState[]>
-		| undefined;
-
-	$: annotatedLinksPromise
-		?.then((links) => {
-			annotatedLinks = {
-				hasValue: true,
-				value: links,
-			};
-		})
-		.catch((error) => {
-			if (!(error instanceof NavLinkHeaderError)) {
-				console.log(error);
-			}
-		});
-
-	export let displayPlaceholder: boolean = true;
-
-	$: containerVisible =
-		displayPlaceholder ||
-		periodicNoteLinks !== undefined ||
-		(annotatedLinks.hasValue && annotatedLinks.value!.length > 0);
-
-	$: noLinkExists =
-		!periodicNoteLinks &&
-		annotatedLinks.hasValue &&
-		annotatedLinks.value!.length === 0;
-
-	$: filteredAnnotatedLinks = settings?.filterDuplicateNotes
-		? annotatedLinks.value?.filter((link, index) => {
-				// 只保留第一次出现的笔记
-				if (!link.destinationPath) return true;
-				return (
-					annotatedLinks.value?.findIndex(
-						(l) => l.destinationPath === link.destinationPath,
-					) === index
-				);
+	$effect(() => {
+		annotatedLinksPromise
+			?.then((links) => {
+				annotatedLinks = {
+					hasValue: true,
+					value: links,
+				};
 			})
-		: annotatedLinks.value;
+			.catch((error) => {
+				if (!(error instanceof NavLinkHeaderError)) {
+					console.log(error);
+				}
+			});
+	});
+
+	const containerVisible = $derived(
+		displayPlaceholder ||
+			periodicNoteLinks !== undefined ||
+			(annotatedLinks.hasValue && annotatedLinks.value!.length > 0),
+	);
+
+	const noLinkExists = $derived(
+		!periodicNoteLinks &&
+			annotatedLinks.hasValue &&
+			annotatedLinks.value!.length === 0,
+	);
+
+	const filteredAnnotatedLinks = $derived(
+		settings?.filterDuplicateNotes
+			? annotatedLinks.value?.filter((link, index) => {
+					// 只保留第一次出现的笔记
+					if (!link.destinationPath) return true;
+					return (
+						annotatedLinks.value?.findIndex(
+							(l) => l.destinationPath === link.destinationPath,
+						) === index
+					);
+				})
+			: annotatedLinks.value,
+	);
 </script>
 
 <!--
