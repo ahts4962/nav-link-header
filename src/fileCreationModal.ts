@@ -37,8 +37,9 @@ export class FileCreationModal extends Modal {
 			})
 			.addButton((button) => {
 				button.setButtonText("Create (Don't ask again)").onClick(() => {
-					this.plugin.settings!.confirmFileCreation = false;
-					void this.plugin.saveSettings();
+					this.plugin.settingsUnderChange!.confirmFileCreation =
+						false;
+					this.plugin.triggerSettingsChangedEvent();
 					this.close();
 					this.onConfirm();
 				});

@@ -3,7 +3,8 @@ import { HoverPopoverUpdater } from "./hoverPopoverUpdater";
 import { MarkdownViewUpdater } from "./markdownViewUpdater";
 import { getActiveGranularities, PeriodicNotesManager } from "./periodicNotes";
 import {
-	DEFAULT_SETTINGS,
+	cloneSettings,
+	loadSettings,
 	NavLinkHeaderSettingTab,
 	type NavLinkHeaderSettings,
 } from "./settings";
@@ -14,13 +15,14 @@ export default class NavLinkHeader extends Plugin {
 	public periodicNotesManager?: PeriodicNotesManager;
 
 	public settings?: NavLinkHeaderSettings;
+	public settingsUnderChange?: NavLinkHeaderSettings;
 
 	public onload(): void {
 		void this.initialize();
 	}
 
 	private async initialize(): Promise<void> {
-		await this.loadSettings();
+		await loadSettings(this);
 
 		this.addSettingTab(new NavLinkHeaderSettingTab(this));
 
@@ -215,26 +217,8 @@ export default class NavLinkHeader extends Plugin {
 		});
 	}
 
-	private async loadSettings(): Promise<void> {
-		const result = {} as Record<keyof NavLinkHeaderSettings, unknown>;
-		const data = ((await this.loadData()) ?? {}) as Record<string, unknown>;
-		for (const key of Object.keys(
-			DEFAULT_SETTINGS
-		) as (keyof NavLinkHeaderSettings)[]) {
-			if (key in data) {
-				result[key] = data[key];
-			} else {
-				result[key] = DEFAULT_SETTINGS[key];
-			}
-		}
-		this.settings = result as NavLinkHeaderSettings;
-		await this.saveSettings();
-	}
-
-	public async saveSettings(): Promise<void> {
-		if (this.settings) {
-			await this.saveData(this.settings);
-		}
+	public triggerSettingsChangedEvent(): void {
+		this.app.workspace.trigger("nav-link-header:settings-changed");
 	}
 
 	private get periodicNotesActive(): boolean {
@@ -242,30 +226,33 @@ export default class NavLinkHeader extends Plugin {
 	}
 
 	private onSettingsChange = debounce(
-		() => {
+		async () => {
+			const previousSettings = this.settings!;
+			this.settings = cloneSettings(this.settingsUnderChange!);
+
 			if (
-				this.settings!.displayInMarkdownViews &&
-				!this.markdownViewUpdater
+				!previousSettings.displayInMarkdownViews &&
+				this.settings.displayInMarkdownViews
 			) {
 				this.markdownViewUpdater = new MarkdownViewUpdater(this);
 			} else if (
-				!this.settings!.displayInMarkdownViews &&
-				this.markdownViewUpdater
+				previousSettings.displayInMarkdownViews &&
+				!this.settings.displayInMarkdownViews
 			) {
-				this.markdownViewUpdater.dispose();
+				this.markdownViewUpdater?.dispose();
 				this.markdownViewUpdater = undefined;
 			}
 
 			if (
-				this.settings!.displayInHoverPopovers &&
-				!this.hoverPopoverUpdater
+				!previousSettings.displayInHoverPopovers &&
+				this.settings.displayInHoverPopovers
 			) {
 				this.hoverPopoverUpdater = new HoverPopoverUpdater(this);
 			} else if (
-				!this.settings!.displayInHoverPopovers &&
-				this.hoverPopoverUpdater
+				previousSettings.displayInHoverPopovers &&
+				!this.settings.displayInHoverPopovers
 			) {
-				this.hoverPopoverUpdater.dispose();
+				this.hoverPopoverUpdater?.dispose();
 				this.hoverPopoverUpdater = undefined;
 			}
 
@@ -277,6 +264,8 @@ export default class NavLinkHeader extends Plugin {
 
 			this.periodicNotesManager?.updateEntireCache();
 			this.markdownViewUpdater?.onVaultChange();
+
+			await this.saveData(this.settings);
 		},
 		500,
 		true
@@ -287,6 +276,7 @@ export default class NavLinkHeader extends Plugin {
 	 */
 	public onunload(): void {
 		this.onSettingsChange.cancel();
+		void this.saveData(this.settingsUnderChange);
 
 		if (this.markdownViewUpdater) {
 			this.markdownViewUpdater.dispose();
