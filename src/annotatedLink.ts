@@ -1,184 +1,157 @@
-import { App, TFile } from "obsidian";
+import { TAbstractFile, TFile } from "obsidian";
 import { removeCode } from "./utils";
+import type NavLinkHeader from "./main";
 
-/**
- * Searches the annotated links from the content of the backlinks of the specified file.
- * @param app The application instance.
- * @param annotationStrings The links annotated with these strings will be searched.
- * @param allowSpace If true, the link is still recognized as an annotated link
- *     even if there is a space between the annotation string and the link.
- * @param file The file from which the annotated links will be searched.
- * @returns The array of the annotated links.
- */
-export async function searchAnnotatedLinks(
-	app: App,
-	annotationStrings: string[],
-	allowSpace: boolean,
-	file: TFile
-): Promise<{ destinationPath: string; annotation: string }[]> {
-	const backlinks = Object.entries(app.metadataCache.resolvedLinks)
-		.filter(([, destinations]) =>
-			Object.keys(destinations).includes(file.path)
+export class AnnotatedLinksManager {
+	// The cache object that stores the result of annotated links search.
+	// Cache structure: cache[backlinkFilePath][currentFilePath] = [annotation1, annotation2, ...]
+	private cache: Map<string, Map<string, string[]>> = new Map();
+
+	constructor(private plugin: NavLinkHeader) {}
+
+	public clearCache(): void {
+		this.cache.clear();
+	}
+
+	public onFileDeleted(file: TAbstractFile): void {
+		if (!(file instanceof TFile)) {
+			return;
+		}
+		this.removeFileFromCache(file.path);
+	}
+
+	public onFileRenamed(file: TAbstractFile, oldPath: string): void {
+		if (!(file instanceof TFile)) {
+			return;
+		}
+		this.removeFileFromCache(oldPath);
+	}
+
+	public onFileModified(file: TAbstractFile): void {
+		if (!(file instanceof TFile)) {
+			return;
+		}
+		this.removeFileFromCache(file.path);
+	}
+
+	private removeFileFromCache(filePath: string): void {
+		if (this.cache.has(filePath)) {
+			this.cache.delete(filePath);
+		}
+	}
+
+	/**
+	 * Searches the annotated links from the content of the backlinks of the specified file.
+	 * @param file Annotated links are searched from the backlinks of this file.
+	 * @returns Return annotated links asynchronously, one at a time.
+	 */
+	public async *searchAnnotatedLinks(
+		file: TFile
+	): AsyncGenerator<{ destinationPath: string; annotation: string }> {
+		const backlinks = Object.entries(
+			this.plugin.app.metadataCache.resolvedLinks
 		)
-		.map(([source]) => source);
+			.filter(([, destinations]) =>
+				Object.keys(destinations).includes(file.path)
+			)
+			.map(([source]) => source);
 
-	const result: { destinationPath: string; annotation: string }[] = [];
-	const optionalSpace = allowSpace ? " ?" : "";
-
-	for (const backlink of backlinks) {
-		const backlinkFile = app.vault.getFileByPath(backlink);
-		if (!backlinkFile) {
-			continue;
-		}
-
-		const content = removeCode(await app.vault.cachedRead(backlinkFile));
-
-		for (const annotationString of annotationStrings) {
-			const escapedAnnotationString = annotationString.replace(
-				/[.*+?^${}()|[\]\\]/g,
-				"\\$&"
-			);
-
-			[
-				// Wiki style links with annotation.
-				{
-					re: new RegExp(
-						String.raw`${escapedAnnotationString}${optionalSpace}\!?\[\[([^\[\]]+)\]\]`,
-						"g"
-					),
-					extractor: (matchString: string) =>
-						matchString.split(/[|#]/)[0], // Removes the optional string.
-				},
-				// Markdown style links with annotation.
-				{
-					re: new RegExp(
-						String.raw`${escapedAnnotationString}${optionalSpace}\!?\[[^\[\]]+\]\(([^\(\)]+)\)`,
-						"g"
-					),
-					extractor: (matchString: string) =>
-						decodeURIComponent(matchString.split("#")[0]), // Removes the optional string.
-				},
-			].forEach(({ re, extractor }) => {
-				for (const match of content.matchAll(re)) {
-					const matchedPath = app.metadataCache.getFirstLinkpathDest(
-						extractor(match[1]),
-						backlinkFile.path
-					)?.path;
-					if (matchedPath === file.path) {
-						result.push({
-							destinationPath: backlinkFile.path,
-							annotation: annotationString,
-						});
-						break;
-					}
+		for (const backlink of backlinks) {
+			const cachedResult = this.cache.get(backlink)?.get(file.path);
+			if (cachedResult) {
+				for (const annotation of cachedResult) {
+					yield { destinationPath: backlink, annotation };
 				}
-			});
-		}
-	}
-
-	return result;
-}
-
-/**
- * Gets links from the frontmatter properties of the specified file.
- * @param app The application instance.
- * @param propertyNames The properties to search for links.
- * @param file The file to search in.
- * @param displayPropertyName The property name to use for display value.
- * @returns The array of links with their annotations.
- */
-export function getPropertyLinks(
-	app: App,
-	propertyNames: string[],
-	file: TFile,
-	displayPropertyName?: string
-): {
-	destinationPath: string;
-	annotation: string;
-	propertyValue?: string | string[];
-}[] {
-	const result: {
-		destinationPath: string;
-		annotation: string;
-		propertyValue?: string | string[];
-	}[] = [];
-	const fileCache = app.metadataCache.getFileCache(file);
-
-	if (!fileCache?.frontmatter) {
-		return result;
-	}
-
-	for (const propertyName of propertyNames) {
-		if (!(propertyName in fileCache.frontmatter)) {
-			continue;
-		}
-
-		const propertyValue = fileCache.frontmatter[propertyName] as unknown;
-		const paths = Array.isArray(propertyValue)
-			? propertyValue
-			: [propertyValue];
-
-		for (const path of paths) {
-			if (!path || typeof path !== "string") continue;
-
-			// 处理 wiki 链接格式
-			const actualPath = parseWikiLink(path);
-
-			const linkedFile = app.metadataCache.getFirstLinkpathDest(
-				actualPath,
-				file.path
-			);
-			if (!linkedFile) {
 				continue;
 			}
 
-			// Get the display property value from the linked file (target)
-			const linkedFileCache = app.metadataCache.getFileCache(linkedFile);
-			let displayValue: string | string[] | undefined;
+			const backlinkFile = this.plugin.app.vault.getFileByPath(backlink);
+			if (!backlinkFile) {
+				continue;
+			}
 
-			// Make sure we get the title from frontmatter
-			if (linkedFileCache?.frontmatter && displayPropertyName) {
+			const content = removeCode(
+				await this.plugin.app.vault.cachedRead(backlinkFile)
+			);
+
+			const foundAnnotations: string[] = [];
+			for (const annotation of this.plugin.settings!.annotationStrings) {
 				if (
-					displayPropertyName === "title" &&
-					!linkedFileCache.frontmatter["title"]
+					this.searchAnnotatedLinkInContent(
+						content,
+						backlink,
+						file.path,
+						annotation
+					)
 				) {
-					// If title is not in frontmatter, use the file title
-					displayValue = linkedFile.basename;
-				} else if (displayPropertyName in linkedFileCache.frontmatter) {
-					const value = linkedFileCache.frontmatter[
-						displayPropertyName
-					] as unknown;
-					if (
-						(Array.isArray(value) &&
-							value.every((v) => typeof v === "string") &&
-							value.length > 0) ||
-						typeof value === "string"
-					) {
-						displayValue = value;
-					} else {
-						displayValue = "";
-					}
+					foundAnnotations.push(annotation);
+					yield { destinationPath: backlink, annotation };
 				}
 			}
 
-			result.push({
-				destinationPath: linkedFile.path,
-				annotation: propertyName,
-				propertyValue: displayValue,
-			});
+			if (!this.cache.has(backlink)) {
+				this.cache.set(backlink, new Map());
+			}
+			this.cache.get(backlink)!.set(file.path, foundAnnotations);
 		}
 	}
 
-	return result;
-}
+	/**
+	 * Helper function of `searchAnnotatedLinks`.
+	 * @param content The content to search in.
+	 * @param backlinkFilePath The path of the backlink file.
+	 * @param filePath The path of the file to search for.
+	 * @param annotationString The annotation string to search for.
+	 * @returns Whether the annotated link is found in the content.
+	 */
+	private searchAnnotatedLinkInContent(
+		content: string,
+		backlinkFilePath: string,
+		filePath: string,
+		annotationString: string
+	): boolean {
+		const optionalSpace = this.plugin.settings!
+			.allowSpaceAfterAnnotationString
+			? " ?"
+			: "";
+		const escapedAnnotationString = annotationString.replace(
+			/[.*+?^${}()|[\]\\]/g,
+			"\\$&"
+		);
+		const configs = [
+			// Wiki style links with annotation.
+			{
+				re: new RegExp(
+					String.raw`${escapedAnnotationString}${optionalSpace}\!?\[\[([^\[\]]+)\]\]`,
+					"g"
+				),
+				extractor: (matchString: string) =>
+					matchString.split(/[|#]/)[0], // Removes the optional string.
+			},
+			// Markdown style links with annotation.
+			{
+				re: new RegExp(
+					String.raw`${escapedAnnotationString}${optionalSpace}\!?\[[^\[\]]+\]\(([^\(\)]+)\)`,
+					"g"
+				),
+				extractor: (matchString: string) =>
+					decodeURIComponent(matchString.split("#")[0]), // Removes the optional string.
+			},
+		];
 
-// 解析 wiki 链接格式，返回实际路径
-function parseWikiLink(path: string): string {
-	// 匹配 [[文件名|显示名]] 或 [[文件名]] 格式
-	const wikiLinkRegex = /^\[\[([^|\]]+)(?:\|[^\]]+)?\]\]$/;
-	const match = path.match(wikiLinkRegex);
-	if (match) {
-		return match[1]; // 返回实际文件名部分
+		for (const { re, extractor } of configs) {
+			for (const match of content.matchAll(re)) {
+				const matchedPath =
+					this.plugin.app.metadataCache.getFirstLinkpathDest(
+						extractor(match[1]),
+						backlinkFilePath
+					)?.path;
+				if (matchedPath === filePath) {
+					return true;
+				}
+			}
+		}
+
+		return false;
 	}
-	return path;
 }

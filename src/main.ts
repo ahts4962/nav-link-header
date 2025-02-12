@@ -1,6 +1,7 @@
 import { debounce, Plugin, type HoverParent } from "obsidian";
 import { HoverPopoverUpdater } from "./hoverPopoverUpdater";
 import { MarkdownViewUpdater } from "./markdownViewUpdater";
+import { AnnotatedLinksManager } from "./annotatedLink";
 import { getActiveGranularities, PeriodicNotesManager } from "./periodicNotes";
 import {
 	cloneSettings,
@@ -12,6 +13,7 @@ import {
 export default class NavLinkHeader extends Plugin {
 	private markdownViewUpdater?: MarkdownViewUpdater;
 	private hoverPopoverUpdater?: HoverPopoverUpdater;
+	public annotatedLinksManager?: AnnotatedLinksManager;
 	public periodicNotesManager?: PeriodicNotesManager;
 
 	public settings?: NavLinkHeaderSettings;
@@ -131,6 +133,10 @@ export default class NavLinkHeader extends Plugin {
 				this.hoverPopoverUpdater = new HoverPopoverUpdater(this);
 			}
 
+			if (this.settings!.annotationStrings.length > 0) {
+				this.annotatedLinksManager = new AnnotatedLinksManager(this);
+			}
+
 			if (this.periodicNotesActive) {
 				this.periodicNotesManager = new PeriodicNotesManager(this);
 			}
@@ -177,6 +183,7 @@ export default class NavLinkHeader extends Plugin {
 
 			this.registerEvent(
 				this.app.vault.on("delete", (file) => {
+					this.annotatedLinksManager?.onFileDeleted(file);
 					this.periodicNotesManager?.onFileDeleted(file);
 					this.markdownViewUpdater?.onVaultChange();
 				})
@@ -184,13 +191,15 @@ export default class NavLinkHeader extends Plugin {
 
 			this.registerEvent(
 				this.app.vault.on("rename", (file, oldPath) => {
+					this.annotatedLinksManager?.onFileRenamed(file, oldPath);
 					this.periodicNotesManager?.onFileRenamed(file, oldPath);
 					this.markdownViewUpdater?.onVaultChange();
 				})
 			);
 
 			this.registerEvent(
-				this.app.vault.on("modify", () => {
+				this.app.vault.on("modify", (file) => {
+					this.annotatedLinksManager?.onFileModified(file);
 					this.markdownViewUpdater?.onVaultChange();
 				})
 			);
@@ -256,6 +265,27 @@ export default class NavLinkHeader extends Plugin {
 				this.hoverPopoverUpdater = undefined;
 			}
 
+			if (
+				previousSettings.annotationStrings.length === 0 &&
+				this.settings.annotationStrings.length > 0
+			) {
+				this.annotatedLinksManager = new AnnotatedLinksManager(this);
+			} else if (
+				previousSettings.annotationStrings.length > 0 &&
+				this.settings.annotationStrings.length === 0
+			) {
+				this.annotatedLinksManager = undefined;
+			}
+			if (this.annotatedLinksManager) {
+				if (
+					previousSettings.annotationStrings.length !==
+						this.settings.annotationStrings.length ||
+					previousSettings.allowSpaceAfterAnnotationString !==
+						this.settings.allowSpaceAfterAnnotationString
+				)
+					this.annotatedLinksManager.clearCache();
+			}
+
 			if (this.periodicNotesActive && !this.periodicNotesManager) {
 				this.periodicNotesManager = new PeriodicNotesManager(this);
 			} else if (!this.periodicNotesActive && this.periodicNotesManager) {
@@ -288,6 +318,7 @@ export default class NavLinkHeader extends Plugin {
 			this.hoverPopoverUpdater = undefined;
 		}
 
+		this.annotatedLinksManager = undefined;
 		this.periodicNotesManager = undefined;
 	}
 }
