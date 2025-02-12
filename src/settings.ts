@@ -264,7 +264,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
 			.addText((text) => {
 				const order =
 					this.plugin.settingsUnderChange!.displayOrderOfLinks.join(
-						"\n"
+						","
 					);
 				text.setValue(order).onChange((value) => {
 					this.plugin.settingsUnderChange!.displayOrderOfLinks =
@@ -320,7 +320,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
 			.addText((text) => {
 				const priority =
 					this.plugin.settingsUnderChange!.duplicateNoteFilteringPriority.join(
-						"\n"
+						","
 					);
 				text.setValue(priority).onChange((value) => {
 					this.plugin.settingsUnderChange!.duplicateNoteFilteringPriority =
