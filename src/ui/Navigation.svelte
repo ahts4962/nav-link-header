@@ -1,109 +1,48 @@
 <script lang="ts">
 	import {
-		NavigationLinkState,
-		type PeriodicNoteLinkStates,
+		PrefixedLinkState,
+		ThreeWayLinkState,
 	} from "../navigationLinkState";
-	import { NavLinkHeaderError, type AsyncValue } from "../utils";
-	import type { NavLinkHeaderSettings } from "../settings";
-	import Icon from "./Icon.svelte";
-	import NavigationLink from "./NavigationLink.svelte";
+	import PrefixedLink from "./PrefixedLink.svelte";
+	import ThreeWayLink from "./ThreeWayLink.svelte";
 
-	// `undefined` for `periodicNoteLinks` is used to indicate that
-	// the entire periodic note links are disabled.
-	// `annotatedLinksPromise represents the input of annotated links.
-	// This receives a promise and sets the value to `AsyncValue` when the promise is resolved.
 	const {
-		periodicNoteLinks,
-		annotatedLinksPromise,
-		displayPlaceholder = true,
-		settings,
+		links,
+		isLoading,
+		displayPlaceholder,
 	}: {
-		periodicNoteLinks?: PeriodicNoteLinkStates;
-		annotatedLinksPromise?: Promise<NavigationLinkState[]>;
-		displayPlaceholder?: boolean;
-		settings: NavLinkHeaderSettings;
+		links: (PrefixedLinkState | ThreeWayLinkState)[];
+		isLoading: boolean;
+		displayPlaceholder: boolean;
 	} = $props();
-
-	let annotatedLinks: AsyncValue<NavigationLinkState[]> = $state({
-		hasValue: false,
-	});
-
-	$effect(() => {
-		annotatedLinksPromise
-			?.then((links) => {
-				annotatedLinks = {
-					hasValue: true,
-					value: links,
-				};
-			})
-			.catch((error) => {
-				if (!(error instanceof NavLinkHeaderError)) {
-					console.log(error);
-				}
-			});
-	});
-
-	const containerVisible = $derived(
-		displayPlaceholder ||
-			periodicNoteLinks !== undefined ||
-			(annotatedLinks.hasValue && annotatedLinks.value!.length > 0),
-	);
-
-	const noLinkExists = $derived(
-		!periodicNoteLinks &&
-			annotatedLinks.hasValue &&
-			annotatedLinks.value!.length === 0,
-	);
-
-	const filteredAnnotatedLinks = $derived(
-		settings?.filterDuplicateNotes
-			? annotatedLinks.value?.filter((link, index) => {
-					// 只保留第一次出现的笔记
-					if (!link.destinationPath) return true;
-					return (
-						annotatedLinks.value?.findIndex(
-							(l) => l.destinationPath === link.destinationPath,
-						) === index
-					);
-				})
-			: annotatedLinks.value,
-	);
 </script>
 
 <!--
   @component
   The container for navigation links.
 
-  Both periodic note links and annotated links are displayed in this container.
-  Annotated links are displayed in the order they appear in the array.
-  `annotatedLinksPromise` may be set multiple times.
-  The resolved value is cached and displayed until the next promise is resolved.
-  If `showPlaceholder` is `true`, a placeholder message is displayed while links are unavailable.
+  Links are displayed in the order they are provided in the `links` prop.
+  If `isLoading` is `true` and `displayPlaceholder` is `true`, "Loading..."
+  will be displayed after the links that have already been loaded.
+  If `links` is empty and `isLoading` is `false` and `displayPlaceholder` is `true`,
+  "No links" will be displayed.
 -->
-{#if containerVisible}
+{#if links.length > 0 || displayPlaceholder}
 	<div class="background">
 		<div class="container">
-			{#if periodicNoteLinks}
-				<Icon iconId="chevrons-left" />
-				<NavigationLink state={periodicNoteLinks.previous} {settings} />
-				<span>||</span>
-				{#if periodicNoteLinks.up.enabled}
-					<NavigationLink state={periodicNoteLinks.up} {settings} />
-					<span>||</span>
-				{/if}
-				<NavigationLink state={periodicNoteLinks.next} {settings} />
-				<Icon iconId="chevrons-right" />
+			{#each links as link}
+				<span class="sub-container">
+					{#if link instanceof PrefixedLinkState}
+						<PrefixedLink state={link} />
+					{:else if link instanceof ThreeWayLinkState}
+						<ThreeWayLink state={link} />
+					{/if}
+				</span>
+			{/each}
+			{#if isLoading && displayPlaceholder}
+				<span class="muted">Loading...</span>
 			{/if}
-			{#if filteredAnnotatedLinks}
-				{#each filteredAnnotatedLinks as link}
-					<span class="annotated-link">
-						<NavigationLink state={link} {settings} />
-					</span>
-				{/each}
-			{:else if displayPlaceholder}
-				<span class="muted">Searching...</span>
-			{/if}
-			{#if displayPlaceholder && noLinkExists}
+			{#if links.length === 0 && !isLoading && displayPlaceholder}
 				<span class="muted">No links</span>
 			{/if}
 		</div>
@@ -119,11 +58,11 @@
 	.container {
 		padding: 0.4em;
 		border: 1px solid var(--background-modifier-border);
-		border-radius: 0.4em;
+		border-radius: var(--radius-s);
 	}
 
-	.annotated-link:not(:first-child) {
-		margin-inline-start: 0.2em;
+	.sub-container:not(:first-child) {
+		margin-inline-start: 0.4em;
 	}
 
 	.muted {

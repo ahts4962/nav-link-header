@@ -22,7 +22,7 @@
   The `muted` property indicates whether the icon is muted.
   The muted icon is rendered with a faint color.
 -->
-<div class="container" class:muted bind:this={container}></div>
+<div class={["container", muted && "muted"]} bind:this={container}></div>
 
 <style>
 	.container {

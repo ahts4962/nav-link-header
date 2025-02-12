@@ -1,78 +1,100 @@
-import { getTitleFromPath } from "./utils";
-
 export type LinkEventHandler = (
 	target: NavigationLinkState,
 	e: MouseEvent
 ) => void;
 
-export interface NavigationLinkStateOptions {
-	enabled: boolean;
-	destinationPath?: string;
-	fileExists?: boolean;
-	annotation?: string;
-	isPropertyLink?: boolean;
-	propertyValue?: string | string[];
-	clickHandler?: (target: NavigationLinkState, e: MouseEvent) => void;
-	mouseOverHandler?: (target: NavigationLinkState, e: MouseEvent) => void;
-}
+/**
+ * The state of a NavigationLink.
+ */
+export class NavigationLinkState {
+	public destinationPath: string;
+	public displayText: string;
+	public resolved: boolean;
+	public clickHandler: LinkEventHandler;
+	public mouseOverHandler: LinkEventHandler;
 
-export interface PeriodicNoteLinkStates {
-	previous: NavigationLinkState;
-	next: NavigationLinkState;
-	up: NavigationLinkState;
+	/**
+	 * @param destinationPath The path to the destination file. This must be normalized beforehand.
+	 * @param displayText The display text of the link.
+	 * @param resolved Whether the destination path exists (true) or not (false).
+	 * @param clickHandler The function to call when the link is clicked.
+	 * @param mouseOverHandler The function to call when the mouse hovers over the link.
+	 */
+	constructor({
+		destinationPath,
+		displayText,
+		resolved,
+		clickHandler,
+		mouseOverHandler,
+	}: {
+		destinationPath: string;
+		displayText: string;
+		resolved: boolean;
+		clickHandler: LinkEventHandler;
+		mouseOverHandler: LinkEventHandler;
+	}) {
+		this.destinationPath = destinationPath;
+		this.displayText = displayText;
+		this.resolved = resolved;
+		this.clickHandler = clickHandler;
+		this.mouseOverHandler = mouseOverHandler;
+	}
 }
 
 /**
- * Represents a state of the `NavigationLink`.
+ * The state of a PrefixedLink.
  */
-export class NavigationLinkState {
-	public enabled: boolean;
-	public destinationPath?: string;
-	public fileExists?: boolean;
-	public annotation?: string;
-	public isPropertyLink?: boolean;
-	public propertyValue?: string | string[];
-	public clickHandler?: (target: NavigationLinkState, e: MouseEvent) => void;
-	public mouseOverHandler?: (
-		target: NavigationLinkState,
-		e: MouseEvent
-	) => void;
+export class PrefixedLinkState {
+	public prefix: string;
+	public link: NavigationLinkState;
 
 	/**
-	 * @param enabled If `false`, this object does not represent a valid navigation link,
-	 *     and the other properties are ignored.
-	 * @param destinationPath The path to the destination file. This must be normalized beforehand.
-	 * @param fileExists Whether the destination file exists in the vault.
-	 * @param annotation The annotation string.
+	 * @param prefix The string (typically emoji) placed before the link.
+	 * @param link The link.
 	 */
-	constructor(options: NavigationLinkStateOptions) {
-		this.enabled = options.enabled;
-		this.destinationPath = options.destinationPath;
-		this.fileExists = options.fileExists;
-		this.annotation = options.annotation;
-		this.isPropertyLink = options.isPropertyLink;
-		this.propertyValue = options.propertyValue;
-		this.clickHandler = options.clickHandler;
-		this.mouseOverHandler = options.mouseOverHandler;
+	constructor({
+		prefix,
+		link,
+	}: {
+		prefix: string;
+		link: NavigationLinkState;
+	}) {
+		this.prefix = prefix;
+		this.link = link;
 	}
+}
 
-	public get title(): string {
-		if (!this.destinationPath) {
-			return "";
-		}
-		return getTitleFromPath(this.destinationPath);
-	}
+/**
+ * The state of a ThreeWayLink.
+ */
+export class ThreeWayLinkState {
+	public type: "periodic" | "property" | "folder";
+	public previous: { link?: NavigationLinkState; hidden: boolean };
+	public next: { link?: NavigationLinkState; hidden: boolean };
+	public parent: { link?: NavigationLinkState; hidden: boolean };
 
-	public get displayTitle(): string {
-		if (!this.destinationPath) {
-			return "";
-		}
-		if (this.propertyValue) {
-			if (Array.isArray(this.propertyValue)) {
-				return this.propertyValue[0] || this.title;
-			}
-			return this.propertyValue || this.title;
-		}
-		return this.title;
+	/**
+	 * @param type The type of the link.
+	 * @param previous The previous link. If `hidden` is `true`, the link is not displayed.
+	 *     It is possible that `link` is `undefined` and `hidden` is `false`
+	 *     (e.g., displaying a placeholder).
+	 * @param next The next link.
+	 * @param parent The parent link.
+	 */
+	constructor({
+		type,
+		previous,
+		next,
+		parent,
+	}: {
+		type: "periodic" | "property" | "folder";
+		previous: { link?: NavigationLinkState; hidden: boolean };
+		next: { link?: NavigationLinkState; hidden: boolean };
+		parent: { link?: NavigationLinkState; hidden: boolean };
+	}) {
+		this.type = type;
+		this.previous = previous;
+		this.next = next;
+		this.parent = parent;
 	}
 }
