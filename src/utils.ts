@@ -1,12 +1,4 @@
-import { normalizePath } from "obsidian";
-
-/**
- * Represents a value that is loaded asynchronously.
- */
-export type AsyncValue<T> = {
-	hasValue: boolean;
-	value?: T;
-};
+import { App, normalizePath, TFile } from "obsidian";
 
 /**
  * Represents an error specific to this plugin.
@@ -75,4 +67,74 @@ export function removeCode(content: string): string {
 				""
 			)
 	);
+}
+
+/**
+ * Parses a wiki link.
+ * @param text The text to parse (in the format of "[[path#header|display]]").
+ * @returns The path and display text of the wiki link.
+ *     If the text is not a wiki link, `path` is `undefined`.
+ *     If the display text is not specified, `displayText` is `undefined`.
+ *     `path` and `displayText` are trimmed, but `path` is not normalized.
+ */
+export function parseWikiLink(text: string): {
+	path?: string;
+	displayText?: string;
+} {
+	text = text.trim();
+	const re = /^\[\[([^[\]]+)\]\]$/;
+	const match = text.match(re);
+	if (!match) {
+		return { path: undefined, displayText: undefined };
+	}
+	text = match[1];
+
+	let path: string;
+	let displayText: string | undefined;
+
+	const i = text.indexOf("|");
+	if (i === -1) {
+		path = text;
+		displayText = undefined;
+	} else {
+		path = text.slice(0, i);
+		displayText = text.slice(i + 1);
+	}
+
+	path = path.split("#")[0];
+
+	return { path: path.trim(), displayText: displayText?.trim() };
+}
+
+/**
+ * Retrieves the string values of a specified property from the front matter of a file.
+ * @param app The application instance.
+ * @param file The file to retrieve the property from.
+ * @param propertyName The name of the property to retrieve.
+ * @returns The values of the specified property. If the property does not exist,
+ *     an empty array is returned.
+ *     Values other than strings are not included.
+ */
+export function getStringValuesFromFileProperty(
+	app: App,
+	file: TFile,
+	propertyName: string
+): string[] {
+	const fileCache = app.metadataCache.getFileCache(file);
+	if (!fileCache?.frontmatter) {
+		return [];
+	}
+
+	if (!(propertyName in fileCache.frontmatter)) {
+		return [];
+	}
+
+	const propertyValues = fileCache.frontmatter[propertyName] as unknown;
+	if (Array.isArray(propertyValues)) {
+		return propertyValues.filter((v) => typeof v === "string");
+	} else if (typeof propertyValues === "string") {
+		return [propertyValues];
+	} else {
+		return [];
+	}
 }

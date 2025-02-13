@@ -1,4 +1,4 @@
-import { removeCode } from "src/utils";
+import { parseWikiLink, removeCode } from "src/utils";
 
 test("remove YAML front matter", () => {
 	let content;
@@ -213,4 +213,133 @@ test("remove all codes", () => {
 		"text`text\n";
 	expected = "\n---\na: a\n---\ntext`text\n\ntext`text\n";
 	expect(removeCode(content)).toEqual(expected);
+});
+
+test("parse wiki style link", () => {
+	let text;
+	let expected;
+
+	text = "[[file]]";
+	expected = { path: "file", displayText: undefined };
+	expect(parseWikiLink(text)).toEqual(expected);
+
+	text = "[[file.md]]";
+	expected = { path: "file.md", displayText: undefined };
+	expect(parseWikiLink(text)).toEqual(expected);
+
+	text = "[[folder/file.md]]";
+	expected = { path: "folder/file.md", displayText: undefined };
+	expect(parseWikiLink(text)).toEqual(expected);
+
+	text = " [[file]]";
+	expected = { path: "file", displayText: undefined };
+	expect(parseWikiLink(text)).toEqual(expected);
+
+	text = "[[file]] ";
+	expected = { path: "file", displayText: undefined };
+	expect(parseWikiLink(text)).toEqual(expected);
+
+	text = " [[file]] ";
+	expected = { path: "file", displayText: undefined };
+	expect(parseWikiLink(text)).toEqual(expected);
+
+	text = "[[file]] text";
+	expected = { path: undefined, displayText: undefined };
+	expect(parseWikiLink(text)).toEqual(expected);
+
+	text = "text [[file]]";
+	expected = { path: undefined, displayText: undefined };
+	expect(parseWikiLink(text)).toEqual(expected);
+
+	text = "[[ file ]]";
+	expected = { path: "file", displayText: undefined };
+	expect(parseWikiLink(text)).toEqual(expected);
+
+	text = "[[ fi le ]]";
+	expected = { path: "fi le", displayText: undefined };
+	expect(parseWikiLink(text)).toEqual(expected);
+
+	text = "[[]]";
+	expected = { path: undefined, displayText: undefined };
+	expect(parseWikiLink(text)).toEqual(expected);
+
+	text = "[file]";
+	expected = { path: undefined, displayText: undefined };
+	expect(parseWikiLink(text)).toEqual(expected);
+
+	text = "[[file";
+	expected = { path: undefined, displayText: undefined };
+	expect(parseWikiLink(text)).toEqual(expected);
+
+	text = "file]]";
+	expected = { path: undefined, displayText: undefined };
+	expect(parseWikiLink(text)).toEqual(expected);
+
+	text = "[[[file]]";
+	expected = { path: undefined, displayText: undefined };
+	expect(parseWikiLink(text)).toEqual(expected);
+
+	text = "[[file]]]";
+	expected = { path: undefined, displayText: undefined };
+	expect(parseWikiLink(text)).toEqual(expected);
+
+	text = "[[file|display]]";
+	expected = { path: "file", displayText: "display" };
+	expect(parseWikiLink(text)).toEqual(expected);
+
+	text = "[[folder/file.md|display]]";
+	expected = { path: "folder/file.md", displayText: "display" };
+	expect(parseWikiLink(text)).toEqual(expected);
+
+	text = "[[file|]]";
+	expected = { path: "file", displayText: "" };
+	expect(parseWikiLink(text)).toEqual(expected);
+
+	text = "[[file||]]";
+	expected = { path: "file", displayText: "|" };
+	expect(parseWikiLink(text)).toEqual(expected);
+
+	text = "[[file|display|]]";
+	expected = { path: "file", displayText: "display|" };
+	expect(parseWikiLink(text)).toEqual(expected);
+
+	text = "[[file|display||]]";
+	expected = { path: "file", displayText: "display||" };
+	expect(parseWikiLink(text)).toEqual(expected);
+
+	text = "[[file|display|text]]";
+	expected = { path: "file", displayText: "display|text" };
+	expect(parseWikiLink(text)).toEqual(expected);
+
+	text = "[[file|display|text|]]";
+	expected = { path: "file", displayText: "display|text|" };
+	expect(parseWikiLink(text)).toEqual(expected);
+
+	text = "[[file#header]]";
+	expected = { path: "file", displayText: undefined };
+	expect(parseWikiLink(text)).toEqual(expected);
+
+	text = "[[file#header|display]]";
+	expected = { path: "file", displayText: "display" };
+	expect(parseWikiLink(text)).toEqual(expected);
+
+	text = "[[folder/file.md#header|display]]";
+	expected = { path: "folder/file.md", displayText: "display" };
+	expect(parseWikiLink(text)).toEqual(expected);
+
+	text = "[[file#header|]]";
+	expected = { path: "file", displayText: "" };
+	expect(parseWikiLink(text)).toEqual(expected);
+
+	text = "[[file|display#header]]";
+	expected = { path: "file", displayText: "display#header" };
+	expect(parseWikiLink(text)).toEqual(expected);
+
+	text = "[[file##header]]";
+	expected = { path: "file", displayText: undefined };
+	expect(parseWikiLink(text)).toEqual(expected);
+
+	text = "[[file#head#er]]";
+	expected = { path: "file", displayText: undefined };
+	expect(parseWikiLink(text)).toEqual(expected);
 });
