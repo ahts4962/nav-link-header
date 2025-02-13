@@ -6,7 +6,7 @@ export interface NavLinkHeaderSettings {
 	displayInMarkdownViews: boolean;
 	displayInHoverPopovers: boolean;
 	displayOrderOfLinks: string[];
-	propertyNameForDisplayName: string;
+	propertyNameForDisplayText: string;
 	filterDuplicateNotes: boolean;
 	duplicateNoteFilteringPriority: string[];
 	displayPlaceholder: boolean;
@@ -44,7 +44,7 @@ const DEFAULT_SETTINGS: NavLinkHeaderSettings = {
 	displayInMarkdownViews: true,
 	displayInHoverPopovers: true,
 	displayOrderOfLinks: [],
-	propertyNameForDisplayName: "",
+	propertyNameForDisplayText: "",
 	filterDuplicateNotes: true,
 	duplicateNoteFilteringPriority: [],
 	displayPlaceholder: false,
@@ -112,7 +112,7 @@ export async function loadSettings(plugin: NavLinkHeader): Promise<void> {
 		}
 
 		if (
-			key === "propertyNameForDisplayName" &&
+			key === "propertyNameForDisplayText" &&
 			"usePropertyAsDisplayName" in loadedData &&
 			loadedData["usePropertyAsDisplayName"] &&
 			"displayPropertyName" in loadedData
@@ -259,7 +259,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
 					"Property mappings below). " +
 					'"[[p]]", "[[P]]", and "[[f]]" are special strings that correspond to ' +
 					"periodic notes, previous/next/parent notes specified by properties, " +
-					"and notes in a folder, respectively."
+					"and notes in a folder, respectively " +
+					"(see also the descriptions below)."
 			)
 			.addText((text) => {
 				const order =
@@ -274,19 +275,19 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
 			});
 
 		new Setting(containerEl)
-			.setName("Property name to specify display name")
+			.setName("Property name to specify display text")
 			.setDesc(
-				"If you want to use file properties to specify the note's display name, " +
+				"If you want to use file properties to specify the note's display text, " +
 					"set the property name to this field. Leave this field blank " +
 					"if you are not using this feature."
 			)
 			.addText((text) => {
 				text.setValue(
-					this.plugin.settingsUnderChange!.propertyNameForDisplayName
+					this.plugin.settingsUnderChange!.propertyNameForDisplayText
 				)
 					.setPlaceholder("title")
 					.onChange((value) => {
-						this.plugin.settingsUnderChange!.propertyNameForDisplayName =
+						this.plugin.settingsUnderChange!.propertyNameForDisplayText =
 							value;
 						this.plugin.triggerSettingsChangedEvent();
 					});
@@ -450,6 +451,10 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
 
 		new Setting(containerEl)
 			.setName("Display previous and next links in daily notes")
+			.setDesc(
+				"To use this option, daily notes must be enabled " +
+					"in Daily Notes plugin or Periodic Notes plugin."
+			)
 			.addToggle((toggle) => {
 				toggle
 					.setValue(
@@ -480,13 +485,19 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
 					)
 					.onChange((value) => {
 						this.plugin.settingsUnderChange!.parentLinkGranularityInDailyNotes =
-							value ? (value as IGranularity) : undefined;
+							value !== "none"
+								? (value as IGranularity)
+								: undefined;
 						this.plugin.triggerSettingsChangedEvent();
 					});
 			});
 
 		new Setting(containerEl)
 			.setName("Display previous and next links in weekly notes")
+			.setDesc(
+				"To use this option, weekly notes must be enabled " +
+					"in Periodic Notes plugin."
+			)
 			.addToggle((toggle) => {
 				toggle
 					.setValue(
@@ -516,13 +527,19 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
 					)
 					.onChange((value) => {
 						this.plugin.settingsUnderChange!.parentLinkGranularityInWeeklyNotes =
-							value ? (value as IGranularity) : undefined;
+							value !== "none"
+								? (value as IGranularity)
+								: undefined;
 						this.plugin.triggerSettingsChangedEvent();
 					});
 			});
 
 		new Setting(containerEl)
 			.setName("Display previous and next links in monthly notes")
+			.setDesc(
+				"To use this option, monthly notes must be enabled " +
+					"in Periodic Notes plugin."
+			)
 			.addToggle((toggle) => {
 				toggle
 					.setValue(
@@ -551,13 +568,19 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
 					)
 					.onChange((value) => {
 						this.plugin.settingsUnderChange!.parentLinkGranularityInMonthlyNotes =
-							value ? (value as IGranularity) : undefined;
+							value !== "none"
+								? (value as IGranularity)
+								: undefined;
 						this.plugin.triggerSettingsChangedEvent();
 					});
 			});
 
 		new Setting(containerEl)
 			.setName("Display previous and next links in quarterly notes")
+			.setDesc(
+				"To use this option, quarterly notes must be enabled " +
+					"in Periodic Notes plugin."
+			)
 			.addToggle((toggle) => {
 				toggle
 					.setValue(
@@ -585,13 +608,19 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
 					)
 					.onChange((value) => {
 						this.plugin.settingsUnderChange!.parentLinkGranularityInQuarterlyNotes =
-							value ? (value as IGranularity) : undefined;
+							value !== "none"
+								? (value as IGranularity)
+								: undefined;
 						this.plugin.triggerSettingsChangedEvent();
 					});
 			});
 
 		new Setting(containerEl)
 			.setName("Display previous and next links in yearly notes")
+			.setDesc(
+				"To use this option, yearly notes must be enabled " +
+					"in Periodic Notes plugin."
+			)
 			.addToggle((toggle) => {
 				toggle
 					.setValue(

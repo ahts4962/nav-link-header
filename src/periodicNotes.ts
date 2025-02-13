@@ -21,7 +21,8 @@ import {
 	createYearlyNote,
 	type IGranularity,
 } from "obsidian-daily-notes-interface";
-import type NavLinkHeader from "./main";
+import NavLinkHeader from "./main";
+import type { NavLinkHeaderSettings } from "./settings";
 import { fileIncludedInFolder, joinPaths } from "./utils";
 
 const ALL_GRANULARITIES: IGranularity[] = [
@@ -32,11 +33,23 @@ const ALL_GRANULARITIES: IGranularity[] = [
 	"year",
 ];
 
-export function getActiveGranularities(plugin: NavLinkHeader): IGranularity[] {
-	const settings = plugin.settings;
-	if (!settings) {
-		return [];
-	}
+/**
+ * Returns the granularities that are active (corresponding settings enabled).
+ * @param settings The settings of the plugin.
+ * @param cacheRequiredOnly If `true`, only the granularities that require note cache
+ *     will be returned.
+ *     For example, if `prevNextLinksEnabledInMonthlyNotes` is `false` and
+ *     `parentLinkGranularityInMonthlyNotes` is "year" and "month" is not referenced
+ *     as parent from any other granularities, monthly notes do not require caching, while
+ *     Periodic Notes settings must be enabled for monthly notes to determine if
+ *     a particular note is a monthly note.
+ *     In this case, if `cacheRequiredOnly` is `true`, "month" will not be returned.
+ * @returns The active granularities.
+ */
+export function getActiveGranularities(
+	settings: NavLinkHeaderSettings,
+	cacheRequiredOnly: boolean
+): IGranularity[] {
 	const periodicNotesSettingFunctions = {
 		day: appHasDailyNotesPluginLoaded,
 		week: appHasWeeklyNotesPluginLoaded,
@@ -44,19 +57,59 @@ export function getActiveGranularities(plugin: NavLinkHeader): IGranularity[] {
 		quarter: appHasQuarterlyNotesPluginLoaded,
 		year: appHasYearlyNotesPluginLoaded,
 	};
-	const pluginSettings = {
-		day: settings.dailyNoteLinksEnabled,
-		week: settings.weeklyNoteLinksEnabled,
-		month: settings.monthlyNoteLinksEnabled,
-		quarter: settings.quarterlyNoteLinksEnabled,
-		year: settings.yearlyNoteLinksEnabled,
-	};
-	return ALL_GRANULARITIES.filter((granularity) => {
-		return (
-			periodicNotesSettingFunctions[granularity]() &&
-			pluginSettings[granularity]
-		);
-	});
+	const usedForParent = new Set(
+		[
+			settings.parentLinkGranularityInDailyNotes,
+			settings.parentLinkGranularityInWeeklyNotes,
+			settings.parentLinkGranularityInMonthlyNotes,
+			settings.parentLinkGranularityInQuarterlyNotes,
+		].filter((value) => value != undefined)
+	);
+
+	if (cacheRequiredOnly) {
+		return ALL_GRANULARITIES.filter((granularity) => {
+			return (
+				periodicNotesSettingFunctions[granularity]() &&
+				(getPrevNextLinkEnabledSetting(settings, granularity) ||
+					usedForParent.has(granularity))
+			);
+		});
+	} else {
+		return ALL_GRANULARITIES.filter((granularity) => {
+			return (
+				periodicNotesSettingFunctions[granularity]() &&
+				(getPrevNextLinkEnabledSetting(settings, granularity) ||
+					getParentLinkGranularitySetting(settings, granularity) ||
+					usedForParent.has(granularity))
+			);
+		});
+	}
+}
+
+export function getPrevNextLinkEnabledSetting(
+	settings: NavLinkHeaderSettings,
+	granularity: IGranularity
+): boolean {
+	return {
+		day: settings.prevNextLinksEnabledInDailyNotes,
+		week: settings.prevNextLinksEnabledInWeeklyNotes,
+		month: settings.prevNextLinksEnabledInMonthlyNotes,
+		quarter: settings.prevNextLinksEnabledInQuarterlyNotes,
+		year: settings.prevNextLinksEnabledInYearlyNotes,
+	}[granularity];
+}
+
+export function getParentLinkGranularitySetting(
+	settings: NavLinkHeaderSettings,
+	granularity: IGranularity
+): IGranularity | undefined {
+	return {
+		day: settings.parentLinkGranularityInDailyNotes,
+		week: settings.parentLinkGranularityInWeeklyNotes,
+		month: settings.parentLinkGranularityInMonthlyNotes,
+		quarter: settings.parentLinkGranularityInQuarterlyNotes,
+		year: undefined,
+	}[granularity];
 }
 
 function getAllPeriodicNotes(granularity: IGranularity): Record<string, TFile> {
@@ -93,7 +146,10 @@ export class PeriodicNotesManager {
 	}
 
 	public updateEntireCache(): void {
-		const granularities = this.getActiveGranularities();
+		const granularities = getActiveGranularities(
+			this.plugin.settings!,
+			true
+		);
 		this.noteCache.clear();
 		this.noteUIDCache.clear();
 		for (const granularity of granularities) {
@@ -129,11 +185,10 @@ export class PeriodicNotesManager {
 	 * Adds the note to the cache if it is a periodic note.
 	 */
 	private addNoteToCache(file: TFile): void {
-		const values = this.getDateFromPath(file.path);
-		if (!values) {
+		const { date, granularity } = this.getDateFromPath(file.path);
+		if (!date || !granularity) {
 			return;
 		}
-		const { date, granularity } = values;
 		const notes = this.noteCache.get(granularity);
 		const uids = this.noteUIDCache.get(granularity);
 		if (notes && uids) {
@@ -148,11 +203,10 @@ export class PeriodicNotesManager {
 	 * Removes the note from the cache if it is a periodic note.
 	 */
 	private removeNoteFromCache(path: string): void {
-		const values = this.getDateFromPath(path);
-		if (!values) {
+		const { date, granularity } = this.getDateFromPath(path);
+		if (!date || !granularity) {
 			return;
 		}
-		const { date, granularity } = values;
 		const notes = this.noteCache.get(granularity);
 		const uids = this.noteUIDCache.get(granularity);
 		if (notes && uids) {
@@ -167,81 +221,98 @@ export class PeriodicNotesManager {
 
 	/**
 	 * Searches for the adjacent notes of the specified file.
-	 * @returns `previousPath`, `nextPath`, and `upPath` are the paths to the previous, next,
-	 * and up notes, respectively. If there is no data to display, an empty string is returned.
-	 * If `upDate` is not `undefined`, it means that the up note does not exist, and the path and
-	 * date can be used to create a new note.
+	 * @returns `currentGranularity` is the granularity of the current note.
+	 * If the note is not a periodic note, `currentGranularity` is `undefined`.
+	 * `previousPath`, `nextPath`, and `parentPath` are the paths to the previous, next,
+	 * and parent notes, respectively. If not found, `undefined` is returned for each.
+	 * If `parentDate` is not `undefined`, it means that the parent note does not exist,
+	 * but can be created by using this date (`parentPath` is also available).
+	 * `parentGranularity` is the granularity of the parent note.
 	 */
-	public searchAdjacentNotes(file: TFile):
-		| {
-				previousPath: string;
-				nextPath: string;
-				upPath: string;
-				upDate: Moment | undefined;
-				upGranularity: IGranularity | undefined;
-		  }
-		| undefined {
-		const values = this.getDateFromPath(file.path);
-		if (!values) {
-			return undefined;
+	public searchAdjacentNotes(file: TFile): {
+		currentGranularity?: IGranularity;
+		previousPath?: string;
+		nextPath?: string;
+		parentPath?: string;
+		parentDate?: Moment;
+		parentGranularity?: IGranularity;
+	} {
+		const result = {
+			currentGranularity: undefined,
+			previousPath: undefined,
+			nextPath: undefined,
+			parentPath: undefined,
+			parentDate: undefined,
+			parentGranularity: undefined,
+		} as ReturnType<typeof this.searchAdjacentNotes>;
+
+		const { date, granularity } = this.getDateFromPath(file.path);
+		if (!date || !granularity) {
+			return result;
 		}
-		const { date, granularity } = values;
+		result.currentGranularity = granularity;
 
-		const allNotes = this.noteCache.get(granularity);
-		const uids = this.noteUIDCache.get(granularity);
-		if (!allNotes || !uids) {
-			return undefined;
+		if (getPrevNextLinkEnabledSetting(this.plugin.settings!, granularity)) {
+			const allNotes = this.noteCache.get(granularity)!;
+			const uids = this.noteUIDCache.get(granularity)!;
+			const dateUID = getDateUID(date, granularity);
+			const index = uids.indexOf(dateUID);
+
+			result.previousPath =
+				index > 0 ? allNotes[uids[index - 1]].path : undefined;
+			result.nextPath =
+				index < uids.length - 1
+					? allNotes[uids[index + 1]].path
+					: undefined;
 		}
 
-		const dateUID = getDateUID(date, granularity);
-		const index = uids.indexOf(dateUID);
-		if (index === -1) {
-			return undefined;
+		const parentGranularity = getParentLinkGranularitySetting(
+			this.plugin.settings!,
+			granularity
+		);
+		if (!parentGranularity) {
+			return result;
+		}
+		result.parentGranularity = parentGranularity;
+
+		const allParentNotes = this.noteCache.get(parentGranularity);
+		if (!allParentNotes) {
+			return result;
 		}
 
-		const previousPath = index > 0 ? allNotes[uids[index - 1]].path : "";
-		const nextPath =
-			index < uids.length - 1 ? allNotes[uids[index + 1]].path : "";
-
-		const upGranularity = this.getNextActiveGranularity(granularity);
-		let upPath = "";
-		let upDate: Moment | undefined;
-		if (upGranularity) {
-			const upAllNotes = this.noteCache.get(upGranularity);
-			const upUID = getDateUID(date, upGranularity);
-			const upNote = upAllNotes?.[upUID];
-			if (upNote) {
-				upPath = upNote.path;
-			} else {
-				const { format, folder } =
-					getPeriodicNoteSettings(upGranularity);
-				let fileName = date.format(format);
-				if (!fileName.endsWith(".md")) {
-					fileName += ".md";
-				}
-				upPath = joinPaths(folder ?? "/", fileName);
-				upDate = date;
+		const parentUID = getDateUID(date, parentGranularity);
+		const parentNote = allParentNotes[parentUID];
+		if (parentNote) {
+			result.parentPath = parentNote.path;
+		} else {
+			const { format, folder } =
+				getPeriodicNoteSettings(parentGranularity);
+			let fileName = date.format(format);
+			if (!fileName.endsWith(".md")) {
+				fileName += ".md";
 			}
+			result.parentPath = joinPaths(folder ?? "/", fileName);
+			result.parentDate = date;
 		}
 
-		return {
-			previousPath,
-			nextPath,
-			upPath,
-			upDate,
-			upGranularity,
-		};
+		return result;
 	}
 
 	/**
 	 * Returns the corresponding date of the file if the path is valid as a periodic note.
 	 * It doesn't matter if the file actually exists.
 	 * @param path The normalized path to the file.
+	 * @returns The date and granularity of the file if it is a periodic note.
+	 *     If the file is not a periodic note, `undefined` is returned for both values.
 	 */
-	private getDateFromPath(
-		path: string
-	): { date: Moment; granularity: IGranularity } | undefined {
-		const granularities = this.getActiveGranularities();
+	private getDateFromPath(path: string): {
+		date?: Moment;
+		granularity?: IGranularity;
+	} {
+		const granularities = getActiveGranularities(
+			this.plugin.settings!,
+			false
+		);
 		for (const granularity of granularities) {
 			const { folder } = getPeriodicNoteSettings(granularity);
 			const periodicNotesFolder = normalizePath(folder ?? "/");
@@ -253,21 +324,6 @@ export class PeriodicNotesManager {
 				return { date, granularity };
 			}
 		}
-		return undefined;
-	}
-
-	private getNextActiveGranularity(
-		granularity: IGranularity
-	): IGranularity | undefined {
-		const granularities = this.getActiveGranularities();
-		const index = granularities.indexOf(granularity);
-		if (index === -1 || index === granularities.length - 1) {
-			return undefined;
-		}
-		return granularities[index + 1];
-	}
-
-	private getActiveGranularities(): IGranularity[] {
-		return getActiveGranularities(this.plugin);
+		return { date: undefined, granularity: undefined };
 	}
 }

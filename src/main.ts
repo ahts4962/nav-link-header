@@ -107,15 +107,15 @@ export default class NavLinkHeader extends Plugin {
 					return false;
 				}
 				if (
-					!adjacentNotes.upPath ||
-					adjacentNotes.upDate !== undefined
+					!adjacentNotes.parentPath ||
+					adjacentNotes.parentDate !== undefined
 				) {
 					return false;
 				}
 
 				if (!checking) {
 					void this.app.workspace.openLinkText(
-						adjacentNotes.upPath,
+						adjacentNotes.parentPath,
 						file.path
 					);
 				}
@@ -219,7 +219,7 @@ export default class NavLinkHeader extends Plugin {
 					// @ts-expect-error: custom event.
 					"periodic-notes:settings-updated",
 					() => {
-						this.onSettingsChange();
+						this.onPeriodicNotesSettingsChange();
 					}
 				)
 			);
@@ -231,7 +231,7 @@ export default class NavLinkHeader extends Plugin {
 	}
 
 	private get periodicNotesActive(): boolean {
-		return getActiveGranularities(this).length > 0;
+		return getActiveGranularities(this.settings!, false).length > 0;
 	}
 
 	private onSettingsChange = debounce(
@@ -290,12 +290,48 @@ export default class NavLinkHeader extends Plugin {
 				this.periodicNotesManager = new PeriodicNotesManager(this);
 			} else if (!this.periodicNotesActive && this.periodicNotesManager) {
 				this.periodicNotesManager = undefined;
+			} else if (
+				previousSettings.prevNextLinksEnabledInDailyNotes !==
+					this.settings.prevNextLinksEnabledInDailyNotes ||
+				previousSettings.prevNextLinksEnabledInWeeklyNotes !==
+					this.settings.prevNextLinksEnabledInWeeklyNotes ||
+				previousSettings.prevNextLinksEnabledInMonthlyNotes !==
+					this.settings.prevNextLinksEnabledInMonthlyNotes ||
+				previousSettings.prevNextLinksEnabledInQuarterlyNotes !==
+					this.settings.prevNextLinksEnabledInQuarterlyNotes ||
+				previousSettings.prevNextLinksEnabledInYearlyNotes !==
+					this.settings.prevNextLinksEnabledInYearlyNotes ||
+				previousSettings.parentLinkGranularityInDailyNotes !==
+					this.settings.parentLinkGranularityInDailyNotes ||
+				previousSettings.parentLinkGranularityInWeeklyNotes !==
+					this.settings.parentLinkGranularityInWeeklyNotes ||
+				previousSettings.parentLinkGranularityInMonthlyNotes !==
+					this.settings.parentLinkGranularityInMonthlyNotes ||
+				previousSettings.parentLinkGranularityInQuarterlyNotes !==
+					this.settings.parentLinkGranularityInQuarterlyNotes
+			) {
+				this.periodicNotesManager?.updateEntireCache();
 			}
 
-			this.periodicNotesManager?.updateEntireCache();
-			this.markdownViewUpdater?.onVaultChange();
+			this.markdownViewUpdater?.onSettingsChange();
 
 			await this.saveData(this.settings);
+		},
+		500,
+		true
+	);
+
+	private onPeriodicNotesSettingsChange = debounce(
+		() => {
+			if (this.periodicNotesActive && !this.periodicNotesManager) {
+				this.periodicNotesManager = new PeriodicNotesManager(this);
+			} else if (!this.periodicNotesActive && this.periodicNotesManager) {
+				this.periodicNotesManager = undefined;
+			} else {
+				this.periodicNotesManager?.updateEntireCache();
+			}
+
+			this.markdownViewUpdater?.onSettingsChange();
 		},
 		500,
 		true
