@@ -326,6 +326,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
 				text.setValue(priority).onChange((value) => {
 					this.plugin.settingsUnderChange!.duplicateNoteFilteringPriority =
 						parsePrefixStrings(value);
+					this.plugin.triggerSettingsChangedEvent();
 				});
 			});
 

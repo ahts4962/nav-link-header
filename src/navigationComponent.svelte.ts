@@ -7,6 +7,7 @@ import {
 	ThreeWayLinkState,
 	type LinkEventHandler,
 } from "./navigationLinkState";
+import { LinkContainer } from "./linkContainer";
 import { getPropertyLinks, getThreeWayPropertyLink } from "./propertyLink";
 import {
 	createPeriodicNote,
@@ -88,7 +89,7 @@ export class NavigationComponent extends Component {
 			this.plugin.settings!.displayPlaceholder;
 
 		const filePath = file.path;
-		const newLinks = [] as (PrefixedLinkState | ThreeWayLinkState)[];
+		const newLinks = new LinkContainer(this.plugin);
 		const clickHandler: LinkEventHandler = (target, e) => {
 			void this.plugin.app.workspace.openLinkText(
 				target.destinationPath,
@@ -109,13 +110,13 @@ export class NavigationComponent extends Component {
 
 		// Property links
 		if (this.plugin.settings!.propertyMappings.length > 0) {
-			newLinks.push(
-				...this.constructPropertyLinkStates(
-					file,
-					clickHandler,
-					mouseOverHandler
-				)
-			);
+			this.constructPropertyLinkStates(
+				file,
+				clickHandler,
+				mouseOverHandler
+			).forEach((link) => {
+				newLinks.addLink(link);
+			});
 		}
 
 		// Periodic note links
@@ -126,7 +127,7 @@ export class NavigationComponent extends Component {
 				mouseOverHandler
 			);
 			if (periodicNoteLinkState) {
-				newLinks.push(periodicNoteLinkState);
+				newLinks.addLink(periodicNoteLinkState);
 			}
 		}
 
@@ -143,8 +144,13 @@ export class NavigationComponent extends Component {
 					mouseOverHandler
 				);
 			if (threeWayPropertyLink) {
-				newLinks.push(threeWayPropertyLink);
+				newLinks.addLink(threeWayPropertyLink);
 			}
+		}
+
+		if (fileChanged) {
+			// If the file has changed, update the navigation as soon as possible.
+			this.navigationProps.links = [...newLinks.getLinks()];
 		}
 
 		// Annotated links
@@ -156,14 +162,23 @@ export class NavigationComponent extends Component {
 			);
 			for await (const link of generator) {
 				if (!this.loaded) {
-					return;
+					return; // Handles the async gap.
 				}
-				newLinks.push(link);
+				newLinks.addLink(link);
+				if (fileChanged) {
+					// If the file has changed, update the navigation as soon as possible.
+					this.navigationProps.links = [...newLinks.getLinks()];
+				}
 			}
 		}
 
+		if (!fileChanged) {
+			// If the file has not changed, update the navigation after all links are added.
+			// This is to prevent flickering.
+			this.navigationProps.links = [...newLinks.getLinks()];
+		}
+
 		this.navigationProps.isLoading = false;
-		this.navigationProps.links = newLinks;
 	}
 
 	/**

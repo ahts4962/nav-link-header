@@ -69,12 +69,14 @@ export class PrefixedLinkState {
  */
 export class ThreeWayLinkState {
 	public type: "periodic" | "property" | "folder";
+	public index: number;
 	public previous: { link?: NavigationLinkState; hidden: boolean };
 	public next: { link?: NavigationLinkState; hidden: boolean };
 	public parent: { link?: NavigationLinkState; hidden: boolean };
 
 	/**
 	 * @param type The type of the link.
+	 * @param index The index of the link (e.g. the index of the folder links).
 	 * @param previous The previous link. If `hidden` is `true`, the link is not displayed.
 	 *     It is possible that `link` is `undefined` and `hidden` is `false`
 	 *     (e.g., displaying a placeholder).
@@ -83,16 +85,19 @@ export class ThreeWayLinkState {
 	 */
 	constructor({
 		type,
+		index = 0,
 		previous,
 		next,
 		parent,
 	}: {
 		type: "periodic" | "property" | "folder";
+		index?: number;
 		previous: { link?: NavigationLinkState; hidden: boolean };
 		next: { link?: NavigationLinkState; hidden: boolean };
 		parent: { link?: NavigationLinkState; hidden: boolean };
 	}) {
 		this.type = type;
+		this.index = index;
 		this.previous = previous;
 		this.next = next;
 		this.parent = parent;
