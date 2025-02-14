@@ -4,6 +4,7 @@ import { MarkdownViewUpdater } from "./markdownViewUpdater";
 import { AnnotatedLinksManager } from "./annotatedLink";
 import { getActiveGranularities, PeriodicNotesManager } from "./periodicNotes";
 import { FolderLinksManager } from "./folderLink";
+import { addCommands } from "./commands";
 import {
 	cloneSettings,
 	loadSettings,
@@ -31,101 +32,7 @@ export default class NavLinkHeader extends Plugin {
 
 		this.addSettingTab(new NavLinkHeaderSettingTab(this));
 
-		this.addCommand({
-			id: "open-previous-periodic-note",
-			name: "Open previous periodic note",
-			checkCallback: (checking: boolean) => {
-				if (!this.periodicNotesManager) {
-					return false;
-				}
-
-				const file = this.app.workspace.getActiveFile();
-				if (!file) {
-					return false;
-				}
-
-				const adjacentNotes =
-					this.periodicNotesManager.searchAdjacentNotes(file);
-				if (!adjacentNotes?.previousPath) {
-					return false;
-				}
-
-				if (!checking) {
-					void this.app.workspace.openLinkText(
-						adjacentNotes.previousPath,
-						file.path
-					);
-				}
-
-				return true;
-			},
-		});
-
-		this.addCommand({
-			id: "open-next-periodic-note",
-			name: "Open next periodic note",
-			checkCallback: (checking: boolean) => {
-				if (!this.periodicNotesManager) {
-					return false;
-				}
-
-				const file = this.app.workspace.getActiveFile();
-				if (!file) {
-					return false;
-				}
-
-				const adjacentNotes =
-					this.periodicNotesManager.searchAdjacentNotes(file);
-				if (!adjacentNotes?.nextPath) {
-					return false;
-				}
-
-				if (!checking) {
-					void this.app.workspace.openLinkText(
-						adjacentNotes.nextPath,
-						file.path
-					);
-				}
-
-				return true;
-			},
-		});
-
-		this.addCommand({
-			id: "open-parent-periodic-note",
-			name: "Open parent periodic note",
-			checkCallback: (checking: boolean) => {
-				if (!this.periodicNotesManager) {
-					return false;
-				}
-
-				const file = this.app.workspace.getActiveFile();
-				if (!file) {
-					return false;
-				}
-
-				const adjacentNotes =
-					this.periodicNotesManager.searchAdjacentNotes(file);
-				if (!adjacentNotes) {
-					return false;
-				}
-				if (
-					!adjacentNotes.parentPath ||
-					adjacentNotes.parentDate !== undefined
-				) {
-					return false;
-				}
-
-				if (!checking) {
-					void this.app.workspace.openLinkText(
-						adjacentNotes.parentPath,
-						file.path
-					);
-				}
-
-				return true;
-			},
-		});
+		addCommands(this);
 
 		this.app.workspace.onLayoutReady(() => {
 			if (this.settings!.displayInMarkdownViews) {
