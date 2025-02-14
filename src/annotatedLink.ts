@@ -179,21 +179,21 @@ export function getPropertyLinks(
 	return result;
 }
 
-// 解析 wiki 链接格式，返回实际路径和显示文本
 interface WikiLinkParts {
   path: string;
   displayText?: string;
 }
 
+// Parse wiki link format to get the actual file name
 function parseWikiLink(path: string): WikiLinkParts {
-  // 匹配 [[文件名|显示名]] 或 [[文件名]] 格式
+// Match [[Filename|DisplayText]] or [[Filename]] format
+
   const wikiLinkRegex = /^\[\[([^|\]]+)(?:\|([^\]]+))?\]\]$/;
   const match = path.match(wikiLinkRegex);
   if (match) {
     return {
       path: match[1],
-      displayText: match[2]  // 如果没有显示文本部分，这里会是 undefined
-    };
+      displayText: match[2] 
   }
   return { path };
 }
