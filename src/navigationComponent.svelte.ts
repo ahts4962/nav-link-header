@@ -1,18 +1,21 @@
-import { type Moment } from "moment";
 import { Component, TFile } from "obsidian";
-import { type IGranularity } from "obsidian-daily-notes-interface";
-import { searchAnnotatedLinks, getPropertyLinks } from "./annotatedLink";
-import { FileCreationModal } from "./fileCreationModal";
+import { mount, unmount } from "svelte";
 import type NavLinkHeader from "./main";
 import {
 	NavigationLinkState,
-	type PeriodicNoteLinkStates,
+	PrefixedLinkState,
+	ThreeWayLinkState,
+	type LinkEventHandler,
 } from "./navigationLinkState";
-import { createPeriodicNote } from "./periodicNotes";
-import { NavLinkHeaderError } from "./utils";
-import { mount, unmount } from "svelte";
+import { getPropertyLinks, getThreeWayPropertyLink } from "./propertyLink";
+import {
+	createPeriodicNote,
+	getParentLinkGranularitySetting,
+	getPrevNextLinkEnabledSetting,
+} from "./periodicNotes";
+import { FileCreationModal } from "./fileCreationModal";
+import { getStringValuesFromFileProperty, getTitleFromPath } from "./utils";
 import Navigation from "./ui/Navigation.svelte";
-import type { NavLinkHeaderSettings } from "./settings";
 
 /**
  * Navigation component to add the navigation links to.
@@ -20,16 +23,14 @@ import type { NavLinkHeaderSettings } from "./settings";
 export class NavigationComponent extends Component {
 	private navigation?: ReturnType<typeof Navigation>;
 	private navigationProps: {
-		periodicNoteLinks: PeriodicNoteLinkStates | undefined;
-		annotatedLinksPromise: Promise<NavigationLinkState[]> | undefined;
+		links: (PrefixedLinkState | ThreeWayLinkState)[];
+		isLoading: boolean;
 		displayPlaceholder: boolean;
-		settings: NavLinkHeaderSettings;
-	} = $state() as {
-		periodicNoteLinks: PeriodicNoteLinkStates | undefined;
-		annotatedLinksPromise: Promise<NavigationLinkState[]> | undefined;
-		displayPlaceholder: boolean;
-		settings: NavLinkHeaderSettings;
-	};
+	} = $state({
+		links: [],
+		isLoading: false,
+		displayPlaceholder: false,
+	});
 	private currentFilePath?: string;
 	private loaded: boolean = false;
 
@@ -46,12 +47,9 @@ export class NavigationComponent extends Component {
 	 * Initializes the navigation component.
 	 */
 	public onload(): void {
-		this.navigationProps = {
-			periodicNoteLinks: undefined,
-			annotatedLinksPromise: undefined,
-			displayPlaceholder: false,
-			settings: this.plugin.settings!,
-		};
+		this.navigationProps.links = [];
+		this.navigationProps.isLoading = false;
+		this.navigationProps.displayPlaceholder = false;
 		this.navigation = mount(Navigation, {
 			target: this.containerEl,
 			props: this.navigationProps,
@@ -68,251 +66,452 @@ export class NavigationComponent extends Component {
 	 *    If `false`, the navigation component will not be updated if the file path
 	 *    has not changed since the last update.
 	 */
-	public update(file: TFile, hoverParent: Component, forced: boolean): void {
+	public async update(
+		file: TFile,
+		hoverParent: Component,
+		forced: boolean
+	): Promise<void> {
 		if (!this.loaded) {
 			return;
 		}
 
-		// Prevents unnecessary updates.
-		if (!forced && this.currentFilePath === file.path) {
-			return;
-		}
+		const fileChanged = this.currentFilePath !== file.path;
 		this.currentFilePath = file.path;
 
-		this.navigationProps.periodicNoteLinks = this.getPeriodicNoteLinkStates(
-			file,
-			hoverParent
-		);
-		this.navigationProps.annotatedLinksPromise =
-			this.getAnnotatedLinkStates(file, hoverParent);
+		// Prevents unnecessary updates.
+		if (!forced && !fileChanged) {
+			return;
+		}
+
+		this.navigationProps.isLoading = true;
 		this.navigationProps.displayPlaceholder =
 			this.plugin.settings!.displayPlaceholder;
-		this.navigationProps.settings = this.plugin.settings!;
-	}
-
-	private async getAnnotatedLinkStates(
-		file: TFile,
-		hoverParent: Component
-	): Promise<NavigationLinkState[]> {
-		if (!this.plugin.settings!.annotatedLinksEnabled) {
-			return [];
-		}
 
 		const filePath = file.path;
-		const annotationStrings =
-			this.plugin.settings!.annotationStrings.split(",");
-		const propertyNames = this.plugin.settings!.propertyMappings.map(
-			(mapping) => mapping.property
-		);
+		const newLinks = [] as (PrefixedLinkState | ThreeWayLinkState)[];
+		const clickHandler: LinkEventHandler = (target, e) => {
+			void this.plugin.app.workspace.openLinkText(
+				target.destinationPath,
+				filePath,
+				e.ctrlKey || e.button === 1
+			);
+		};
+		const mouseOverHandler: LinkEventHandler = (target, e) => {
+			this.plugin.app.workspace.trigger("hover-link", {
+				event: e,
+				source: "nav-link-header",
+				hoverParent,
+				targetEl: e.target,
+				linktext: target.destinationPath,
+				sourcePath: filePath,
+			});
+		};
 
-		// If no annotation strings are specified, return an empty array
-		if (annotationStrings.length + propertyNames.length === 0) {
-			return [];
-		}
-
-		if (!this.loaded) {
-			throw new NavLinkHeaderError(
-				"The navigation component is not loaded."
+		// Property links
+		if (this.plugin.settings!.propertyMappings.length > 0) {
+			newLinks.push(
+				...this.constructPropertyLinkStates(
+					file,
+					clickHandler,
+					mouseOverHandler
+				)
 			);
 		}
 
-		const [annotatedLinks, propertyLinks] = await Promise.all([
-			searchAnnotatedLinks(
-				this.plugin.app,
-				annotationStrings,
-				this.plugin.settings!.allowSpaceAfterAnnotationString,
-				file
-			),
-			getPropertyLinks(
-				this.plugin.app,
-				propertyNames,
+		// Periodic note links
+		if (this.plugin.periodicNotesActive) {
+			const periodicNoteLinkState = this.constructPeriodicNoteLinkState(
 				file,
-				this.plugin.settings?.usePropertyAsDisplayName
-					? this.plugin.settings?.displayPropertyName
-					: undefined
-			),
-		]);
-
-		// Get property values for all links if needed
-		const propertyValuesForAnnotatedLinks = this.plugin.settings
-			?.usePropertyAsDisplayName
-			? annotatedLinks.map((link) => {
-					const linkedFile =
-						this.plugin.app.metadataCache.getFirstLinkpathDest(
-							link.destinationPath,
-							file.path
-						);
-					if (!linkedFile) return undefined;
-
-					const linkedFileCache =
-						this.plugin.app.metadataCache.getFileCache(linkedFile);
-					if (
-						linkedFileCache?.frontmatter &&
-						this.plugin.settings?.displayPropertyName
-					) {
-						const result = linkedFileCache.frontmatter[
-							this.plugin.settings.displayPropertyName
-						] as unknown;
-						if (typeof result === "string") {
-							return result;
-						} else {
-							return undefined;
-						}
-					}
-					return undefined;
-			  })
-			: annotatedLinks.map(() => undefined);
-
-		// Combine all links and convert to NavigationLinkState
-		const allLinks = [
-			...annotatedLinks.map((link, index) => ({
-				...link,
-				isPropertyLink: false,
-				propertyValue: propertyValuesForAnnotatedLinks[index],
-			})),
-			...propertyLinks.map((link) => ({
-				...link,
-				isPropertyLink: true,
-			})),
-		];
-
-		// Filter duplicates if needed
-		const seenPaths = new Set<string>();
-		const uniqueLinks = this.plugin.settings?.filterDuplicateNotes
-			? allLinks.filter((link) => {
-					if (seenPaths.has(link.destinationPath)) {
-						return false;
-					}
-					seenPaths.add(link.destinationPath);
-					return true;
-			  })
-			: allLinks;
-
-		// Convert to NavigationLinkState
-		const linkStates = uniqueLinks.map(
-			(link) =>
-				new NavigationLinkState({
-					enabled: true,
-					destinationPath: link.destinationPath,
-					fileExists: true,
-					annotation: link.annotation,
-					isPropertyLink: link.isPropertyLink,
-					propertyValue: link.propertyValue,
-					clickHandler: (target, e) => {
-						void this.plugin.app.workspace.openLinkText(
-							target.destinationPath!,
-							filePath,
-							e.ctrlKey
-						);
-					},
-					mouseOverHandler: (target, e) => {
-						this.plugin.app.workspace.trigger("hover-link", {
-							event: e,
-							source: "nav-link-header",
-							hoverParent,
-							targetEl: e.target,
-							linktext: target.destinationPath,
-							sourcePath: filePath,
-						});
-					},
-				})
-		);
-
-		linkStates.sort((a, b) => {
-			const diff =
-				annotationStrings.indexOf(a.annotation!) -
-				annotationStrings.indexOf(b.annotation!);
-			if (diff !== 0) {
-				return diff;
+				clickHandler,
+				mouseOverHandler
+			);
+			if (periodicNoteLinkState) {
+				newLinks.push(periodicNoteLinkState);
 			}
-			return a.title.localeCompare(b.title);
-		});
+		}
 
-		return linkStates;
+		// Three-way property links
+		if (
+			this.plugin.settings!.previousLinkProperty ||
+			this.plugin.settings!.nextLinkProperty ||
+			this.plugin.settings!.parentLinkProperty
+		) {
+			const threeWayPropertyLink =
+				this.constructThreeWayPropertyLinkState(
+					file,
+					clickHandler,
+					mouseOverHandler
+				);
+			if (threeWayPropertyLink) {
+				newLinks.push(threeWayPropertyLink);
+			}
+		}
+
+		// Annotated links
+		if (this.plugin.settings!.annotationStrings.length > 0) {
+			const generator = this.constructAnnotatedLinkStates(
+				file,
+				clickHandler,
+				mouseOverHandler
+			);
+			for await (const link of generator) {
+				if (!this.loaded) {
+					return;
+				}
+				newLinks.push(link);
+			}
+		}
+
+		this.navigationProps.isLoading = false;
+		this.navigationProps.links = newLinks;
 	}
 
-	private getPeriodicNoteLinkStates(
+	/**
+	 * Constructs the property link states for the specified file.
+	 * @param file The file to construct the property link states for.
+	 * @param clickHandler The click handler for the links.
+	 * @param mouseOverHandler The mouse over handler for the links.
+	 * @returns The property link states.
+	 */
+	private constructPropertyLinkStates(
 		file: TFile,
-		hoverParent: Component
-	): PeriodicNoteLinkStates | undefined {
+		clickHandler: LinkEventHandler,
+		mouseOverHandler: LinkEventHandler
+	): PrefixedLinkState[] {
+		const result: PrefixedLinkState[] = [];
 		const filePath = file.path;
 
-		const periodicNoteLinks =
-			this.plugin.periodicNotesManager?.searchAdjacentNotes(file);
+		const propertyLinks = getPropertyLinks(this.plugin, file);
+		for (const link of propertyLinks) {
+			result.push(
+				new PrefixedLinkState({
+					prefix: link.prefix,
+					link: new NavigationLinkState({
+						destinationPath: link.destinationPath,
+						displayText: this.getDisplayText(
+							link.destinationPath,
+							filePath,
+							link.displayText
+						),
+						resolved: true,
+						clickHandler,
+						mouseOverHandler,
+					}),
+				})
+			);
+		}
 
-		if (!periodicNoteLinks) {
+		return result;
+	}
+
+	/**
+	 * Constructs the periodic note link state for the specified file.
+	 * @param file The file to construct the periodic note link states for.
+	 * @param clickHandler The default click handler for the links.
+	 * @param mouseOverHandler The default mouse over handler for the links.
+	 * @returns The periodic note link state.
+	 */
+	private constructPeriodicNoteLinkState(
+		file: TFile,
+		clickHandler: LinkEventHandler,
+		mouseOverHandler: LinkEventHandler
+	): ThreeWayLinkState | undefined {
+		const periodicNoteLinks =
+			this.plugin.periodicNotesManager!.searchAdjacentNotes(file);
+		if (!periodicNoteLinks.currentGranularity) {
 			return undefined;
 		}
 
-		const convert = (
-			path: string,
-			date: Moment | undefined,
-			granularity: IGranularity | undefined
-		): NavigationLinkState => {
-			if (path) {
-				return new NavigationLinkState({
-					enabled: true,
-					destinationPath: path,
-					fileExists: date === undefined,
-					clickHandler: (target, e) => {
-						if (target.fileExists) {
-							void this.plugin.app.workspace.openLinkText(
-								target.destinationPath!,
-								filePath,
-								e.ctrlKey
-							);
-						} else {
-							if (this.plugin.settings!.confirmFileCreation) {
-								new FileCreationModal(
-									this.plugin,
-									target.title,
-									() => {
-										void createPeriodicNote(
-											granularity!,
-											date!
-										);
-									}
-								).open();
-							} else {
-								void createPeriodicNote(granularity!, date!);
-							}
-						}
-					},
-					mouseOverHandler: (target, e) => {
-						if (target.fileExists) {
-							this.plugin.app.workspace.trigger("hover-link", {
-								event: e,
-								source: "nav-link-header",
-								hoverParent,
-								targetEl: e.target,
-								linktext: target.destinationPath,
-								sourcePath: filePath,
-							});
-						}
-					},
-				});
-			} else {
-				return new NavigationLinkState({
-					enabled: false,
+		const filePath = file.path;
+		const previous: {
+			link?: NavigationLinkState;
+			hidden: boolean;
+		} = { link: undefined, hidden: true };
+		const next: {
+			link?: NavigationLinkState;
+			hidden: boolean;
+		} = { link: undefined, hidden: true };
+		const parent: {
+			link?: NavigationLinkState;
+			hidden: boolean;
+		} = { link: undefined, hidden: true };
+
+		// Previous and next links
+		if (
+			getPrevNextLinkEnabledSetting(
+				this.plugin.settings!,
+				periodicNoteLinks.currentGranularity
+			)
+		) {
+			previous.hidden = false;
+			next.hidden = false;
+
+			if (periodicNoteLinks.previousPath) {
+				previous.link = new NavigationLinkState({
+					destinationPath: periodicNoteLinks.previousPath,
+					displayText: this.getDisplayText(
+						periodicNoteLinks.previousPath,
+						filePath
+					),
+					resolved: true,
+					clickHandler,
+					mouseOverHandler,
 				});
 			}
-		};
+			if (periodicNoteLinks.nextPath) {
+				next.link = new NavigationLinkState({
+					destinationPath: periodicNoteLinks.nextPath,
+					displayText: this.getDisplayText(
+						periodicNoteLinks.nextPath,
+						filePath
+					),
+					resolved: true,
+					clickHandler,
+					mouseOverHandler,
+				});
+			}
+		}
 
-		return {
-			previous: convert(
-				periodicNoteLinks.previousPath,
-				undefined,
-				undefined
-			),
-			next: convert(periodicNoteLinks.nextPath, undefined, undefined),
-			up: convert(
-				periodicNoteLinks.upPath,
-				periodicNoteLinks.upDate,
-				periodicNoteLinks.upGranularity
-			),
-		};
+		// Parent link
+		const parentGranularity = getParentLinkGranularitySetting(
+			this.plugin.settings!,
+			periodicNoteLinks.currentGranularity
+		);
+		if (parentGranularity) {
+			parent.hidden = false;
+
+			if (periodicNoteLinks.parentPath) {
+				if (!periodicNoteLinks.parentDate) {
+					parent.link = new NavigationLinkState({
+						destinationPath: periodicNoteLinks.parentPath,
+						displayText: this.getDisplayText(
+							periodicNoteLinks.parentPath,
+							filePath
+						),
+						resolved: true,
+						clickHandler,
+						mouseOverHandler,
+					});
+				} else {
+					// Make unresolved link.
+					const clickHandlerForUnresolvedLinks: LinkEventHandler = (
+						target,
+						e
+					) => {
+						if (this.plugin.settings!.confirmFileCreation) {
+							new FileCreationModal(
+								this.plugin,
+								getTitleFromPath(target.destinationPath),
+								() => {
+									void createPeriodicNote(
+										periodicNoteLinks.parentGranularity!,
+										periodicNoteLinks.parentDate!
+									);
+								}
+							).open();
+						} else {
+							void createPeriodicNote(
+								periodicNoteLinks.parentGranularity!,
+								periodicNoteLinks.parentDate!
+							);
+						}
+					};
+					parent.link = new NavigationLinkState({
+						destinationPath: periodicNoteLinks.parentPath,
+						displayText: getTitleFromPath(
+							periodicNoteLinks.parentPath
+						),
+						resolved: false,
+						clickHandler: clickHandlerForUnresolvedLinks,
+						mouseOverHandler: () => {},
+					});
+				}
+			}
+		}
+
+		if (previous.hidden && next.hidden && parent.hidden) {
+			return undefined;
+		}
+
+		return new ThreeWayLinkState({
+			type: "periodic",
+			previous: previous,
+			next: next,
+			parent: parent,
+		});
 	}
 
+	/**
+	 * Constructs the three-way property link state for the specified file.
+	 * @param file The file to construct the three-way property link states for.
+	 * @param clickHandler The click handler for the links.
+	 * @param mouseOverHandler The mouse over handler for the links.
+	 * @returns The three-way property link state.
+	 */
+	private constructThreeWayPropertyLinkState(
+		file: TFile,
+		clickHandler: LinkEventHandler,
+		mouseOverHandler: LinkEventHandler
+	): ThreeWayLinkState | undefined {
+		const threeWayPropertyLink = getThreeWayPropertyLink(this.plugin, file);
+		if (
+			!threeWayPropertyLink.previous &&
+			!threeWayPropertyLink.next &&
+			!threeWayPropertyLink.parent
+		) {
+			return undefined;
+		}
+
+		const filePath = file.path;
+		const previous: {
+			link?: NavigationLinkState;
+			hidden: boolean;
+		} = { link: undefined, hidden: true };
+		const next: {
+			link?: NavigationLinkState;
+			hidden: boolean;
+		} = { link: undefined, hidden: true };
+		const parent: {
+			link?: NavigationLinkState;
+			hidden: boolean;
+		} = { link: undefined, hidden: true };
+
+		if (this.plugin.settings!.previousLinkProperty) {
+			previous.hidden = false;
+			if (threeWayPropertyLink.previous) {
+				previous.link = new NavigationLinkState({
+					destinationPath:
+						threeWayPropertyLink.previous.destinationPath,
+					displayText: this.getDisplayText(
+						threeWayPropertyLink.previous.destinationPath,
+						filePath,
+						threeWayPropertyLink.previous.displayText
+					),
+					resolved: true,
+					clickHandler,
+					mouseOverHandler,
+				});
+			}
+		}
+
+		if (this.plugin.settings!.nextLinkProperty) {
+			next.hidden = false;
+			if (threeWayPropertyLink.next) {
+				next.link = new NavigationLinkState({
+					destinationPath: threeWayPropertyLink.next.destinationPath,
+					displayText: this.getDisplayText(
+						threeWayPropertyLink.next.destinationPath,
+						filePath,
+						threeWayPropertyLink.next.displayText
+					),
+					resolved: true,
+					clickHandler,
+					mouseOverHandler,
+				});
+			}
+		}
+
+		if (this.plugin.settings!.parentLinkProperty) {
+			parent.hidden = false;
+			if (threeWayPropertyLink.parent) {
+				parent.link = new NavigationLinkState({
+					destinationPath:
+						threeWayPropertyLink.parent.destinationPath,
+					displayText: this.getDisplayText(
+						threeWayPropertyLink.parent.destinationPath,
+						filePath,
+						threeWayPropertyLink.parent.displayText
+					),
+					resolved: true,
+					clickHandler,
+					mouseOverHandler,
+				});
+			}
+		}
+
+		return new ThreeWayLinkState({
+			type: "property",
+			previous: previous,
+			next: next,
+			parent: parent,
+		});
+	}
+
+	/**
+	 * Constructs the annotated link states for the specified file.
+	 * @param file The file to construct the annotated link states for.
+	 * @param clickHandler The click handler for the links.
+	 * @param mouseOverHandler The mouse over handler for the links.
+	 * @returns The annotated link states.
+	 */
+	private async *constructAnnotatedLinkStates(
+		file: TFile,
+		clickHandler: LinkEventHandler,
+		mouseOverHandler: LinkEventHandler
+	): AsyncGenerator<PrefixedLinkState> {
+		const generator =
+			this.plugin.annotatedLinksManager!.searchAnnotatedLinks(file);
+		for await (const link of generator) {
+			yield new PrefixedLinkState({
+				prefix: link.annotation,
+				link: new NavigationLinkState({
+					destinationPath: link.destinationPath,
+					displayText: this.getDisplayText(
+						link.destinationPath,
+						file.path
+					),
+					resolved: true,
+					clickHandler,
+					mouseOverHandler,
+				}),
+			});
+		}
+	}
+
+	/**
+	 * Gets the display text for the specified destination path.
+	 * If `manualDisplayText` is specified, it is used first.
+	 * If `propertyNameForDisplayText` is specified, the property value is used next.
+	 * If appropriate text is not found, the title of the destination path is used.
+	 * @param destinationPath The destination path.
+	 * @param currentFilePath The current file path.
+	 * @param manualDisplayText The manual display text (e.g., from `[[path|display]]`).
+	 * @returns The display text.
+	 */
+	private getDisplayText(
+		destinationPath: string,
+		currentFilePath: string,
+		manualDisplayText?: string
+	): string {
+		if (manualDisplayText) {
+			return manualDisplayText;
+		}
+
+		const propertyName = this.plugin.settings!.propertyNameForDisplayText;
+		if (propertyName) {
+			const linkedFile =
+				this.plugin.app.metadataCache.getFirstLinkpathDest(
+					destinationPath,
+					currentFilePath
+				);
+			if (linkedFile) {
+				const values = getStringValuesFromFileProperty(
+					this.plugin.app,
+					linkedFile,
+					propertyName
+				);
+				if (values.length > 0) {
+					return values[0];
+				}
+			}
+		}
+
+		return getTitleFromPath(destinationPath);
+	}
+
+	/**
+	 * Unloads the navigation component
+	 */
 	public onunload(): void {
 		if (this.navigation) {
 			void unmount(this.navigation);

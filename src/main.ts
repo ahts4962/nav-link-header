@@ -230,7 +230,7 @@ export default class NavLinkHeader extends Plugin {
 		this.app.workspace.trigger("nav-link-header:settings-changed");
 	}
 
-	private get periodicNotesActive(): boolean {
+	public get periodicNotesActive(): boolean {
 		return getActiveGranularities(this.settings!, false).length > 0;
 	}
 
