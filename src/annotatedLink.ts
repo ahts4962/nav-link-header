@@ -121,8 +121,8 @@ export function getPropertyLinks(
 		for (const path of paths) {
 			if (!path || typeof path !== "string") continue;
 
-			// 处理 wiki 链接格式
-			const actualPath = parseWikiLink(path);
+			// Process wiki link format
+			const { path: actualPath, displayText } = parseWikiLink(path);
 
 			const linkedFile = app.metadataCache.getFirstLinkpathDest(
 				actualPath,
@@ -136,6 +136,12 @@ export function getPropertyLinks(
 			const linkedFileCache = app.metadataCache.getFileCache(linkedFile);
 			let displayValue: string | string[] | undefined;
 
+			// First, check if there is display text
+			if (displayText) {
+				displayValue = displayText;
+			} else {
+				
+			// Otherwise, check if the display property name is specified
 			// Make sure we get the title from frontmatter
 			if (linkedFileCache?.frontmatter && displayPropertyName) {
 				if (
@@ -160,6 +166,7 @@ export function getPropertyLinks(
 					}
 				}
 			}
+			}
 
 			result.push({
 				destinationPath: linkedFile.path,
@@ -172,13 +179,21 @@ export function getPropertyLinks(
 	return result;
 }
 
-// 解析 wiki 链接格式，返回实际路径
-function parseWikiLink(path: string): string {
-	// 匹配 [[文件名|显示名]] 或 [[文件名]] 格式
-	const wikiLinkRegex = /^\[\[([^|\]]+)(?:\|[^\]]+)?\]\]$/;
-	const match = path.match(wikiLinkRegex);
-	if (match) {
-		return match[1]; // 返回实际文件名部分
-	}
-	return path;
+// 解析 wiki 链接格式，返回实际路径和显示文本
+interface WikiLinkParts {
+  path: string;
+  displayText?: string;
+}
+
+function parseWikiLink(path: string): WikiLinkParts {
+  // 匹配 [[文件名|显示名]] 或 [[文件名]] 格式
+  const wikiLinkRegex = /^\[\[([^|\]]+)(?:\|([^\]]+))?\]\]$/;
+  const match = path.match(wikiLinkRegex);
+  if (match) {
+    return {
+      path: match[1],
+      displayText: match[2]  // 如果没有显示文本部分，这里会是 undefined
+    };
+  }
+  return { path };
 }
