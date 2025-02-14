@@ -13,12 +13,26 @@ export function getTitleFromPath(path: string): string {
  * If `file` is included in `folder` or its subfolders, returns `true`.
  * @param file The path to the file. This must be normalized beforehand.
  * @param folder The path to the folder. This must be normalized beforehand.
+ * @param recursive Whether to check subfolders of `folder`.
  */
-export function fileIncludedInFolder(file: string, folder: string): boolean {
-	if (folder === "/") {
-		return true;
+export function fileIncludedInFolder(
+	file: string,
+	folder: string,
+	recursive: boolean = true
+): boolean {
+	if (recursive) {
+		if (folder === "/") {
+			return true;
+		} else {
+			return file.startsWith(folder + "/");
+		}
 	} else {
-		return file.startsWith(folder + "/");
+		const index = file.lastIndexOf("/");
+		if (folder === "/") {
+			return index === -1;
+		} else {
+			return folder === file.substring(0, index);
+		}
 	}
 }
 
@@ -110,16 +124,11 @@ export function getStringValuesFromFileProperty(
 	file: TFile,
 	propertyName: string
 ): string[] {
-	const fileCache = app.metadataCache.getFileCache(file);
-	if (!fileCache?.frontmatter) {
+	const propertyValues = getValuesFromFileProperty(app, file, propertyName);
+	if (propertyValues === undefined) {
 		return [];
 	}
 
-	if (!(propertyName in fileCache.frontmatter)) {
-		return [];
-	}
-
-	const propertyValues = fileCache.frontmatter[propertyName] as unknown;
 	if (Array.isArray(propertyValues)) {
 		return propertyValues.filter((v) => typeof v === "string");
 	} else if (typeof propertyValues === "string") {
@@ -127,4 +136,62 @@ export function getStringValuesFromFileProperty(
 	} else {
 		return [];
 	}
+}
+
+/**
+ * Retrieves the first value of a specified property from the front matter of a file.
+ * @param app The application instance.
+ * @param file The file to retrieve the property from.
+ * @param propertyName The name of the property to retrieve.
+ * @returns The first value of the specified property. If the property value is not an array,
+ *    the value itself is returned. If the property does not exist, `undefined` is returned.
+ */
+export function getFirstValueFromFileProperty(
+	app: App,
+	file: TFile,
+	propertyName: string
+): string | number | boolean | null | undefined {
+	const propertyValues = getValuesFromFileProperty(app, file, propertyName);
+	if (propertyValues === undefined) {
+		return undefined;
+	}
+
+	if (Array.isArray(propertyValues)) {
+		return propertyValues[0];
+	} else {
+		return propertyValues;
+	}
+}
+
+/**
+ * Retrieves the values of a specified property from the front matter of a file.
+ * @param app The application instance.
+ * @param file The file to retrieve the property from.
+ * @param propertyName The name of the property to retrieve.
+ * @returns The values of the specified property. If the property does not exist,
+ *     `undefined` is returned.
+ */
+function getValuesFromFileProperty(
+	app: App,
+	file: TFile,
+	propertyName: string
+):
+	| string
+	| number
+	| boolean
+	| null
+	| (string | number | boolean | null)[]
+	| undefined {
+	const fileCache = app.metadataCache.getFileCache(file);
+	if (!fileCache?.frontmatter) {
+		return undefined;
+	}
+
+	if (!(propertyName in fileCache.frontmatter)) {
+		return undefined;
+	}
+
+	return fileCache.frontmatter[propertyName] as ReturnType<
+		typeof getValuesFromFileProperty
+	>;
 }

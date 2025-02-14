@@ -3,10 +3,12 @@ import { HoverPopoverUpdater } from "./hoverPopoverUpdater";
 import { MarkdownViewUpdater } from "./markdownViewUpdater";
 import { AnnotatedLinksManager } from "./annotatedLink";
 import { getActiveGranularities, PeriodicNotesManager } from "./periodicNotes";
+import { FolderLinksManager } from "./folderLink";
 import {
 	cloneSettings,
 	loadSettings,
 	NavLinkHeaderSettingTab,
+	type FolderLinksSettings,
 	type NavLinkHeaderSettings,
 } from "./settings";
 
@@ -15,6 +17,7 @@ export default class NavLinkHeader extends Plugin {
 	private hoverPopoverUpdater?: HoverPopoverUpdater;
 	public annotatedLinksManager?: AnnotatedLinksManager;
 	public periodicNotesManager?: PeriodicNotesManager;
+	public folderLinksManager: FolderLinksManager[] = [];
 
 	public settings?: NavLinkHeaderSettings;
 	public settingsUnderChange?: NavLinkHeaderSettings;
@@ -141,6 +144,18 @@ export default class NavLinkHeader extends Plugin {
 				this.periodicNotesManager = new PeriodicNotesManager(this);
 			}
 
+			if (this.settings!.folderLinksSettingsArray.length > 0) {
+				for (
+					let i = 0;
+					i < this.settings!.folderLinksSettingsArray.length;
+					i++
+				) {
+					this.folderLinksManager.push(
+						new FolderLinksManager(this, i)
+					);
+				}
+			}
+
 			this.registerEvent(
 				this.app.workspace.on("window-open", (window) => {
 					this.hoverPopoverUpdater?.onWindowOpen(window);
@@ -177,6 +192,9 @@ export default class NavLinkHeader extends Plugin {
 			this.registerEvent(
 				this.app.vault.on("create", (file) => {
 					this.periodicNotesManager?.onFileCreated(file);
+					this.folderLinksManager.forEach((manager) => {
+						manager.onFileCreated(file);
+					});
 					this.markdownViewUpdater?.onVaultChange();
 				})
 			);
@@ -185,6 +203,9 @@ export default class NavLinkHeader extends Plugin {
 				this.app.vault.on("delete", (file) => {
 					this.annotatedLinksManager?.onFileDeleted(file);
 					this.periodicNotesManager?.onFileDeleted(file);
+					this.folderLinksManager.forEach((manager) => {
+						manager.onFileDeleted(file);
+					});
 					this.markdownViewUpdater?.onVaultChange();
 				})
 			);
@@ -193,6 +214,9 @@ export default class NavLinkHeader extends Plugin {
 				this.app.vault.on("rename", (file, oldPath) => {
 					this.annotatedLinksManager?.onFileRenamed(file, oldPath);
 					this.periodicNotesManager?.onFileRenamed(file, oldPath);
+					this.folderLinksManager.forEach((manager) => {
+						manager.onFileRenamed(file, oldPath);
+					});
 					this.markdownViewUpdater?.onVaultChange();
 				})
 			);
@@ -200,6 +224,9 @@ export default class NavLinkHeader extends Plugin {
 			this.registerEvent(
 				this.app.vault.on("modify", (file) => {
 					this.annotatedLinksManager?.onFileModified(file);
+					this.folderLinksManager.forEach((manager) => {
+						manager.onFileModified(file);
+					});
 					this.markdownViewUpdater?.onVaultChange();
 				})
 			);
@@ -313,6 +340,41 @@ export default class NavLinkHeader extends Plugin {
 				this.periodicNotesManager?.updateEntireCache();
 			}
 
+			if (
+				previousSettings.folderLinksSettingsArray.length !==
+				this.settings.folderLinksSettingsArray.length
+			) {
+				this.folderLinksManager = [];
+				for (
+					let i = 0;
+					i < this.settings.folderLinksSettingsArray.length;
+					i++
+				) {
+					this.folderLinksManager.push(
+						new FolderLinksManager(this, i)
+					);
+				}
+			} else {
+				for (
+					let i = 0;
+					i < this.settings.folderLinksSettingsArray.length;
+					i++
+				) {
+					const previous =
+						previousSettings.folderLinksSettingsArray[i];
+					const current = this.settings.folderLinksSettingsArray[i];
+					if (
+						(
+							Object.keys(
+								current
+							) as (keyof FolderLinksSettings)[]
+						).some((key) => previous[key] !== current[key])
+					) {
+						this.folderLinksManager[i].updateEntireList();
+					}
+				}
+			}
+
 			this.markdownViewUpdater?.onSettingsChange();
 
 			await this.saveData(this.settings);
@@ -356,5 +418,6 @@ export default class NavLinkHeader extends Plugin {
 
 		this.annotatedLinksManager = undefined;
 		this.periodicNotesManager = undefined;
+		this.folderLinksManager = [];
 	}
 }

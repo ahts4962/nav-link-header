@@ -148,6 +148,17 @@ export class NavigationComponent extends Component {
 			}
 		}
 
+		// Folder links
+		if (this.plugin.settings!.folderLinksSettingsArray.length > 0) {
+			this.constructFolderLinkStates(
+				file,
+				clickHandler,
+				mouseOverHandler
+			).forEach((link) => {
+				newLinks.addLink(link);
+			});
+		}
+
 		if (fileChanged) {
 			// If the file has changed, update the navigation as soon as possible.
 			this.navigationProps.links = [...newLinks.getLinks()];
@@ -194,7 +205,6 @@ export class NavigationComponent extends Component {
 		mouseOverHandler: LinkEventHandler
 	): PrefixedLinkState[] {
 		const result: PrefixedLinkState[] = [];
-		const filePath = file.path;
 
 		const propertyLinks = getPropertyLinks(this.plugin, file);
 		for (const link of propertyLinks) {
@@ -205,7 +215,6 @@ export class NavigationComponent extends Component {
 						destinationPath: link.destinationPath,
 						displayText: this.getDisplayText(
 							link.destinationPath,
-							filePath,
 							link.displayText
 						),
 						resolved: true,
@@ -237,7 +246,6 @@ export class NavigationComponent extends Component {
 			return undefined;
 		}
 
-		const filePath = file.path;
 		const previous: {
 			link?: NavigationLinkState;
 			hidden: boolean;
@@ -265,8 +273,7 @@ export class NavigationComponent extends Component {
 				previous.link = new NavigationLinkState({
 					destinationPath: periodicNoteLinks.previousPath,
 					displayText: this.getDisplayText(
-						periodicNoteLinks.previousPath,
-						filePath
+						periodicNoteLinks.previousPath
 					),
 					resolved: true,
 					clickHandler,
@@ -277,8 +284,7 @@ export class NavigationComponent extends Component {
 				next.link = new NavigationLinkState({
 					destinationPath: periodicNoteLinks.nextPath,
 					displayText: this.getDisplayText(
-						periodicNoteLinks.nextPath,
-						filePath
+						periodicNoteLinks.nextPath
 					),
 					resolved: true,
 					clickHandler,
@@ -300,8 +306,7 @@ export class NavigationComponent extends Component {
 					parent.link = new NavigationLinkState({
 						destinationPath: periodicNoteLinks.parentPath,
 						displayText: this.getDisplayText(
-							periodicNoteLinks.parentPath,
-							filePath
+							periodicNoteLinks.parentPath
 						),
 						resolved: true,
 						clickHandler,
@@ -377,7 +382,6 @@ export class NavigationComponent extends Component {
 			return undefined;
 		}
 
-		const filePath = file.path;
 		const previous: {
 			link?: NavigationLinkState;
 			hidden: boolean;
@@ -399,7 +403,6 @@ export class NavigationComponent extends Component {
 						threeWayPropertyLink.previous.destinationPath,
 					displayText: this.getDisplayText(
 						threeWayPropertyLink.previous.destinationPath,
-						filePath,
 						threeWayPropertyLink.previous.displayText
 					),
 					resolved: true,
@@ -416,7 +419,6 @@ export class NavigationComponent extends Component {
 					destinationPath: threeWayPropertyLink.next.destinationPath,
 					displayText: this.getDisplayText(
 						threeWayPropertyLink.next.destinationPath,
-						filePath,
 						threeWayPropertyLink.next.displayText
 					),
 					resolved: true,
@@ -434,7 +436,6 @@ export class NavigationComponent extends Component {
 						threeWayPropertyLink.parent.destinationPath,
 					displayText: this.getDisplayText(
 						threeWayPropertyLink.parent.destinationPath,
-						filePath,
 						threeWayPropertyLink.parent.displayText
 					),
 					resolved: true,
@@ -450,6 +451,87 @@ export class NavigationComponent extends Component {
 			next: next,
 			parent: parent,
 		});
+	}
+
+	/**
+	 * Constructs the folder link states for the specified file.
+	 * @param file The file to construct the folder link states for.
+	 * @param clickHandler The click handler for the links.
+	 * @param mouseOverHandler The mouse over handler for the links.
+	 * @returns The folder link states.
+	 */
+	private constructFolderLinkStates(
+		file: TFile,
+		clickHandler: LinkEventHandler,
+		mouseOverHandler: LinkEventHandler
+	): ThreeWayLinkState[] {
+		const result: ThreeWayLinkState[] = [];
+
+		for (let i = 0; i < this.plugin.folderLinksManager.length; i++) {
+			const manager = this.plugin.folderLinksManager[i];
+			const files = manager.getAdjacentFiles(file);
+			if (!files.currentFileIncluded) {
+				continue;
+			}
+
+			const previous: {
+				link?: NavigationLinkState;
+				hidden: boolean;
+			} = { link: undefined, hidden: false };
+			const next: {
+				link?: NavigationLinkState;
+				hidden: boolean;
+			} = { link: undefined, hidden: false };
+			const parent: {
+				link?: NavigationLinkState;
+				hidden: boolean;
+			} = { link: undefined, hidden: true };
+
+			if (files.previous) {
+				previous.link = new NavigationLinkState({
+					destinationPath: files.previous,
+					displayText: this.getDisplayText(files.previous),
+					resolved: true,
+					clickHandler,
+					mouseOverHandler,
+				});
+			}
+
+			if (files.next) {
+				next.link = new NavigationLinkState({
+					destinationPath: files.next,
+					displayText: this.getDisplayText(files.next),
+					resolved: true,
+					clickHandler,
+					mouseOverHandler,
+				});
+			}
+
+			if (this.plugin.settings!.folderLinksSettingsArray[i].parentPath) {
+				parent.hidden = false;
+				if (files.parent) {
+					parent.link = new NavigationLinkState({
+						destinationPath: files.parent,
+						displayText: this.getDisplayText(files.parent),
+						resolved: true,
+						clickHandler,
+						mouseOverHandler,
+					});
+				}
+			}
+
+			result.push(
+				new ThreeWayLinkState({
+					type: "folder",
+					index: i,
+					previous: previous,
+					next: next,
+					parent: parent,
+				})
+			);
+		}
+
+		return result;
 	}
 
 	/**
@@ -471,10 +553,7 @@ export class NavigationComponent extends Component {
 				prefix: link.annotation,
 				link: new NavigationLinkState({
 					destinationPath: link.destinationPath,
-					displayText: this.getDisplayText(
-						link.destinationPath,
-						file.path
-					),
+					displayText: this.getDisplayText(link.destinationPath),
 					resolved: true,
 					clickHandler,
 					mouseOverHandler,
@@ -489,13 +568,11 @@ export class NavigationComponent extends Component {
 	 * If `propertyNameForDisplayText` is specified, the property value is used next.
 	 * If appropriate text is not found, the title of the destination path is used.
 	 * @param destinationPath The destination path.
-	 * @param currentFilePath The current file path.
 	 * @param manualDisplayText The manual display text (e.g., from `[[path|display]]`).
 	 * @returns The display text.
 	 */
 	private getDisplayText(
 		destinationPath: string,
-		currentFilePath: string,
 		manualDisplayText?: string
 	): string {
 		if (manualDisplayText) {
@@ -505,10 +582,7 @@ export class NavigationComponent extends Component {
 		const propertyName = this.plugin.settings!.propertyNameForDisplayText;
 		if (propertyName) {
 			const linkedFile =
-				this.plugin.app.metadataCache.getFirstLinkpathDest(
-					destinationPath,
-					currentFilePath
-				);
+				this.plugin.app.vault.getFileByPath(destinationPath);
 			if (linkedFile) {
 				const values = getStringValuesFromFileProperty(
 					this.plugin.app,

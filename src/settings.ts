@@ -1,4 +1,4 @@
-import { PluginSettingTab, Setting } from "obsidian";
+import { normalizePath, PluginSettingTab, Setting } from "obsidian";
 import type { IGranularity } from "obsidian-daily-notes-interface";
 import NavLinkHeader from "./main";
 
@@ -31,11 +31,12 @@ export interface NavLinkHeaderSettings {
 
 export interface FolderLinksSettings {
 	folderPath: string;
-	filteringRegex: string;
+	recursive: boolean;
+	filterRegex: string;
 	filterBy: "filename" | "property";
 	filterPropertyName: string;
 	sortOrder: "asc" | "desc";
-	sortBy: "filename" | "created" | "updated" | "property";
+	sortBy: "filename" | "created" | "modified" | "property";
 	sortPropertyName: string;
 	parentPath: string;
 }
@@ -69,7 +70,8 @@ const DEFAULT_SETTINGS: NavLinkHeaderSettings = {
 
 const DEFAULT_FOLDER_LINKS_SETTINGS: FolderLinksSettings = {
 	folderPath: "",
-	filteringRegex: "",
+	recursive: false,
+	filterRegex: "",
 	filterBy: "filename",
 	filterPropertyName: "",
 	sortOrder: "asc",
@@ -703,6 +705,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
 			this.plugin.settingsUnderChange!.folderLinksSettingsArray;
 		for (let i = 0; i < folderLinksSettingsArray.length; i++) {
 			const folderLinkSettings = folderLinksSettingsArray[i];
+
+			// The actual index will be the number shown here - 1.
 			new Setting(containerEl).setName(`Folder #${i + 1}`).setHeading();
 
 			new Setting(containerEl)
@@ -715,7 +719,21 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
 					text.setValue(folderLinkSettings.folderPath)
 						.setPlaceholder("path/to/the/folder")
 						.onChange((value) => {
-							folderLinkSettings.folderPath = value;
+							const trimmed = value.trim();
+							folderLinkSettings.folderPath =
+								trimmed === "" ? "" : normalizePath(trimmed);
+							this.plugin.triggerSettingsChangedEvent();
+						});
+				});
+
+			new Setting(containerEl)
+				.setName("Recursive")
+				.setDesc("Whether to include notes in subfolders.")
+				.addToggle((toggle) => {
+					toggle
+						.setValue(folderLinkSettings.recursive)
+						.onChange((value) => {
+							folderLinkSettings.recursive = value;
 							this.plugin.triggerSettingsChangedEvent();
 						});
 				});
@@ -727,10 +745,10 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
 						"If you want to include all files, leave this field blank."
 				)
 				.addText((text) => {
-					text.setValue(folderLinkSettings.filteringRegex)
+					text.setValue(folderLinkSettings.filterRegex)
 						.setPlaceholder("^\\d{3}_.+\\.md$")
 						.onChange((value) => {
-							folderLinkSettings.filteringRegex = value;
+							folderLinkSettings.filterRegex = value;
 							this.plugin.triggerSettingsChangedEvent();
 						});
 				});
@@ -791,7 +809,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
 						.addOptions({
 							filename: "File name",
 							created: "Creation date",
-							updated: "Update date",
+							modified: "Modification date",
 							property: "Property",
 						})
 						.setValue(folderLinkSettings.sortBy)
@@ -799,7 +817,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
 							folderLinkSettings.sortBy = value as
 								| "filename"
 								| "created"
-								| "updated"
+								| "modified"
 								| "property";
 							this.plugin.triggerSettingsChangedEvent();
 						});
@@ -826,7 +844,9 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
 					text.setValue(folderLinkSettings.parentPath)
 						.setPlaceholder("path/to/the/note.md")
 						.onChange((value) => {
-							folderLinkSettings.parentPath = value;
+							const trimmed = value.trim();
+							folderLinkSettings.parentPath =
+								trimmed === "" ? "" : normalizePath(trimmed);
 							this.plugin.triggerSettingsChangedEvent();
 						});
 				});

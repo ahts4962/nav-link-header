@@ -1,4 +1,29 @@
-import { parseWikiLink, removeCode } from "src/utils";
+import { fileIncludedInFolder, parseWikiLink, removeCode } from "src/utils";
+
+test("check if the file is included in the folder", () => {
+	expect(fileIncludedInFolder("file", "/")).toEqual(true);
+	expect(fileIncludedInFolder("file", "/", false)).toEqual(true);
+	expect(fileIncludedInFolder("folder/file", "/")).toEqual(true);
+	expect(fileIncludedInFolder("folder/file", "/", false)).toEqual(false);
+	expect(fileIncludedInFolder("fol/der/file", "/")).toEqual(true);
+	expect(fileIncludedInFolder("fol/der/file", "/", false)).toEqual(false);
+	expect(fileIncludedInFolder("file", "folder")).toEqual(false);
+	expect(fileIncludedInFolder("file", "folder", false)).toEqual(false);
+	expect(fileIncludedInFolder("folder/file", "folder")).toEqual(true);
+	expect(fileIncludedInFolder("folder/file", "folder", false)).toEqual(true);
+	expect(fileIncludedInFolder("fol/der/file", "folder")).toEqual(false);
+	expect(fileIncludedInFolder("fol/der/file", "folder", false)).toEqual(
+		false
+	);
+	expect(fileIncludedInFolder("folder/file", "fol")).toEqual(false);
+	expect(fileIncludedInFolder("folder/file", "fol", false)).toEqual(false);
+	expect(fileIncludedInFolder("fol/der/file", "fol")).toEqual(true);
+	expect(fileIncludedInFolder("fol/der/file", "fol", false)).toEqual(false);
+	expect(fileIncludedInFolder("fol/der/file", "fol/der")).toEqual(true);
+	expect(fileIncludedInFolder("fol/der/file", "fol/der", false)).toEqual(
+		true
+	);
+});
 
 test("remove YAML front matter", () => {
 	let content;
