@@ -1,26 +1,30 @@
 import { debounce, Plugin, type HoverParent } from "obsidian";
-import { HoverPopoverUpdater } from "./hoverPopoverUpdater";
 import { MarkdownViewUpdater } from "./markdownViewUpdater";
+import { HoverPopoverUpdater } from "./hoverPopoverUpdater";
 import { AnnotatedLinksManager } from "./annotatedLink";
 import { getActiveGranularities, PeriodicNotesManager } from "./periodicNotes";
 import { FolderLinksManager } from "./folderLink";
 import { addCommands } from "./commands";
 import {
-	cloneSettings,
 	loadSettings,
 	NavLinkHeaderSettingTab,
-	type FolderLinksSettings,
 	type NavLinkHeaderSettings,
 } from "./settings";
+import { deepCopy, deepEqual } from "./utils";
 
 export default class NavLinkHeader extends Plugin {
 	private markdownViewUpdater?: MarkdownViewUpdater;
 	private hoverPopoverUpdater?: HoverPopoverUpdater;
 	public annotatedLinksManager?: AnnotatedLinksManager;
 	public periodicNotesManager?: PeriodicNotesManager;
-	public folderLinksManager: FolderLinksManager[] = [];
+	public folderLinksManagers: FolderLinksManager[] = [];
 
+	// The currently applied settings.
 	public settings?: NavLinkHeaderSettings;
+
+	// The settings that are being changed.
+	// Change this in the settings page, etc., and apply it to `this.settings`
+	// by calling `this.triggerSettingsChangedEvent`.
 	public settingsUnderChange?: NavLinkHeaderSettings;
 
 	public onload(): void {
@@ -29,150 +33,161 @@ export default class NavLinkHeader extends Plugin {
 
 	private async initialize(): Promise<void> {
 		await loadSettings(this);
-
 		this.addSettingTab(new NavLinkHeaderSettingTab(this));
 
 		addCommands(this);
 
 		this.app.workspace.onLayoutReady(() => {
-			if (this.settings!.displayInMarkdownViews) {
-				this.markdownViewUpdater = new MarkdownViewUpdater(this);
-			}
-
-			if (this.settings!.displayInHoverPopovers) {
-				this.hoverPopoverUpdater = new HoverPopoverUpdater(this);
-			}
-
-			if (this.settings!.annotationStrings.length > 0) {
-				this.annotatedLinksManager = new AnnotatedLinksManager(this);
-			}
-
-			if (this.periodicNotesActive) {
-				this.periodicNotesManager = new PeriodicNotesManager(this);
-			}
-
-			if (this.settings!.folderLinksSettingsArray.length > 0) {
-				for (
-					let i = 0;
-					i < this.settings!.folderLinksSettingsArray.length;
-					i++
-				) {
-					this.folderLinksManager.push(
-						new FolderLinksManager(this, i)
-					);
-				}
-			}
-
-			this.registerEvent(
-				this.app.workspace.on("window-open", (window) => {
-					this.hoverPopoverUpdater?.onWindowOpen(window);
-				})
-			);
-
-			this.registerEvent(
-				this.app.workspace.on("window-close", (window) => {
-					this.hoverPopoverUpdater?.onWindowClose(window);
-				})
-			);
-
-			this.registerEvent(
-				// @ts-expect-error: hover-link event is not exposed explicitly.
-				this.app.workspace.on("hover-link", ({ hoverParent }) => {
-					this.hoverPopoverUpdater?.onHoverLink(
-						hoverParent as HoverParent
-					);
-				})
-			);
-
-			// Registers the hover link source for the hover popover.
-			this.registerHoverLinkSource("nav-link-header", {
-				defaultMod: true,
-				display: "Nav Link Header",
-			});
-
-			this.registerEvent(
-				this.app.workspace.on("layout-change", () => {
-					this.markdownViewUpdater?.onLayoutChange();
-				})
-			);
-
-			this.registerEvent(
-				this.app.vault.on("create", (file) => {
-					this.periodicNotesManager?.onFileCreated(file);
-					this.folderLinksManager.forEach((manager) => {
-						manager.onFileCreated(file);
-					});
-					this.markdownViewUpdater?.onVaultChange();
-				})
-			);
-
-			this.registerEvent(
-				this.app.vault.on("delete", (file) => {
-					this.annotatedLinksManager?.onFileDeleted(file);
-					this.periodicNotesManager?.onFileDeleted(file);
-					this.folderLinksManager.forEach((manager) => {
-						manager.onFileDeleted(file);
-					});
-					this.markdownViewUpdater?.onVaultChange();
-				})
-			);
-
-			this.registerEvent(
-				this.app.vault.on("rename", (file, oldPath) => {
-					this.annotatedLinksManager?.onFileRenamed(file, oldPath);
-					this.periodicNotesManager?.onFileRenamed(file, oldPath);
-					this.folderLinksManager.forEach((manager) => {
-						manager.onFileRenamed(file, oldPath);
-					});
-					this.markdownViewUpdater?.onVaultChange();
-				})
-			);
-
-			this.registerEvent(
-				this.app.vault.on("modify", (file) => {
-					this.annotatedLinksManager?.onFileModified(file);
-					this.folderLinksManager.forEach((manager) => {
-						manager.onFileModified(file);
-					});
-					this.markdownViewUpdater?.onVaultChange();
-				})
-			);
-
-			this.registerEvent(
-				this.app.workspace.on(
-					// @ts-expect-error: custom event.
-					"nav-link-header:settings-changed",
-					() => {
-						this.onSettingsChange();
-					}
-				)
-			);
-
-			this.registerEvent(
-				this.app.workspace.on(
-					// @ts-expect-error: custom event.
-					"periodic-notes:settings-updated",
-					() => {
-						this.onPeriodicNotesSettingsChange();
-					}
-				)
-			);
+			this.activateComponents();
+			this.registerEvents();
 		});
 	}
 
+	private activateComponents(): void {
+		if (this.settings!.displayInMarkdownViews) {
+			this.markdownViewUpdater = new MarkdownViewUpdater(this);
+		}
+
+		if (this.settings!.displayInHoverPopovers) {
+			this.hoverPopoverUpdater = new HoverPopoverUpdater(this);
+		}
+
+		if (this.settings!.annotationStrings.length > 0) {
+			this.annotatedLinksManager = new AnnotatedLinksManager(this);
+		}
+
+		if (this.periodicNotesEnabled) {
+			this.periodicNotesManager = new PeriodicNotesManager(this);
+		}
+
+		const length = this.settings!.folderLinksSettingsArray.length;
+		if (length > 0) {
+			for (let i = 0; i < length; i++) {
+				this.folderLinksManagers.push(new FolderLinksManager(this, i));
+			}
+		}
+	}
+
+	private registerEvents(): void {
+		this.registerEvent(
+			this.app.workspace.on("window-open", (window) => {
+				this.hoverPopoverUpdater?.onWindowOpen(window);
+			})
+		);
+
+		this.registerEvent(
+			this.app.workspace.on("window-close", (window) => {
+				this.hoverPopoverUpdater?.onWindowClose(window);
+			})
+		);
+
+		this.registerEvent(
+			// @ts-expect-error: hover-link event is not exposed explicitly.
+			this.app.workspace.on("hover-link", ({ hoverParent }) => {
+				this.hoverPopoverUpdater?.onHoverLink(
+					hoverParent as HoverParent
+				);
+			})
+		);
+
+		// Registers the hover link source for the hover popover.
+		this.registerHoverLinkSource("nav-link-header", {
+			defaultMod: true,
+			display: "Nav Link Header",
+		});
+
+		this.registerEvent(
+			this.app.workspace.on("layout-change", () => {
+				this.markdownViewUpdater?.onLayoutChange();
+			})
+		);
+
+		this.registerEvent(
+			this.app.vault.on("create", (file) => {
+				this.periodicNotesManager?.onFileCreated(file);
+				this.folderLinksManagers.forEach((manager) => {
+					manager.onFileCreated(file);
+				});
+				this.markdownViewUpdater?.onVaultChange();
+			})
+		);
+
+		this.registerEvent(
+			this.app.vault.on("delete", (file) => {
+				this.annotatedLinksManager?.onFileDeleted(file);
+				this.periodicNotesManager?.onFileDeleted(file);
+				this.folderLinksManagers.forEach((manager) => {
+					manager.onFileDeleted(file);
+				});
+				this.markdownViewUpdater?.onVaultChange();
+			})
+		);
+
+		this.registerEvent(
+			this.app.vault.on("rename", (file, oldPath) => {
+				this.annotatedLinksManager?.onFileRenamed(file, oldPath);
+				this.periodicNotesManager?.onFileRenamed(file, oldPath);
+				this.folderLinksManagers.forEach((manager) => {
+					manager.onFileRenamed(file, oldPath);
+				});
+				this.markdownViewUpdater?.onVaultChange();
+			})
+		);
+
+		this.registerEvent(
+			this.app.vault.on("modify", (file) => {
+				this.annotatedLinksManager?.onFileModified(file);
+				this.folderLinksManagers.forEach((manager) => {
+					manager.onFileModified(file);
+				});
+				this.markdownViewUpdater?.onVaultChange();
+			})
+		);
+
+		this.registerEvent(
+			this.app.workspace.on(
+				// @ts-expect-error: custom event.
+				"nav-link-header:settings-changed",
+				() => {
+					this.onSettingsChange();
+				}
+			)
+		);
+
+		this.registerEvent(
+			this.app.workspace.on(
+				// @ts-expect-error: custom event.
+				"periodic-notes:settings-updated",
+				() => {
+					this.onPeriodicNotesSettingsChange();
+				}
+			)
+		);
+	}
+
+	/**
+	 * Call this method to apply the settings changes.
+	 * This method can be called many times in a short period of time because
+	 * the application of settings is debounced.
+	 */
 	public triggerSettingsChangedEvent(): void {
 		this.app.workspace.trigger("nav-link-header:settings-changed");
 	}
 
-	public get periodicNotesActive(): boolean {
+	/**
+	 * Refers to the settings of this plugin and the Periodic Notes plugin, and
+	 * returns `true` if any of the periodic note links are enabled.
+	 */
+	public get periodicNotesEnabled(): boolean {
 		return getActiveGranularities(this.settings!, false).length > 0;
 	}
 
 	private onSettingsChange = debounce(
 		async () => {
 			const previousSettings = this.settings!;
-			this.settings = cloneSettings(this.settingsUnderChange!);
+			this.settings = deepCopy(this.settingsUnderChange!);
 
+			// Update the state of the components.
 			if (
 				!previousSettings.displayInMarkdownViews &&
 				this.settings.displayInMarkdownViews
@@ -182,7 +197,7 @@ export default class NavLinkHeader extends Plugin {
 				previousSettings.displayInMarkdownViews &&
 				!this.settings.displayInMarkdownViews
 			) {
-				this.markdownViewUpdater?.dispose();
+				this.markdownViewUpdater!.dispose();
 				this.markdownViewUpdater = undefined;
 			}
 
@@ -195,7 +210,7 @@ export default class NavLinkHeader extends Plugin {
 				previousSettings.displayInHoverPopovers &&
 				!this.settings.displayInHoverPopovers
 			) {
-				this.hoverPopoverUpdater?.dispose();
+				this.hoverPopoverUpdater!.dispose();
 				this.hoverPopoverUpdater = undefined;
 			}
 
@@ -209,75 +224,71 @@ export default class NavLinkHeader extends Plugin {
 				this.settings.annotationStrings.length === 0
 			) {
 				this.annotatedLinksManager = undefined;
-			}
-			if (this.annotatedLinksManager) {
-				if (
-					previousSettings.annotationStrings.length !==
-						this.settings.annotationStrings.length ||
-					previousSettings.allowSpaceAfterAnnotationString !==
-						this.settings.allowSpaceAfterAnnotationString
-				)
-					this.annotatedLinksManager.clearCache();
+			} else if (this.annotatedLinksManager) {
+				const keys: (keyof NavLinkHeaderSettings)[] = [
+					"annotationStrings",
+					"allowSpaceAfterAnnotationString",
+				];
+				const changed = keys.some(
+					(key) =>
+						!deepEqual(previousSettings[key], this.settings![key])
+				);
+				if (changed)
+					this.annotatedLinksManager = new AnnotatedLinksManager(
+						this
+					);
 			}
 
-			if (this.periodicNotesActive && !this.periodicNotesManager) {
+			if (this.periodicNotesEnabled && !this.periodicNotesManager) {
 				this.periodicNotesManager = new PeriodicNotesManager(this);
-			} else if (!this.periodicNotesActive && this.periodicNotesManager) {
-				this.periodicNotesManager = undefined;
 			} else if (
-				previousSettings.prevNextLinksEnabledInDailyNotes !==
-					this.settings.prevNextLinksEnabledInDailyNotes ||
-				previousSettings.prevNextLinksEnabledInWeeklyNotes !==
-					this.settings.prevNextLinksEnabledInWeeklyNotes ||
-				previousSettings.prevNextLinksEnabledInMonthlyNotes !==
-					this.settings.prevNextLinksEnabledInMonthlyNotes ||
-				previousSettings.prevNextLinksEnabledInQuarterlyNotes !==
-					this.settings.prevNextLinksEnabledInQuarterlyNotes ||
-				previousSettings.prevNextLinksEnabledInYearlyNotes !==
-					this.settings.prevNextLinksEnabledInYearlyNotes ||
-				previousSettings.parentLinkGranularityInDailyNotes !==
-					this.settings.parentLinkGranularityInDailyNotes ||
-				previousSettings.parentLinkGranularityInWeeklyNotes !==
-					this.settings.parentLinkGranularityInWeeklyNotes ||
-				previousSettings.parentLinkGranularityInMonthlyNotes !==
-					this.settings.parentLinkGranularityInMonthlyNotes ||
-				previousSettings.parentLinkGranularityInQuarterlyNotes !==
-					this.settings.parentLinkGranularityInQuarterlyNotes
+				!this.periodicNotesEnabled &&
+				this.periodicNotesManager
 			) {
-				this.periodicNotesManager?.updateEntireCache();
+				this.periodicNotesManager = undefined;
+			} else if (this.periodicNotesManager) {
+				const keys: (keyof NavLinkHeaderSettings)[] = [
+					"prevNextLinksEnabledInDailyNotes",
+					"prevNextLinksEnabledInWeeklyNotes",
+					"prevNextLinksEnabledInMonthlyNotes",
+					"prevNextLinksEnabledInQuarterlyNotes",
+					"prevNextLinksEnabledInYearlyNotes",
+					"parentLinkGranularityInDailyNotes",
+					"parentLinkGranularityInWeeklyNotes",
+					"parentLinkGranularityInMonthlyNotes",
+					"parentLinkGranularityInQuarterlyNotes",
+				];
+				const changed = keys.some(
+					(key) =>
+						!deepEqual(previousSettings[key], this.settings![key])
+				);
+				if (changed) {
+					this.periodicNotesManager = new PeriodicNotesManager(this);
+				}
 			}
 
 			if (
 				previousSettings.folderLinksSettingsArray.length !==
 				this.settings.folderLinksSettingsArray.length
 			) {
-				this.folderLinksManager = [];
-				for (
-					let i = 0;
-					i < this.settings.folderLinksSettingsArray.length;
-					i++
-				) {
-					this.folderLinksManager.push(
+				this.folderLinksManagers = [];
+				const length = this.settings.folderLinksSettingsArray.length;
+				for (let i = 0; i < length; i++) {
+					this.folderLinksManagers.push(
 						new FolderLinksManager(this, i)
 					);
 				}
 			} else {
-				for (
-					let i = 0;
-					i < this.settings.folderLinksSettingsArray.length;
-					i++
-				) {
+				const length = this.settings.folderLinksSettingsArray.length;
+				for (let i = 0; i < length; i++) {
 					const previous =
 						previousSettings.folderLinksSettingsArray[i];
 					const current = this.settings.folderLinksSettingsArray[i];
-					if (
-						(
-							Object.keys(
-								current
-							) as (keyof FolderLinksSettings)[]
-						).some((key) => previous[key] !== current[key])
-					) {
-						this.folderLinksManager[i].updateEntireList();
+					if (!deepEqual(previous, current)) {
+						this.folderLinksManagers[i] = new FolderLinksManager(
+							this,
+							i
+						);
 					}
 				}
 			}
@@ -292,12 +303,15 @@ export default class NavLinkHeader extends Plugin {
 
 	private onPeriodicNotesSettingsChange = debounce(
 		() => {
-			if (this.periodicNotesActive && !this.periodicNotesManager) {
+			if (this.periodicNotesEnabled && !this.periodicNotesManager) {
 				this.periodicNotesManager = new PeriodicNotesManager(this);
-			} else if (!this.periodicNotesActive && this.periodicNotesManager) {
+			} else if (
+				!this.periodicNotesEnabled &&
+				this.periodicNotesManager
+			) {
 				this.periodicNotesManager = undefined;
-			} else {
-				this.periodicNotesManager?.updateEntireCache();
+			} else if (this.periodicNotesManager) {
+				this.periodicNotesManager = new PeriodicNotesManager(this);
 			}
 
 			this.markdownViewUpdater?.onSettingsChange();
@@ -325,6 +339,6 @@ export default class NavLinkHeader extends Plugin {
 
 		this.annotatedLinksManager = undefined;
 		this.periodicNotesManager = undefined;
-		this.folderLinksManager = [];
+		this.folderLinksManagers = [];
 	}
 }

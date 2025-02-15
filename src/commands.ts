@@ -2,6 +2,10 @@ import type { TFile } from "obsidian";
 import type NavLinkHeader from "./main";
 import { getThreeWayPropertyLink } from "./propertyLink";
 
+/**
+ * Adds commands to the plugin.
+ * @param plugin The plugin instance.
+ */
 export function addCommands(plugin: NavLinkHeader): void {
 	plugin.addCommand({
 		id: "open-previous-periodic-note",
@@ -201,13 +205,22 @@ export function addCommands(plugin: NavLinkHeader): void {
 	});
 }
 
+/**
+ * Opens the previous, next, or parent periodic note
+ * (helper function for `addCommands`).
+ * @param plugin The plugin instance.
+ * @param file The active file.
+ * @param direction The direction to open.
+ * @param checking Whether it is checking availability or executing.
+ * @returns Whether the command is available.
+ */
 function openPeriodicNote(
 	plugin: NavLinkHeader,
 	file: TFile,
 	direction: "previous" | "next" | "parent",
 	checking: boolean
 ): boolean {
-	if (!plugin.periodicNotesActive) {
+	if (!plugin.periodicNotesEnabled) {
 		return false;
 	}
 
@@ -237,7 +250,7 @@ function openPeriodicNote(
 	} else if (direction === "parent") {
 		if (
 			!adjacentNotes.parentPath ||
-			adjacentNotes.parentDate !== undefined
+			adjacentNotes.parentDate !== undefined // Unresolved link
 		) {
 			return false;
 		}
@@ -252,6 +265,15 @@ function openPeriodicNote(
 	return true;
 }
 
+/**
+ * Opens the previous, next, or parent note specified by file property
+ * (helper function for `addCommands`).
+ * @param plugin The plugin instance.
+ * @param file The active file.
+ * @param direction The direction to open.
+ * @param checking Whether it is checking availability or executing.
+ * @returns Whether the command is available.
+ */
 function openThreeWayPropertyLink(
 	plugin: NavLinkHeader,
 	file: TFile,
@@ -303,6 +325,15 @@ function openThreeWayPropertyLink(
 	return true;
 }
 
+/**
+ * Opens the previous, next, or parent note specified by folder settings
+ * (helper function for `addCommands`).
+ * @param plugin The plugin instance.
+ * @param file The active file.
+ * @param direction The direction to open.
+ * @param checking Whether it is checking availability or executing.
+ * @returns Whether the command is available.
+ */
 function openFolderLink(
 	plugin: NavLinkHeader,
 	file: TFile,
@@ -313,8 +344,8 @@ function openFolderLink(
 		return false;
 	}
 
-	for (let i = 0; i < plugin.folderLinksManager.length; i++) {
-		const manager = plugin.folderLinksManager[i];
+	for (let i = 0; i < plugin.folderLinksManagers.length; i++) {
+		const manager = plugin.folderLinksManagers[i];
 		const links = manager.getAdjacentFiles(file);
 		if (direction === "previous") {
 			if (!links.previous) {

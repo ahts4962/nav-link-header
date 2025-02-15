@@ -1,4 +1,4 @@
-import { App, TFile } from "obsidian";
+import type { App, TFile } from "obsidian";
 import NavLinkHeader from "./main";
 import { getStringValuesFromFileProperty, parseWikiLink } from "./utils";
 
@@ -18,11 +18,7 @@ export function getPropertyLinks(
 	prefix: string;
 	displayText?: string;
 }[] {
-	const result: {
-		destinationPath: string;
-		prefix: string;
-		displayText?: string;
-	}[] = [];
+	const result: ReturnType<typeof getPropertyLinks> = [];
 
 	const propertyMappings = plugin.settings!.propertyMappings;
 	for (const { property, prefix } of propertyMappings) {
@@ -54,21 +50,42 @@ export function getThreeWayPropertyLink(
 	next?: { destinationPath: string; displayText?: string };
 	parent?: { destinationPath: string; displayText?: string };
 } {
-	const result: Record<
-		string,
-		{ destinationPath: string; displayText?: string } | undefined
-	> = {};
-	for (const [key, property] of [
-		["previous", plugin.settings!.previousLinkProperty],
-		["next", plugin.settings!.nextLinkProperty],
-		["parent", plugin.settings!.parentLinkProperty],
-	]) {
-		result[key] = undefined;
-		if (property) {
-			const links = getLinksFromFileProperty(plugin.app, file, property);
-			if (links.length > 0) {
-				result[key] = links[0];
-			}
+	const result: ReturnType<typeof getThreeWayPropertyLink> = {
+		previous: undefined,
+		next: undefined,
+		parent: undefined,
+	};
+
+	if (plugin.settings!.previousLinkProperty) {
+		const links = getLinksFromFileProperty(
+			plugin.app,
+			file,
+			plugin.settings!.previousLinkProperty
+		);
+		if (links.length > 0) {
+			result.previous = links[0];
+		}
+	}
+
+	if (plugin.settings!.nextLinkProperty) {
+		const links = getLinksFromFileProperty(
+			plugin.app,
+			file,
+			plugin.settings!.nextLinkProperty
+		);
+		if (links.length > 0) {
+			result.next = links[0];
+		}
+	}
+
+	if (plugin.settings!.parentLinkProperty) {
+		const links = getLinksFromFileProperty(
+			plugin.app,
+			file,
+			plugin.settings!.parentLinkProperty
+		);
+		if (links.length > 0) {
+			result.parent = links[0];
 		}
 	}
 
@@ -91,16 +108,14 @@ function getLinksFromFileProperty(
 	destinationPath: string;
 	displayText?: string;
 }[] {
+	const result: ReturnType<typeof getLinksFromFileProperty> = [];
+
 	const propertyValues = getStringValuesFromFileProperty(
 		app,
 		file,
 		propertyName
 	);
 
-	const result: {
-		destinationPath: string;
-		displayText?: string;
-	}[] = [];
 	for (const value of propertyValues) {
 		let path = value;
 		let displayText: string | undefined = undefined;

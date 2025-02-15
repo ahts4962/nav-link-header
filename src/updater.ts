@@ -1,6 +1,6 @@
-import { Component, TFile } from "obsidian";
-import { NavigationComponent } from "./navigationComponent.svelte";
+import type { Component, TFile } from "obsidian";
 import type NavLinkHeader from "./main";
+import { NavigationComponent } from "./navigationComponent.svelte";
 
 /**
  * The base class for updating the navigation links.
@@ -33,18 +33,22 @@ export class Updater {
 		hoverParent: Component;
 		forced: boolean;
 	}): void {
-		let navigation = container.querySelector(".nav-link-header-navigation");
+		let navigationElement = container.querySelector(
+			".nav-link-header-navigation"
+		);
 
 		// Creates a new element for the navigation links, if not already added.
-		if (!navigation) {
-			navigation = container.createDiv({
+		if (!navigationElement) {
+			navigationElement = container.createDiv({
 				cls: "nav-link-header-navigation",
 			});
 			if (nextSibling) {
-				container.insertBefore(navigation, nextSibling);
+				container.insertBefore(navigationElement, nextSibling);
 			}
 
-			parent.addChild(new NavigationComponent(this.plugin, navigation));
+			parent.addChild(
+				new NavigationComponent(this.plugin, navigationElement)
+			);
 		}
 
 		if ("_children" in parent && parent._children instanceof Array) {

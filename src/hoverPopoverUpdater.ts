@@ -3,7 +3,7 @@ import {
 	HoverPopover,
 	MarkdownRenderer,
 	TFile,
-	WorkspaceWindow,
+	type WorkspaceWindow,
 	type HoverParent,
 } from "obsidian";
 import type NavLinkHeader from "./main";
@@ -18,7 +18,7 @@ export class HoverPopoverUpdater extends Updater {
 	private observers: Map<HTMLBodyElement, MutationObserver> = new Map();
 
 	// A reference to the hover parent obtained from the last hover-link event.
-	// This is needed because hover-link event does not directly create a popover.
+	// This is necessary because hover-link event does not directly create a popover.
 	private lastHoverParent?: WeakRef<HoverParent>;
 
 	constructor(plugin: NavLinkHeader) {
@@ -30,8 +30,11 @@ export class HoverPopoverUpdater extends Updater {
 		});
 	}
 
-	// Adds an observer when a new window is opened.
+	/**
+	 * Call this method when a new window is opened.
+	 */
 	public onWindowOpen(window: WorkspaceWindow): void {
+		// Adds an observer when a new window is opened.
 		this.addObserver(window.doc.querySelector("body"));
 	}
 
@@ -65,6 +68,9 @@ export class HoverPopoverUpdater extends Updater {
 		this.observers.set(body, observer);
 	}
 
+	/**
+	 * Call this method when a window is closed.
+	 */
 	public onWindowClose(window: WorkspaceWindow): void {
 		// Removes the observer when a window is closed.
 		const body = window.doc.querySelector("body");
@@ -77,6 +83,9 @@ export class HoverPopoverUpdater extends Updater {
 		}
 	}
 
+	/**
+	 * Call this method when the hover-link event is triggered.
+	 */
 	public onHoverLink(hoverParent: HoverParent): void {
 		// Stores the hover parent when the hover-link event is triggered.
 		// This is used when the hover popover is actually created later.
@@ -115,8 +124,10 @@ export class HoverPopoverUpdater extends Updater {
 				"containerEl" in child &&
 				child.containerEl instanceof Element
 			) {
-				// Set hover parent to the MarkdownRenderer of the HoverPopover.
-				// This is the default behavior of the Obsidian's own hover popover.
+				// Specify the hover parent to be used when displaying more hover popovers
+				// from this hover popover later.
+				// Here, `MarkdownRenderer` of this hover popover is used.
+				// This seems to be the default behavior of the Obsidian's own hover popover.
 				let hoverParent: Component = child;
 				if ("_children" in child && child._children instanceof Array) {
 					for (const grandChild of child._children) {
@@ -141,6 +152,9 @@ export class HoverPopoverUpdater extends Updater {
 		}
 	}
 
+	/**
+	 * Cleans up the resources.
+	 */
 	public dispose(): void {
 		// Disconnects all observers.
 		for (const observer of this.observers.values()) {

@@ -1,5 +1,5 @@
 import { type Moment } from "moment";
-import { normalizePath, TAbstractFile, TFile } from "obsidian";
+import { normalizePath, TFile, type TAbstractFile } from "obsidian";
 import {
 	appHasDailyNotesPluginLoaded,
 	appHasWeeklyNotesPluginLoaded,
@@ -21,7 +21,7 @@ import {
 	createYearlyNote,
 	type IGranularity,
 } from "obsidian-daily-notes-interface";
-import NavLinkHeader from "./main";
+import type NavLinkHeader from "./main";
 import type { NavLinkHeaderSettings } from "./settings";
 import { fileIncludedInFolder, joinPaths } from "./utils";
 
@@ -86,6 +86,9 @@ export function getActiveGranularities(
 	}
 }
 
+/**
+ * Gets `prevNextLinksEnabled` setting for the specified granularity.
+ */
 export function getPrevNextLinkEnabledSetting(
 	settings: NavLinkHeaderSettings,
 	granularity: IGranularity
@@ -99,6 +102,9 @@ export function getPrevNextLinkEnabledSetting(
 	}[granularity];
 }
 
+/**
+ * Gets `parentLinkGranularity` setting for the specified granularity.
+ */
 export function getParentLinkGranularitySetting(
 	settings: NavLinkHeaderSettings,
 	granularity: IGranularity
@@ -135,6 +141,10 @@ export function createPeriodicNote(
 	}[granularity](date);
 }
 
+/**
+ * Manages the periodic notes cache.
+ * The instance must be re-created when the settings related to periodic notes are changed.
+ */
 export class PeriodicNotesManager {
 	private noteCache: Map<IGranularity, Record<string, TFile>> = new Map();
 
@@ -142,16 +152,10 @@ export class PeriodicNotesManager {
 	private noteUIDCache: Map<IGranularity, string[]> = new Map();
 
 	constructor(private plugin: NavLinkHeader) {
-		this.updateEntireCache();
-	}
-
-	public updateEntireCache(): void {
 		const granularities = getActiveGranularities(
 			this.plugin.settings!,
 			true
 		);
-		this.noteCache.clear();
-		this.noteUIDCache.clear();
 		for (const granularity of granularities) {
 			const allNotes = getAllPeriodicNotes(granularity);
 			this.noteCache.set(granularity, allNotes);
@@ -237,14 +241,14 @@ export class PeriodicNotesManager {
 		parentDate?: Moment;
 		parentGranularity?: IGranularity;
 	} {
-		const result = {
+		const result: ReturnType<typeof this.searchAdjacentNotes> = {
 			currentGranularity: undefined,
 			previousPath: undefined,
 			nextPath: undefined,
 			parentPath: undefined,
 			parentDate: undefined,
 			parentGranularity: undefined,
-		} as ReturnType<typeof this.searchAdjacentNotes>;
+		};
 
 		const { date, granularity } = this.getDateFromPath(file.path);
 		if (!date || !granularity) {

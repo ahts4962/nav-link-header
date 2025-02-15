@@ -1,17 +1,18 @@
-import { TAbstractFile, TFile } from "obsidian";
-import { removeCode } from "./utils";
+import { type TAbstractFile, TFile } from "obsidian";
 import type NavLinkHeader from "./main";
+import { removeCode } from "./utils";
 
+/**
+ * Manages the annotated links.
+ * This class is used to search annotated links and cache the search results.
+ * If the settings related to annotated links are changed, the instance must be re-created.
+ */
 export class AnnotatedLinksManager {
 	// The cache object that stores the result of annotated links search.
 	// Cache structure: cache[backlinkFilePath][currentFilePath] = [annotation1, annotation2, ...]
 	private cache: Map<string, Map<string, string[]>> = new Map();
 
 	constructor(private plugin: NavLinkHeader) {}
-
-	public clearCache(): void {
-		this.cache.clear();
-	}
 
 	public onFileDeleted(file: TAbstractFile): void {
 		if (!(file instanceof TFile)) {
@@ -56,6 +57,10 @@ export class AnnotatedLinksManager {
 			)
 			.map(([source]) => source);
 
+		const annotationStrings = this.plugin.settings!.annotationStrings;
+		const allowSpace =
+			this.plugin.settings!.allowSpaceAfterAnnotationString;
+
 		for (const backlink of backlinks) {
 			const cachedResult = this.cache.get(backlink)?.get(file.path);
 			if (cachedResult) {
@@ -74,17 +79,18 @@ export class AnnotatedLinksManager {
 				await this.plugin.app.vault.cachedRead(backlinkFile)
 			);
 
-			const foundAnnotations: string[] = [];
-			for (const annotation of this.plugin.settings!.annotationStrings) {
+			const detectedAnnotations: string[] = [];
+			for (const annotation of annotationStrings) {
 				if (
 					this.searchAnnotatedLinkInContent(
 						content,
 						backlink,
 						file.path,
-						annotation
+						annotation,
+						allowSpace
 					)
 				) {
-					foundAnnotations.push(annotation);
+					detectedAnnotations.push(annotation);
 					yield { destinationPath: backlink, annotation };
 				}
 			}
@@ -92,28 +98,27 @@ export class AnnotatedLinksManager {
 			if (!this.cache.has(backlink)) {
 				this.cache.set(backlink, new Map());
 			}
-			this.cache.get(backlink)!.set(file.path, foundAnnotations);
+			this.cache.get(backlink)!.set(file.path, detectedAnnotations);
 		}
 	}
 
 	/**
-	 * Helper function of `searchAnnotatedLinks`.
+	 * Helper function for `searchAnnotatedLinks`.
 	 * @param content The content to search in.
 	 * @param backlinkFilePath The path of the backlink file.
 	 * @param filePath The path of the file to search for.
 	 * @param annotationString The annotation string to search for.
+	 * @param allowSpace Whether to allow space after the annotation string.
 	 * @returns Whether the annotated link is found in the content.
 	 */
 	private searchAnnotatedLinkInContent(
 		content: string,
 		backlinkFilePath: string,
 		filePath: string,
-		annotationString: string
+		annotationString: string,
+		allowSpace: boolean
 	): boolean {
-		const optionalSpace = this.plugin.settings!
-			.allowSpaceAfterAnnotationString
-			? " ?"
-			: "";
+		const optionalSpace = allowSpace ? " ?" : "";
 		const escapedAnnotationString = annotationString.replace(
 			/[.*+?^${}()|[\]\\]/g,
 			"\\$&"

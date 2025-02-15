@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { NavigationLinkState } from "../navigationLinkState";
+	import type { NavigationLinkState } from "../navigationLinkState";
 
 	const { state }: { state: NavigationLinkState } = $props();
 </script>

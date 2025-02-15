@@ -1,7 +1,12 @@
-import { Component, debounce, MarkdownRenderer, MarkdownView } from "obsidian";
+import {
+	debounce,
+	MarkdownRenderer,
+	MarkdownView,
+	type Component,
+} from "obsidian";
 import type NavLinkHeader from "./main";
-import { NavigationComponent } from "./navigationComponent.svelte";
 import { Updater } from "./updater";
+import { NavigationComponent } from "./navigationComponent.svelte";
 
 export class MarkdownViewUpdater extends Updater {
 	constructor(plugin: NavLinkHeader) {
@@ -14,12 +19,12 @@ export class MarkdownViewUpdater extends Updater {
 	}
 
 	public onVaultChange(): void {
-		// Updates the navigation links when the file changes.
+		// Updates the navigation links when any file is changed.
 		this.debouncedUpdateAll();
 	}
 
 	public onSettingsChange(): void {
-		// Updates the navigation links when the settings change
+		// Updates the navigation links when the settings is changed.
 		this.updateAll({ forced: true });
 	}
 
@@ -27,7 +32,7 @@ export class MarkdownViewUpdater extends Updater {
 		() => {
 			this.updateAll({ forced: true });
 		},
-		1000,
+		500,
 		true
 	);
 
@@ -42,7 +47,7 @@ export class MarkdownViewUpdater extends Updater {
 			if (view instanceof MarkdownView && view.file) {
 				// Set hover parent to the `MarkdownView` when source mode.
 				// Set hover parent to the `MarkdownRenderer` of the `MarkdownView` when preview mode.
-				// This is the default behavior of the Obsidian's own hover popover.
+				// This seems to be the default behavior of the Obsidian's own hover popover.
 				const state = view.getState() as { mode: string };
 				let hoverParent: Component = view;
 				if (state.mode === "preview") {
@@ -72,6 +77,9 @@ export class MarkdownViewUpdater extends Updater {
 		});
 	}
 
+	/**
+	 * Cleans up the resources.
+	 */
 	public dispose(): void {
 		this.debouncedUpdateAll.cancel();
 

@@ -1,21 +1,33 @@
-import { Vault, TFile, TAbstractFile } from "obsidian";
+import { Vault, TFile, type TAbstractFile } from "obsidian";
 import type NavLinkHeader from "./main";
 import { fileIncludedInFolder, getFirstValueFromFileProperty } from "./utils";
 
+/**
+ * Manages the list of files in a folder specified by the settings.
+ * This list includes files with extensions other than ".md".
+ * The instance must be re-created when the settings are changed.
+ */
 export class FolderLinksManager {
+	// Sorted list of files
 	private files: {
+		// Normalized path to the file.
 		path: string;
+
+		// File name with extension.
+		// Used for sorting when `sortValue` is the same between files.
 		fileName: string;
+
+		// Value used for sorting.
+		// Retrieved when the file is added to the list.
 		sortValue: string | number;
-	}[] = []; // Sorted list of files
+	}[] = [];
 
+	/**
+	 * Initializes a new instance of the `FolderLinksManager` class.
+	 * @param plugin The plugin instance.
+	 * @param folderIndex The index of the folder settings in the settings array.
+	 */
 	constructor(private plugin: NavLinkHeader, private folderIndex: number) {
-		this.updateEntireList();
-	}
-
-	public updateEntireList(): void {
-		this.files = [];
-
 		const settings =
 			this.plugin.settings!.folderLinksSettingsArray[this.folderIndex];
 		if (!settings.folderPath) {
@@ -27,6 +39,7 @@ export class FolderLinksManager {
 		if (!folder) {
 			return;
 		}
+
 		Vault.recurseChildren(folder, (file) => {
 			if (!(file instanceof TFile)) {
 				return;
@@ -58,6 +71,10 @@ export class FolderLinksManager {
 		this.addFileToList(file);
 	}
 
+	/**
+	 * Called when a file is modified.
+	 * This event handler is necessary to detect changes in the file properties.
+	 */
 	public onFileModified(file: TAbstractFile): void {
 		if (!(file instanceof TFile)) {
 			return;
@@ -67,7 +84,7 @@ export class FolderLinksManager {
 	}
 
 	/**
-	 * Adds the file to the list of files if it is included in the folder.
+	 * Adds the file to the list if it is included in the folder.
 	 * The file is filtered based on the settings.
 	 * @param file The file to add to the list.
 	 * @param sort Whether to sort the list after adding the file.
@@ -129,9 +146,7 @@ export class FolderLinksManager {
 					file,
 					settings.sortPropertyName
 				);
-				if (propertyValue === undefined || propertyValue === null) {
-					sortValue = file.name;
-				} else {
+				if (propertyValue !== undefined && propertyValue !== null) {
 					if (typeof propertyValue === "boolean") {
 						sortValue = propertyValue ? 1 : 0;
 					} else {
@@ -143,7 +158,7 @@ export class FolderLinksManager {
 
 		this.files.push({
 			path: file.path,
-			fileName: file.name, // Used for sorting when the sortValue is the same
+			fileName: file.name,
 			sortValue: sortValue,
 		});
 
@@ -164,7 +179,7 @@ export class FolderLinksManager {
 
 	/**
 	 * Sorts the list of files based on the settings and the values
-	 * previously stored with the files.
+	 * previously stored with the file paths.
 	 */
 	private sortList(): void {
 		const settings =
@@ -175,28 +190,23 @@ export class FolderLinksManager {
 			(f) => typeof f.sortValue === "string"
 		);
 		this.files.sort((a, b) => {
+			let result = 0;
 			if (stringComparison) {
 				const aSortValue = String(a.sortValue);
 				const bSortValue = String(b.sortValue);
-				const result = aSortValue.localeCompare(bSortValue);
-				if (result !== 0) {
-					return result * (revert ? -1 : 1);
-				} else {
-					return (
-						a.fileName.localeCompare(b.fileName) * (revert ? -1 : 1)
-					);
-				}
+				result =
+					aSortValue.localeCompare(bSortValue) ||
+					a.fileName.localeCompare(b.fileName);
 			} else {
 				if (a.sortValue < b.sortValue) {
-					return -1 * (revert ? -1 : 1);
+					result = -1;
 				} else if (a.sortValue > b.sortValue) {
-					return 1 * (revert ? -1 : 1);
+					result = 1;
 				} else {
-					return (
-						a.fileName.localeCompare(b.fileName) * (revert ? -1 : 1)
-					);
+					result = a.fileName.localeCompare(b.fileName);
 				}
 			}
+			return revert ? -result : result;
 		});
 	}
 
@@ -204,8 +214,9 @@ export class FolderLinksManager {
 	 * Retrieves the paths of the previous, next, and parent files of the specified file.
 	 * @param file The file to retrieve the adjacent files of.
 	 * @returns The paths of the previous, next, and parent files.
-	 *     If the file is not found in the folder, or the corresponding settings are disabled,
-	 *     the value is `undefined`.
+	 *     If `file` is not included in the folder, `currentFileIncluded` is `false` and
+	 *     the other values are `undefined`.
+	 *     If previous, next, or parent files are not found, the corresponding value is `undefined`.
 	 */
 	public getAdjacentFiles(file: TFile): {
 		currentFileIncluded: boolean;
@@ -213,12 +224,12 @@ export class FolderLinksManager {
 		next?: string;
 		parent?: string;
 	} {
-		const result = {
+		const result: ReturnType<typeof this.getAdjacentFiles> = {
 			currentFileIncluded: false,
 			previous: undefined,
 			next: undefined,
 			parent: undefined,
-		} as ReturnType<typeof this.getAdjacentFiles>;
+		};
 
 		const index = this.files.findIndex((f) => f.path === file.path);
 		if (index === -1) {

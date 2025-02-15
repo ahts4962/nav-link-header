@@ -13,10 +13,18 @@ export class LinkContainer {
 
 	constructor(private plugin: NavLinkHeader) {}
 
+	/**
+	 * Returns the links added so far.
+	 */
 	public getLinks() {
 		return this.links;
 	}
 
+	/**
+	 * Adds a link to the container.
+	 * The link is filtered and sorted according to the plugin settings.
+	 * @param link The link to add.
+	 */
 	public addLink(link: PrefixedLinkState | ThreeWayLinkState) {
 		// Filter out any prefixed links that have the same path.
 		if (
@@ -109,6 +117,10 @@ export class LinkContainer {
 		});
 	}
 
+	/**
+	 * Returns the sort tag for the link.
+	 * The sort tag is the equivalent of strings in `displayOrderOfLinks` setting.
+	 */
 	private getSortTag(link: PrefixedLinkState | ThreeWayLinkState): string {
 		if (link instanceof PrefixedLinkState) {
 			return link.prefix;

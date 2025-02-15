@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { ThreeWayLinkState } from "../navigationLinkState";
+	import type { ThreeWayLinkState } from "../navigationLinkState";
 	import NavigationLink from "./NavigationLink.svelte";
 	import Icon from "./Icon.svelte";
 

@@ -1,4 +1,4 @@
-import { Component, TFile } from "obsidian";
+import { Component, type TFile } from "obsidian";
 import { mount, unmount } from "svelte";
 import type NavLinkHeader from "./main";
 import {
@@ -120,7 +120,7 @@ export class NavigationComponent extends Component {
 		}
 
 		// Periodic note links
-		if (this.plugin.periodicNotesActive) {
+		if (this.plugin.periodicNotesEnabled) {
 			const periodicNoteLinkState = this.constructPeriodicNoteLinkState(
 				file,
 				clickHandler,
@@ -467,8 +467,8 @@ export class NavigationComponent extends Component {
 	): ThreeWayLinkState[] {
 		const result: ThreeWayLinkState[] = [];
 
-		for (let i = 0; i < this.plugin.folderLinksManager.length; i++) {
-			const manager = this.plugin.folderLinksManager[i];
+		for (let i = 0; i < this.plugin.folderLinksManagers.length; i++) {
+			const manager = this.plugin.folderLinksManagers[i];
 			const files = manager.getAdjacentFiles(file);
 			if (!files.currentFileIncluded) {
 				continue;
