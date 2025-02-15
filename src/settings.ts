@@ -1,7 +1,9 @@
 import { normalizePath, PluginSettingTab, Setting } from "obsidian";
 import type { IGranularity } from "obsidian-daily-notes-interface";
 import NavLinkHeader from "./main";
+import { deepCopy } from "./utils";
 
+// When adding properties to these interfaces, see also `NavLinkHeader.onSettingsChange`.
 export interface NavLinkHeaderSettings {
 	displayInMarkdownViews: boolean;
 	displayInHoverPopovers: boolean;
@@ -79,17 +81,6 @@ const DEFAULT_FOLDER_LINKS_SETTINGS: FolderLinksSettings = {
 	sortPropertyName: "",
 	parentPath: "",
 };
-
-/**
- * Clone the settings object (deep copy).
- * @param settings - The settings object to clone.
- * @returns The cloned settings object.
- */
-export function cloneSettings<
-	T extends NavLinkHeaderSettings | FolderLinksSettings
->(settings: T): T {
-	return JSON.parse(JSON.stringify(settings)) as T;
-}
 
 export async function loadSettings(plugin: NavLinkHeader): Promise<void> {
 	const result = {} as Record<keyof NavLinkHeaderSettings, unknown>;
@@ -201,16 +192,46 @@ export async function loadSettings(plugin: NavLinkHeader): Promise<void> {
 			continue;
 		}
 
-		// Apply default values for new settings.
+		// Apply default values if not found in loaded data.
 		if (key in loadedData) {
-			result[key] = loadedData[key];
+			if (key === "folderLinksSettingsArray") {
+				if (Array.isArray(loadedData[key])) {
+					const resultArray: FolderLinksSettings[] = [];
+					for (let i = 0; i < loadedData[key].length; i++) {
+						const subResult = {} as Record<
+							keyof FolderLinksSettings,
+							unknown
+						>;
+						const loadedFolderLinksSettings = loadedData[key][
+							i
+						] as Record<string, unknown>;
+						for (const subKey of Object.keys(
+							DEFAULT_FOLDER_LINKS_SETTINGS
+						) as (keyof FolderLinksSettings)[]) {
+							if (subKey in loadedFolderLinksSettings) {
+								subResult[subKey] =
+									loadedFolderLinksSettings[subKey];
+							} else {
+								subResult[subKey] =
+									DEFAULT_FOLDER_LINKS_SETTINGS[subKey];
+							}
+						}
+						resultArray.push(subResult as FolderLinksSettings);
+					}
+					result[key] = resultArray;
+				} else {
+					result[key] = DEFAULT_SETTINGS[key];
+				}
+			} else {
+				result[key] = loadedData[key];
+			}
 		} else {
 			result[key] = DEFAULT_SETTINGS[key];
 		}
 	}
 
 	plugin.settings = result as NavLinkHeaderSettings;
-	plugin.settingsUnderChange = cloneSettings(plugin.settings);
+	plugin.settingsUnderChange = deepCopy(plugin.settings);
 	await plugin.saveData(plugin.settings);
 }
 
@@ -219,7 +240,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
 		super(plugin.app, plugin);
 	}
 
-	display(): void {
+	public display(): void {
 		const { containerEl } = this;
 		containerEl.empty();
 
@@ -851,16 +872,32 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
 						});
 				});
 
-			new Setting(containerEl).setName("").addButton((button) => {
-				button
-					.setButtonText(`Remove settings for folder #${i + 1}`)
-					.setWarning()
-					.onClick(() => {
-						folderLinksSettingsArray.splice(i, 1);
+			new Setting(containerEl)
+				.setName("")
+				.addButton((button) => {
+					button.setButtonText("Move up").onClick(() => {
+						this.swapFolderLinksSettings(i, i - 1);
 						this.plugin.triggerSettingsChangedEvent();
 						this.display(); // Force re-render.
 					});
-			});
+				})
+				.addButton((button) => {
+					button.setButtonText("Move down").onClick(() => {
+						this.swapFolderLinksSettings(i, i + 1);
+						this.plugin.triggerSettingsChangedEvent();
+						this.display(); // Force re-render.
+					});
+				})
+				.addButton((button) => {
+					button
+						.setButtonText(`Remove settings for folder #${i + 1}`)
+						.setWarning()
+						.onClick(() => {
+							folderLinksSettingsArray.splice(i, 1);
+							this.plugin.triggerSettingsChangedEvent();
+							this.display(); // Force re-render.
+						});
+				});
 		}
 
 		new Setting(containerEl).setName("").addButton((button) => {
@@ -869,15 +906,38 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
 				.setCta()
 				.onClick(() => {
 					this.plugin.settingsUnderChange!.folderLinksSettingsArray.push(
-						cloneSettings(DEFAULT_FOLDER_LINKS_SETTINGS)
+						deepCopy(DEFAULT_FOLDER_LINKS_SETTINGS)
 					);
 					this.plugin.triggerSettingsChangedEvent();
 					this.display(); // Force re-render.
 				});
 		});
 	}
+
+	/**
+	 * Swaps the elements at the specified indices in the array.
+	 * If the indices are out of range, nothing happens.
+	 * @param index1 The index of the first element.
+	 * @param index2 The index of the second element.
+	 */
+	private swapFolderLinksSettings(index1: number, index2: number): void {
+		const folderLinksSettingsArray =
+			this.plugin.settingsUnderChange!.folderLinksSettingsArray;
+		if (index1 < 0 || index1 >= folderLinksSettingsArray.length) {
+			return;
+		}
+		if (index2 < 0 || index2 >= folderLinksSettingsArray.length) {
+			return;
+		}
+		const temp = folderLinksSettingsArray[index1];
+		folderLinksSettingsArray[index1] = folderLinksSettingsArray[index2];
+		folderLinksSettingsArray[index2] = temp;
+	}
 }
 
+/**
+ * Parses the comma-separated strings and returns an array of strings.
+ */
 function parsePrefixStrings(prefixes: string): Array<string> {
 	return prefixes
 		.split(",")
@@ -885,6 +945,10 @@ function parsePrefixStrings(prefixes: string): Array<string> {
 		.filter((prefix) => prefix.length > 0);
 }
 
+/**
+ * Parses the string with multiple lines of "key:value",
+ * and returns an array of property mappings.
+ */
 function parsePropertyMappings(
 	mappings: string
 ): Array<{ property: string; prefix: string }> {
