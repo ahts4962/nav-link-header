@@ -118,14 +118,37 @@ export function getParentLinkGranularitySetting(
 	}[granularity];
 }
 
+/**
+ * Gets all periodic notes for the specified granularity.
+ * @param granularity The granularity of the notes.
+ * @returns The record of note UID and TFile.
+ *     If the periodic notes folder is not found
+ *     (e.g., the folder path in the Periodic Notes plugin settings is invalid),
+ *     empty object is returned.
+ */
 function getAllPeriodicNotes(granularity: IGranularity): Record<string, TFile> {
-	return {
-		day: getAllDailyNotes,
-		week: getAllWeeklyNotes,
-		month: getAllMonthlyNotes,
-		quarter: getAllQuarterlyNotes,
-		year: getAllYearlyNotes,
-	}[granularity]();
+	try {
+		return {
+			day: getAllDailyNotes,
+			week: getAllWeeklyNotes,
+			month: getAllMonthlyNotes,
+			quarter: getAllQuarterlyNotes,
+			year: getAllYearlyNotes,
+		}[granularity]();
+	} catch (e) {
+		if (e instanceof Error) {
+			if (
+				e.message === "Failed to find daily notes folder" ||
+				e.message === "Failed to find weekly notes folder" ||
+				e.message === "Failed to find monthly notes folder" ||
+				e.message === "Failed to find quarterly notes folder" ||
+				e.message === "Failed to find yearly notes folder"
+			) {
+				return {};
+			}
+		}
+		throw e;
+	}
 }
 
 export function createPeriodicNote(
@@ -320,6 +343,9 @@ export class PeriodicNotesManager {
 		for (const granularity of granularities) {
 			const { folder } = getPeriodicNoteSettings(granularity);
 			const periodicNotesFolder = normalizePath(folder ?? "/");
+			if (!this.plugin.app.vault.getFolderByPath(periodicNotesFolder)) {
+				continue;
+			}
 			if (!fileIncludedInFolder(path, periodicNotesFolder)) {
 				continue;
 			}
