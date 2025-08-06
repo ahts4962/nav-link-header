@@ -7,33 +7,39 @@ export type LinkEventHandler = (
  * The state of a NavigationLink.
  */
 export class NavigationLinkState {
-	public destinationPath: string;
+	public destination: string;
+	public isExternal: boolean;
 	public displayText: string;
 	public resolved: boolean;
 	public clickHandler: LinkEventHandler;
 	public mouseOverHandler: LinkEventHandler;
 
 	/**
-	 * @param destinationPath The path to the destination file. This must be normalized beforehand.
+	 * @param destination The path to the destination file or the URL of the external link.
+	 *     If the destination is a file path, it must be normalized beforehand.
+	 * @param isExternal Whether the destination is an external link.
 	 * @param displayText The display text of the link.
 	 * @param resolved Whether the destination path exists (true) or not (false).
 	 * @param clickHandler The function to call when the link is clicked.
 	 * @param mouseOverHandler The function to call when the mouse hovers over the link.
 	 */
 	constructor({
-		destinationPath,
+		destination,
+		isExternal,
 		displayText,
 		resolved,
 		clickHandler,
 		mouseOverHandler,
 	}: {
-		destinationPath: string;
+		destination: string;
+		isExternal: boolean;
 		displayText: string;
 		resolved: boolean;
 		clickHandler: LinkEventHandler;
 		mouseOverHandler: LinkEventHandler;
 	}) {
-		this.destinationPath = destinationPath;
+		this.destination = destination;
+		this.isExternal = isExternal;
 		this.displayText = displayText;
 		this.resolved = resolved;
 		this.clickHandler = clickHandler;

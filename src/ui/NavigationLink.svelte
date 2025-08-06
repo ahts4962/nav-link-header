@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { NavigationLinkState } from "../navigationLinkState";
+	import Icon from "./Icon.svelte";
 
 	const { state }: { state: NavigationLinkState } = $props();
 </script>
@@ -25,7 +26,11 @@
 		state.mouseOverHandler(state, e);
 	}}
 	onfocus={() => {}}>{state.displayText}</a
->
+>{#if state.isExternal}<Icon
+		iconId="external-link"
+		muted
+		size="var(--icon-xs)"
+	/>{/if}
 
 <style>
 	.unresolved {

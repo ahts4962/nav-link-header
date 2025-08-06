@@ -139,8 +139,14 @@ export class AnnotatedLinksManager {
 					String.raw`${escapedAnnotationString}${optionalSpace}\!?\[[^\[\]]+\]\(([^\(\)]+)\)`,
 					"g"
 				),
-				extractor: (matchString: string) =>
-					decodeURIComponent(matchString.split("#")[0]), // Removes the optional string.
+				extractor: (matchString: string) => {
+					matchString = matchString.split("#")[0]; // Removes the optional string.
+					try {
+						return decodeURIComponent(matchString);
+					} catch {
+						return matchString; // Fallback to raw string if decoding fails.
+					}
+				},
 			},
 		];
 

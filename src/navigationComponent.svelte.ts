@@ -15,7 +15,11 @@ import {
 	getPrevNextLinkEnabledSetting,
 } from "./periodicNotes";
 import { FileCreationModal } from "./fileCreationModal";
-import { getStringValuesFromFileProperty, getTitleFromPath } from "./utils";
+import {
+	getStringValuesFromFileProperty,
+	getTitleFromPath,
+	openExternalLink,
+} from "./utils";
 import Navigation from "./ui/Navigation.svelte";
 
 /**
@@ -91,21 +95,31 @@ export class NavigationComponent extends Component {
 		const filePath = file.path;
 		const newLinks = new LinkContainer(this.plugin);
 		const clickHandler: LinkEventHandler = (target, e) => {
-			void this.plugin.app.workspace.openLinkText(
-				target.destinationPath,
-				filePath,
-				e.ctrlKey || e.button === 1
-			);
+			if (target.isExternal) {
+				void openExternalLink(
+					this.plugin.app,
+					target.destination,
+					true
+				);
+			} else {
+				void this.plugin.app.workspace.openLinkText(
+					target.destination,
+					filePath,
+					e.ctrlKey || e.button === 1
+				);
+			}
 		};
 		const mouseOverHandler: LinkEventHandler = (target, e) => {
-			this.plugin.app.workspace.trigger("hover-link", {
-				event: e,
-				source: "nav-link-header",
-				hoverParent,
-				targetEl: e.target,
-				linktext: target.destinationPath,
-				sourcePath: filePath,
-			});
+			if (!target.isExternal) {
+				this.plugin.app.workspace.trigger("hover-link", {
+					event: e,
+					source: "nav-link-header",
+					hoverParent,
+					targetEl: e.target,
+					linktext: target.destination,
+					sourcePath: filePath,
+				});
+			}
 		};
 
 		// Property links
@@ -212,9 +226,11 @@ export class NavigationComponent extends Component {
 				new PrefixedLinkState({
 					prefix: link.prefix,
 					link: new NavigationLinkState({
-						destinationPath: link.destinationPath,
+						destination: link.destination,
+						isExternal: link.isExternal,
 						displayText: this.getDisplayText(
-							link.destinationPath,
+							link.destination,
+							link.isExternal,
 							link.displayText
 						),
 						resolved: true,
@@ -271,9 +287,11 @@ export class NavigationComponent extends Component {
 
 			if (periodicNoteLinks.previousPath) {
 				previous.link = new NavigationLinkState({
-					destinationPath: periodicNoteLinks.previousPath,
+					destination: periodicNoteLinks.previousPath,
+					isExternal: false,
 					displayText: this.getDisplayText(
-						periodicNoteLinks.previousPath
+						periodicNoteLinks.previousPath,
+						false
 					),
 					resolved: true,
 					clickHandler,
@@ -282,9 +300,11 @@ export class NavigationComponent extends Component {
 			}
 			if (periodicNoteLinks.nextPath) {
 				next.link = new NavigationLinkState({
-					destinationPath: periodicNoteLinks.nextPath,
+					destination: periodicNoteLinks.nextPath,
+					isExternal: false,
 					displayText: this.getDisplayText(
-						periodicNoteLinks.nextPath
+						periodicNoteLinks.nextPath,
+						false
 					),
 					resolved: true,
 					clickHandler,
@@ -304,9 +324,11 @@ export class NavigationComponent extends Component {
 			if (periodicNoteLinks.parentPath) {
 				if (!periodicNoteLinks.parentDate) {
 					parent.link = new NavigationLinkState({
-						destinationPath: periodicNoteLinks.parentPath,
+						destination: periodicNoteLinks.parentPath,
+						isExternal: false,
 						displayText: this.getDisplayText(
-							periodicNoteLinks.parentPath
+							periodicNoteLinks.parentPath,
+							false
 						),
 						resolved: true,
 						clickHandler,
@@ -321,7 +343,7 @@ export class NavigationComponent extends Component {
 						if (this.plugin.settings!.confirmFileCreation) {
 							new FileCreationModal(
 								this.plugin,
-								getTitleFromPath(target.destinationPath),
+								getTitleFromPath(target.destination),
 								() => {
 									void createPeriodicNote(
 										periodicNoteLinks.parentGranularity!,
@@ -337,7 +359,8 @@ export class NavigationComponent extends Component {
 						}
 					};
 					parent.link = new NavigationLinkState({
-						destinationPath: periodicNoteLinks.parentPath,
+						destination: periodicNoteLinks.parentPath,
+						isExternal: false,
 						displayText: getTitleFromPath(
 							periodicNoteLinks.parentPath
 						),
@@ -399,10 +422,11 @@ export class NavigationComponent extends Component {
 			previous.hidden = false;
 			if (threeWayPropertyLink.previous) {
 				previous.link = new NavigationLinkState({
-					destinationPath:
-						threeWayPropertyLink.previous.destinationPath,
+					destination: threeWayPropertyLink.previous.destination,
+					isExternal: threeWayPropertyLink.previous.isExternal,
 					displayText: this.getDisplayText(
-						threeWayPropertyLink.previous.destinationPath,
+						threeWayPropertyLink.previous.destination,
+						threeWayPropertyLink.previous.isExternal,
 						threeWayPropertyLink.previous.displayText
 					),
 					resolved: true,
@@ -416,9 +440,11 @@ export class NavigationComponent extends Component {
 			next.hidden = false;
 			if (threeWayPropertyLink.next) {
 				next.link = new NavigationLinkState({
-					destinationPath: threeWayPropertyLink.next.destinationPath,
+					destination: threeWayPropertyLink.next.destination,
+					isExternal: threeWayPropertyLink.next.isExternal,
 					displayText: this.getDisplayText(
-						threeWayPropertyLink.next.destinationPath,
+						threeWayPropertyLink.next.destination,
+						threeWayPropertyLink.next.isExternal,
 						threeWayPropertyLink.next.displayText
 					),
 					resolved: true,
@@ -432,10 +458,11 @@ export class NavigationComponent extends Component {
 			parent.hidden = false;
 			if (threeWayPropertyLink.parent) {
 				parent.link = new NavigationLinkState({
-					destinationPath:
-						threeWayPropertyLink.parent.destinationPath,
+					destination: threeWayPropertyLink.parent.destination,
+					isExternal: threeWayPropertyLink.parent.isExternal,
 					displayText: this.getDisplayText(
-						threeWayPropertyLink.parent.destinationPath,
+						threeWayPropertyLink.parent.destination,
+						threeWayPropertyLink.parent.isExternal,
 						threeWayPropertyLink.parent.displayText
 					),
 					resolved: true,
@@ -489,8 +516,9 @@ export class NavigationComponent extends Component {
 
 			if (files.previous) {
 				previous.link = new NavigationLinkState({
-					destinationPath: files.previous,
-					displayText: this.getDisplayText(files.previous),
+					destination: files.previous,
+					isExternal: false,
+					displayText: this.getDisplayText(files.previous, false),
 					resolved: true,
 					clickHandler,
 					mouseOverHandler,
@@ -499,8 +527,9 @@ export class NavigationComponent extends Component {
 
 			if (files.next) {
 				next.link = new NavigationLinkState({
-					destinationPath: files.next,
-					displayText: this.getDisplayText(files.next),
+					destination: files.next,
+					isExternal: false,
+					displayText: this.getDisplayText(files.next, false),
 					resolved: true,
 					clickHandler,
 					mouseOverHandler,
@@ -511,8 +540,9 @@ export class NavigationComponent extends Component {
 				parent.hidden = false;
 				if (files.parent) {
 					parent.link = new NavigationLinkState({
-						destinationPath: files.parent,
-						displayText: this.getDisplayText(files.parent),
+						destination: files.parent,
+						isExternal: false,
+						displayText: this.getDisplayText(files.parent, false),
 						resolved: true,
 						clickHandler,
 						mouseOverHandler,
@@ -552,8 +582,12 @@ export class NavigationComponent extends Component {
 			yield new PrefixedLinkState({
 				prefix: link.annotation,
 				link: new NavigationLinkState({
-					destinationPath: link.destinationPath,
-					displayText: this.getDisplayText(link.destinationPath),
+					destination: link.destinationPath,
+					isExternal: false,
+					displayText: this.getDisplayText(
+						link.destinationPath,
+						false
+					),
 					resolved: true,
 					clickHandler,
 					mouseOverHandler,
@@ -563,26 +597,34 @@ export class NavigationComponent extends Component {
 	}
 
 	/**
-	 * Gets the display text for the specified destination path.
-	 * If `manualDisplayText` is specified, it is used first.
-	 * If `propertyNameForDisplayText` is specified, the property value is used next.
-	 * If appropriate text is not found, the title of the destination path is used.
-	 * @param destinationPath The destination path.
+	 * Gets the display text for the specified destination.
+	 * The return value is determined based on the following order of priority:
+	 * 1. `manualDisplayText` (if specified).
+	 * 2. The destination URL (if `isExternal` is `true`).
+	 * 3. The specified property value of destination file
+	 *    (if `propertyNameForDisplayText` is specified in settings).
+	 * 4. The title of the destination path.
+	 * @param destination The destination (file path or URL).
+	 * @param isExternal Whether the destination is an external link.
 	 * @param manualDisplayText The manual display text (e.g., from `[[path|display]]`).
 	 * @returns The display text.
 	 */
 	private getDisplayText(
-		destinationPath: string,
+		destination: string,
+		isExternal: boolean,
 		manualDisplayText?: string
 	): string {
 		if (manualDisplayText) {
 			return manualDisplayText;
 		}
 
+		if (isExternal) {
+			return destination;
+		}
+
 		const propertyName = this.plugin.settings!.propertyNameForDisplayText;
 		if (propertyName) {
-			const linkedFile =
-				this.plugin.app.vault.getFileByPath(destinationPath);
+			const linkedFile = this.plugin.app.vault.getFileByPath(destination);
 			if (linkedFile) {
 				const values = getStringValuesFromFileProperty(
 					this.plugin.app,
@@ -595,7 +637,7 @@ export class NavigationComponent extends Component {
 			}
 		}
 
-		return getTitleFromPath(destinationPath);
+		return getTitleFromPath(destination);
 	}
 
 	/**

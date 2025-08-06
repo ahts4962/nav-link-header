@@ -317,10 +317,9 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
 			});
 
 		new Setting(containerEl)
-			.setName("Filter duplicate notes")
+			.setName("Filter duplicate links")
 			.setDesc(
-				"Filter out duplicates when the same note is detected separately " +
-					"in annotated links and links specified by file properties."
+				"Filter out duplicates when multiple links with the same destination are detected."
 			)
 			.addToggle((toggle) => {
 				toggle
@@ -335,7 +334,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
 			});
 
 		new Setting(containerEl)
-			.setName("Duplicate note filtering priority")
+			.setName("Duplicate link filtering priority")
 			.setDesc(
 				"Specify the filtering priority. " +
 					'For example, if you specify "🏠,⬆️,📌,🔗" (without double quotes), ' +
@@ -447,7 +446,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
 			.setDesc(
 				"Define the property mappings. " +
 					"If the file property specified here points to a specific note, " +
-					"that note will be displayed in navigation. " +
+					"that note will be displayed in navigation " +
+					"(URLs to the website are also supported). " +
 					"Each mapping consists of a property name and a string " +
 					"that will be placed at the beginning of the link when " +
 					"it appears in the navigation (use emojis in this string if " +

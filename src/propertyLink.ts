@@ -1,20 +1,25 @@
 import type { App, TFile } from "obsidian";
 import NavLinkHeader from "./main";
-import { getStringValuesFromFileProperty, parseWikiLink } from "./utils";
+import {
+	getStringValuesFromFileProperty,
+	parseMarkdownLink,
+	parseWikiLink,
+} from "./utils";
 
 /**
  * Gets links from the frontmatter properties of the specified file.
- * @param app The application instance.
- * @param propertyNames The properties to search for links.
+ * @param plugin The NavLinkHeader plugin instance.
  * @param file The file to search in.
- * @param displayPropertyName The property name to use for display value.
- * @returns The array of links with their annotations.
+ * @returns The array of links. Each link contains the destination (file path for internal links
+ *     or URL for external links), whether the link is external, the prefix (typically an emoji),
+ *     and the display text (if specified).
  */
 export function getPropertyLinks(
 	plugin: NavLinkHeader,
 	file: TFile
 ): {
-	destinationPath: string;
+	destination: string;
+	isExternal: boolean;
 	prefix: string;
 	displayText?: string;
 }[] {
@@ -24,9 +29,10 @@ export function getPropertyLinks(
 	for (const { property, prefix } of propertyMappings) {
 		const links = getLinksFromFileProperty(plugin.app, file, property);
 
-		for (const { destinationPath, displayText } of links) {
+		for (const { destination, isExternal, displayText } of links) {
 			result.push({
-				destinationPath,
+				destination,
+				isExternal,
 				prefix,
 				displayText,
 			});
@@ -38,7 +44,7 @@ export function getPropertyLinks(
 
 /**
  * Gets the three-way link from the frontmatter properties of the specified file.
- * @param app The application instance.
+ * @param plugin The NavLinkHeader plugin instance.
  * @param file The file to search in.
  * @returns The three-way link.
  */
@@ -46,9 +52,13 @@ export function getThreeWayPropertyLink(
 	plugin: NavLinkHeader,
 	file: TFile
 ): {
-	previous?: { destinationPath: string; displayText?: string };
-	next?: { destinationPath: string; displayText?: string };
-	parent?: { destinationPath: string; displayText?: string };
+	previous?: {
+		destination: string;
+		isExternal: boolean;
+		displayText?: string;
+	};
+	next?: { destination: string; isExternal: boolean; displayText?: string };
+	parent?: { destination: string; isExternal: boolean; displayText?: string };
 } {
 	const result: ReturnType<typeof getThreeWayPropertyLink> = {
 		previous: undefined,
@@ -97,7 +107,9 @@ export function getThreeWayPropertyLink(
  * @param app The application instance.
  * @param file The file to search in.
  * @param propertyName The name of the property to search for links.
- * @returns The array of links with their display text.
+ * @returns The array of links. Each link contains the destination (file path for internal links
+ *     or URL for external links), whether the link is external,
+ *     and the display text (if specified).
  *     If the property does not exist or valid links are not found, an empty array is returned.
  */
 function getLinksFromFileProperty(
@@ -105,7 +117,8 @@ function getLinksFromFileProperty(
 	file: TFile,
 	propertyName: string
 ): {
-	destinationPath: string;
+	destination: string;
+	isExternal: boolean;
 	displayText?: string;
 }[] {
 	const result: ReturnType<typeof getLinksFromFileProperty> = [];
@@ -117,28 +130,39 @@ function getLinksFromFileProperty(
 	);
 
 	for (const value of propertyValues) {
-		let path = value;
+		let destination = value;
+		let isExternal = false;
 		let displayText: string | undefined = undefined;
 
-		const parsed = parseWikiLink(value);
-		if (parsed.path) {
-			path = parsed.path;
+		const parsedWikiLink = parseWikiLink(value);
+		if (parsedWikiLink.path) {
+			destination = parsedWikiLink.path;
+			displayText = parsedWikiLink.displayText;
+		} else {
+			const parsedMarkdownLink = parseMarkdownLink(value);
+			if (parsedMarkdownLink.destination) {
+				destination = parsedMarkdownLink.destination;
+				isExternal = parsedMarkdownLink.isValidExternalLink;
+				displayText = parsedMarkdownLink.displayText;
+			} else {
+				isExternal = URL.canParse(value);
+			}
 		}
 
-		const linkedFile = app.metadataCache.getFirstLinkpathDest(
-			path,
-			file.path
-		);
-		if (!linkedFile) {
-			continue;
-		}
-
-		if (parsed.displayText) {
-			displayText = parsed.displayText;
+		if (!isExternal) {
+			const linkedFile = app.metadataCache.getFirstLinkpathDest(
+				destination,
+				file.path
+			);
+			if (!linkedFile) {
+				continue;
+			}
+			destination = linkedFile.path;
 		}
 
 		result.push({
-			destinationPath: linkedFile.path,
+			destination,
+			isExternal,
 			displayText,
 		});
 	}

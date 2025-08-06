@@ -26,7 +26,7 @@ export class LinkContainer {
 	 * @param link The link to add.
 	 */
 	public addLink(link: PrefixedLinkState | ThreeWayLinkState) {
-		// Filter out any prefixed links that have the same path.
+		// Filter out any prefixed links that have the same destination.
 		if (
 			this.plugin.settings!.filterDuplicateNotes &&
 			link instanceof PrefixedLinkState
@@ -34,7 +34,7 @@ export class LinkContainer {
 			const i = this.links.findIndex((l) => {
 				return (
 					l instanceof PrefixedLinkState &&
-					l.link.destinationPath === link.link.destinationPath
+					l.link.destination === link.link.destination
 				);
 			});
 			if (i !== -1) {

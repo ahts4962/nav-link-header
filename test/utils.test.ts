@@ -2,6 +2,7 @@ import {
 	deepEqual,
 	fileIncludedInFolder,
 	parseWikiLink,
+	parseMarkdownLink,
 	removeCode,
 } from "src/utils";
 
@@ -409,4 +410,165 @@ test("parse wiki style link", () => {
 	text = "[[file#head#er]]";
 	expected = { path: "file", displayText: undefined };
 	expect(parseWikiLink(text)).toStrictEqual(expected);
+
+	text = "[display](file)";
+	expected = { path: undefined, displayText: undefined };
+	expect(parseWikiLink(text)).toStrictEqual(expected);
+});
+
+test("parse markdown style link", () => {
+	let text;
+	let expected;
+
+	text = "[display](file)";
+	expected = {
+		destination: "file",
+		isValidExternalLink: false,
+		displayText: "display",
+	};
+	expect(parseMarkdownLink(text)).toStrictEqual(expected);
+
+	text = "[ display ]( file )";
+	expected = {
+		destination: "file",
+		isValidExternalLink: false,
+		displayText: "display",
+	};
+	expect(parseMarkdownLink(text)).toStrictEqual(expected);
+
+	text = "dis[play](file)";
+	expected = {
+		destination: undefined,
+		isValidExternalLink: false,
+		displayText: "",
+	};
+	expect(parseMarkdownLink(text)).toStrictEqual(expected);
+
+	text = "[display](file.md)";
+	expected = {
+		destination: "file.md",
+		isValidExternalLink: false,
+		displayText: "display",
+	};
+	expect(parseMarkdownLink(text)).toStrictEqual(expected);
+
+	text = "[display](folder/file.md)";
+	expected = {
+		destination: "folder/file.md",
+		isValidExternalLink: false,
+		displayText: "display",
+	};
+	expect(parseMarkdownLink(text)).toStrictEqual(expected);
+
+	text = "[display](file#header)";
+	expected = {
+		destination: "file",
+		isValidExternalLink: false,
+		displayText: "display",
+	};
+	expect(parseMarkdownLink(text)).toStrictEqual(expected);
+
+	text = "[display](file.md#header)";
+	expected = {
+		destination: "file.md",
+		isValidExternalLink: false,
+		displayText: "display",
+	};
+	expect(parseMarkdownLink(text)).toStrictEqual(expected);
+
+	text = "[display](folder/file.md#header)";
+	expected = {
+		destination: "folder/file.md",
+		isValidExternalLink: false,
+		displayText: "display",
+	};
+	expect(parseMarkdownLink(text)).toStrictEqual(expected);
+
+	text = "[display](some%20note)";
+	expected = {
+		destination: "some note",
+		isValidExternalLink: false,
+		displayText: "display",
+	};
+	expect(parseMarkdownLink(text)).toStrictEqual(expected);
+
+	text = "[display](some%20note#header)";
+	expected = {
+		destination: "some note",
+		isValidExternalLink: false,
+		displayText: "display",
+	};
+	expect(parseMarkdownLink(text)).toStrictEqual(expected);
+
+	text = "[display](https://example.com)";
+	expected = {
+		destination: "https://example.com",
+		isValidExternalLink: true,
+		displayText: "display",
+	};
+	expect(parseMarkdownLink(text)).toStrictEqual(expected);
+
+	text = "[display](http://example.com)";
+	expected = {
+		destination: "http://example.com",
+		isValidExternalLink: true,
+		displayText: "display",
+	};
+	expect(parseMarkdownLink(text)).toStrictEqual(expected);
+
+	text = "[display](https://example.com#section)";
+	expected = {
+		destination: "https://example.com#section",
+		isValidExternalLink: true,
+		displayText: "display",
+	};
+	expect(parseMarkdownLink(text)).toStrictEqual(expected);
+
+	text = "[display](https://example.com?query=1)";
+	expected = {
+		destination: "https://example.com?query=1",
+		isValidExternalLink: true,
+		displayText: "display",
+	};
+	expect(parseMarkdownLink(text)).toStrictEqual(expected);
+
+	text = "[display](https://example.com/my%20file.txt)";
+	expected = {
+		destination: "https://example.com/my%20file.txt",
+		isValidExternalLink: true,
+		displayText: "display",
+	};
+	expect(parseMarkdownLink(text)).toStrictEqual(expected);
+
+	text = "[display](https://example.com/my%20file.txt#section)";
+	expected = {
+		destination: "https://example.com/my%20file.txt#section",
+		isValidExternalLink: true,
+		displayText: "display",
+	};
+	expect(parseMarkdownLink(text)).toStrictEqual(expected);
+
+	text = "[display](https/example.com)";
+	expected = {
+		destination: "https/example.com",
+		isValidExternalLink: false,
+		displayText: "display",
+	};
+	expect(parseMarkdownLink(text)).toStrictEqual(expected);
+
+	text = "[display](https//example.com)";
+	expected = {
+		destination: "https//example.com",
+		isValidExternalLink: false,
+		displayText: "display",
+	};
+	expect(parseMarkdownLink(text)).toStrictEqual(expected);
+
+	text = "[[file]]";
+	expected = {
+		destination: undefined,
+		isValidExternalLink: false,
+		displayText: "",
+	};
+	expect(parseMarkdownLink(text)).toStrictEqual(expected);
 });

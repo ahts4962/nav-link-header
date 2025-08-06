@@ -163,6 +163,57 @@ export function parseWikiLink(text: string): {
 }
 
 /**
+ * Parses a markdown style link.
+ * Both internal links and external links are supported.
+ * @param text The text to parse (in the format of "[display](some%20note#header)" for
+ *     internal links, or "[display](https://example.com)" for external links).
+ * @returns The destination, a boolean value indicating whether it is a valid external link,
+ *     and display text.
+ *     If the text is not a markdown style link, `destination` is `undefined`.
+ *     If the text is a valid external link, the text is returned as `destination` without decoding.
+ *     If the text is not a valid external link, the text is considered an internal link,
+ *     and the text excluding the header part is returned as `destination` (after decoding).
+ *     `destination` and `displayText` are trimmed, but `destination` is not normalized
+ *     if it is an internal link.
+ */
+export function parseMarkdownLink(text: string): {
+	destination?: string;
+	isValidExternalLink: boolean;
+	displayText: string;
+} {
+	text = text.trim();
+	const re = /^\[([^\]]+)\]\(([^)]+)\)$/;
+	const match = text.match(re);
+	if (!match) {
+		return {
+			destination: undefined,
+			isValidExternalLink: false,
+			displayText: "",
+		};
+	}
+
+	const displayText = match[1].trim();
+	let destination = match[2].trim();
+	const isValidExternalLink = URL.canParse(destination);
+
+	if (isValidExternalLink) {
+		return { destination, isValidExternalLink, displayText };
+	}
+
+	destination = destination.split("#")[0];
+	try {
+		destination = decodeURIComponent(destination);
+	} catch {
+		return {
+			destination: undefined,
+			isValidExternalLink: false,
+			displayText: "",
+		};
+	}
+	return { destination, isValidExternalLink: false, displayText };
+}
+
+/**
  * Retrieves the string values of a specified property from the front matter of a file.
  * @param app The application instance.
  * @param file The file to retrieve the property from.
@@ -246,4 +297,64 @@ function getValuesFromFileProperty(
 	return fileCache.frontmatter[propertyName] as ReturnType<
 		typeof getValuesFromFileProperty
 	>;
+}
+
+/**
+ * Opens an external link in a web viewer leaf if the Web viewer plugin is enabled,
+ * or in a default browser otherwise.
+ * @param app The application instance.
+ * @param url The URL to open.
+ * @param newLeaf Whether to open the link in a new leaf.
+ */
+export async function openExternalLink(
+	app: App,
+	url: string,
+	newLeaf: boolean
+): Promise<void> {
+	let webViewerEnabled = false;
+	if (
+		"internalPlugins" in app &&
+		isObject(app.internalPlugins) &&
+		"plugins" in app.internalPlugins &&
+		isObject(app.internalPlugins.plugins) &&
+		"webviewer" in app.internalPlugins.plugins &&
+		isObject(app.internalPlugins.plugins.webviewer)
+	) {
+		const webViewerPlugin = app.internalPlugins.plugins.webviewer;
+		if (
+			"enabled" in webViewerPlugin &&
+			webViewerPlugin.enabled === true &&
+			"instance" in webViewerPlugin &&
+			isObject(webViewerPlugin.instance) &&
+			"options" in webViewerPlugin.instance &&
+			isObject(webViewerPlugin.instance.options) &&
+			"openExternalURLs" in webViewerPlugin.instance.options &&
+			webViewerPlugin.instance.options.openExternalURLs === true
+		) {
+			webViewerEnabled = true;
+		}
+	}
+
+	if (webViewerEnabled) {
+		const leaf = app.workspace.getLeaf(newLeaf);
+		await leaf.setViewState({
+			type: "webviewer",
+			state: {
+				url: url,
+				navigate: true,
+			},
+			active: true,
+		});
+	} else {
+		window.open(url);
+	}
+}
+
+/**
+ * Checks if the value is an `object`.
+ * @param value The value to check.
+ * @returns `true` if the value is an `object`.
+ */
+function isObject(value: unknown): value is object {
+	return value !== null && typeof value === "object";
 }

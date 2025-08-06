@@ -26,7 +26,8 @@ This feature allows you to create links that navigate to the MOC by simply addin
 
 ## Links specified by file properties
 
-By setting a link or path in the file properties, the link can be displayed in the navigation.
+By setting a link, path, or URL to a website in the file properties, the link can be displayed
+in the navigation. Markdown style links (e.g. `[obsidian](https://obsidian.md)`) are also supported.
 **Remember to set the "Property mappings" field or the "Property name for the
 previous/next/parent note" field on the settings page to use this feature**.
 

@@ -1,6 +1,7 @@
 import type { TFile } from "obsidian";
 import type NavLinkHeader from "./main";
 import { getThreeWayPropertyLink } from "./propertyLink";
+import { openExternalLink } from "./utils";
 
 /**
  * Adds commands to the plugin.
@@ -295,30 +296,50 @@ function openThreeWayPropertyLink(
 			return false;
 		}
 		if (!checking) {
-			void plugin.app.workspace.openLinkText(
-				links.previous.destinationPath,
-				file.path
-			);
+			if (links.previous.isExternal) {
+				void openExternalLink(
+					plugin.app,
+					links.previous.destination,
+					true
+				);
+			} else {
+				void plugin.app.workspace.openLinkText(
+					links.previous.destination,
+					file.path
+				);
+			}
 		}
 	} else if (direction === "next") {
 		if (!links.next) {
 			return false;
 		}
 		if (!checking) {
-			void plugin.app.workspace.openLinkText(
-				links.next.destinationPath,
-				file.path
-			);
+			if (links.next.isExternal) {
+				void openExternalLink(plugin.app, links.next.destination, true);
+			} else {
+				void plugin.app.workspace.openLinkText(
+					links.next.destination,
+					file.path
+				);
+			}
 		}
 	} else if (direction === "parent") {
 		if (!links.parent) {
 			return false;
 		}
 		if (!checking) {
-			void plugin.app.workspace.openLinkText(
-				links.parent.destinationPath,
-				file.path
-			);
+			if (links.parent.isExternal) {
+				void openExternalLink(
+					plugin.app,
+					links.parent.destination,
+					true
+				);
+			} else {
+				void plugin.app.workspace.openLinkText(
+					links.parent.destination,
+					file.path
+				);
+			}
 		}
 	}
 

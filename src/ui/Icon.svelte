@@ -2,8 +2,11 @@
 	import { setIcon } from "obsidian";
 	import { onMount } from "svelte";
 
-	const { iconId, muted = false }: { iconId: string; muted?: boolean } =
-		$props();
+	const {
+		iconId,
+		muted = false,
+		size = "var(--icon-m)",
+	}: { iconId: string; muted?: boolean; size?: string } = $props();
 
 	let container: HTMLDivElement;
 
@@ -21,8 +24,16 @@
 
   The `muted` property indicates whether the icon is muted.
   The muted icon is rendered with a faint color.
+
+  The `size` property specifies the size of the icon.
+  It can be a CSS size value like "16px", "1.5em", or a custom size defined in CSS variables
+  like "var(--icon-m)". The default size is "var(--icon-m)".
 -->
-<div class={["container", muted && "muted"]} bind:this={container}></div>
+<div
+	class={["container", muted && "muted"]}
+	bind:this={container}
+	style={`--icon-size: ${size};`}
+></div>
 
 <style>
 	.container {
