@@ -2,13 +2,33 @@
 	z-index: 1;
 }
 
-/* Styles for the hover popover container element */
-.popover.hover-popover .nav-link-header-navigation {
-	position: sticky;
-	top: 0;
-	z-index: 100;
+/* Styles for the parent element of the navigation in the hover popover */
+.popover.hover-popover > .markdown-embed {
+	display: flex;
+	flex-direction: column;
 
-	~ .markdown-embed-content {
-		height: auto;
+	> .markdown-embed-content {
+		flex: 1;
+		overflow: auto;
+	}
+}
+
+/* Adjust the position of the "Open link" button in the hover popover. */
+@supports (anchor-name: --a) {
+	.popover.hover-popover .nav-link-header-navigation {
+		anchor-name: --nav-link-header-anchor;
+
+		~ .markdown-embed-link {
+			position-anchor: --nav-link-header-anchor;
+			top: anchor(bottom);
+		}
+	}
+}
+
+/* If the web view does not support the anchor-name property,
+   fall back to margin adjustments. */
+@supports not (anchor-name: --a) {
+	.popover.hover-popover .nav-link-header-navigation {
+		margin-right: 30px;
 	}
 }
