@@ -335,6 +335,10 @@ export async function openExternalLink(
 		}
 	}
 
+	// When the Web viewer plugin is enabled, `window.open()` opens
+	// the URL in a new Obsidian window. This is not Obsidian's default behavior
+	// when an external link is clicked. Therefore, the process branches
+	// depending on whether the Web viewer plugin is enabled or not.
 	if (webViewerEnabled) {
 		const leaf = app.workspace.getLeaf(newLeaf);
 		await leaf.setViewState({
