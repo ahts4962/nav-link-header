@@ -9,4 +9,14 @@
   @component
   A component that represents a link with a prefix string (typically emoji).
 -->
-<span>{state.prefix}</span><NavigationLink state={state.link} />
+<div class="nav-link-header-container">
+	<div>{state.prefix}</div>
+	<NavigationLink state={state.link} />
+</div>
+
+<style>
+	.nav-link-header-container {
+		display: flex;
+		flex-wrap: wrap;
+	}
+</style>

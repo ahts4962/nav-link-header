@@ -31,19 +31,17 @@
 	<div class="nav-link-header-background">
 		<div class="nav-link-header-container">
 			{#each links as link}
-				<span class="nav-link-header-sub-container">
-					{#if link instanceof PrefixedLinkState}
-						<PrefixedLink state={link} />
-					{:else if link instanceof ThreeWayLinkState}
-						<ThreeWayLink state={link} />
-					{/if}
-				</span>
+				{#if link instanceof PrefixedLinkState}
+					<PrefixedLink state={link} />
+				{:else if link instanceof ThreeWayLinkState}
+					<ThreeWayLink state={link} />
+				{/if}
 			{/each}
 			{#if isLoading && displayPlaceholder}
-				<span class="nav-link-header-muted">Loading...</span>
+				<div class="nav-link-header-muted">Loading...</div>
 			{/if}
 			{#if links.length === 0 && !isLoading && displayPlaceholder}
-				<span class="nav-link-header-muted">No links</span>
+				<div class="nav-link-header-muted">No links</div>
 			{/if}
 		</div>
 	</div>
@@ -56,13 +54,12 @@
 	}
 
 	.nav-link-header-container {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 0.4em;
 		padding: 0.4em;
 		border: 1px solid var(--background-modifier-border);
 		border-radius: var(--radius-s);
-	}
-
-	.nav-link-header-sub-container:not(:first-child) {
-		margin-inline-start: 0.4em;
 	}
 
 	.nav-link-header-muted {
