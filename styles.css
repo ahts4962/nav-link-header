@@ -3,7 +3,7 @@
 }
 
 /* Styles for the parent element of the navigation in the hover popover */
-.popover.hover-popover > .markdown-embed {
+.popover.hover-popover > .markdown-embed:has(> .nav-link-header-navigation) {
 	display: flex;
 	flex-direction: column;
 
