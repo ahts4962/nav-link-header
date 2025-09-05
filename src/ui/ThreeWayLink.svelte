@@ -22,7 +22,7 @@
 	{/if}
 {/if}
 {#if !state.parent.hidden && !state.previous.hidden}
-	<span class="separator">|</span>
+	<span class="nav-link-header-separator">|</span>
 {/if}
 {#if !state.parent.hidden}
 	{#if state.parent.link}
@@ -32,7 +32,7 @@
 	{/if}
 {/if}
 {#if !state.next.hidden && (!state.previous.hidden || !state.parent.hidden)}
-	<span class="separator">|</span>
+	<span class="nav-link-header-separator">|</span>
 {/if}
 {#if !state.next.hidden}
 	{#if state.next.link}
@@ -44,7 +44,7 @@
 <Icon iconId="chevrons-right" />
 
 <style>
-	.separator {
+	.nav-link-header-separator {
 		margin-inline: 0.2em;
 	}
 </style>

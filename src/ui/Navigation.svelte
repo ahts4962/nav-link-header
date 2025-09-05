@@ -28,10 +28,10 @@
   "No links" will be displayed.
 -->
 {#if links.length > 0 || displayPlaceholder}
-	<div class="background">
-		<div class="container">
+	<div class="nav-link-header-background">
+		<div class="nav-link-header-container">
 			{#each links as link}
-				<span class="sub-container">
+				<span class="nav-link-header-sub-container">
 					{#if link instanceof PrefixedLinkState}
 						<PrefixedLink state={link} />
 					{:else if link instanceof ThreeWayLinkState}
@@ -40,32 +40,32 @@
 				</span>
 			{/each}
 			{#if isLoading && displayPlaceholder}
-				<span class="muted">Loading...</span>
+				<span class="nav-link-header-muted">Loading...</span>
 			{/if}
 			{#if links.length === 0 && !isLoading && displayPlaceholder}
-				<span class="muted">No links</span>
+				<span class="nav-link-header-muted">No links</span>
 			{/if}
 		</div>
 	</div>
 {/if}
 
 <style>
-	.background {
+	.nav-link-header-background {
 		padding: 0.4em;
 		background-color: var(--background-primary);
 	}
 
-	.container {
+	.nav-link-header-container {
 		padding: 0.4em;
 		border: 1px solid var(--background-modifier-border);
 		border-radius: var(--radius-s);
 	}
 
-	.sub-container:not(:first-child) {
+	.nav-link-header-sub-container:not(:first-child) {
 		margin-inline-start: 0.4em;
 	}
 
-	.muted {
+	.nav-link-header-muted {
 		color: var(--text-faint);
 	}
 </style>
