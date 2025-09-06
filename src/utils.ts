@@ -126,6 +126,15 @@ export function removeCode(content: string): string {
 }
 
 /**
+ * Removes variation selectors from the text.
+ * @param textInput The text to remove variation selectors from.
+ * @returns The text without variation selectors.
+ */
+export function removeVariationSelectors(textInput: string): string {
+	return textInput.replace(/[\uFE00-\uFE0F\u{E0100}-\u{E01EF}]/gu, "");
+}
+
+/**
  * Parses a wiki link.
  * @param text The text to parse (in the format of "[[path#header|display]]").
  * @returns The path and display text of the wiki link.

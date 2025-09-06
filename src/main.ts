@@ -228,6 +228,7 @@ export default class NavLinkHeader extends Plugin {
 				const keys: (keyof NavLinkHeaderSettings)[] = [
 					"annotationStrings",
 					"allowSpaceAfterAnnotationString",
+					"ignoreVariationSelectors",
 				];
 				const changed = keys.some(
 					(key) =>

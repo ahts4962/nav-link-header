@@ -4,6 +4,7 @@ import {
 	parseWikiLink,
 	parseMarkdownLink,
 	removeCode,
+	removeVariationSelectors,
 } from "src/utils";
 
 test("deep equal", () => {
@@ -571,4 +572,38 @@ test("parse markdown style link", () => {
 		displayText: "",
 	};
 	expect(parseMarkdownLink(text)).toStrictEqual(expected);
+});
+
+test("remove variation selectors", () => {
+	// VS1–VS16: U+FE00–U+FE0F
+	expect(removeVariationSelectors("a\uFE00b")).toBe("ab");
+	expect(removeVariationSelectors("a\uFE0Fb")).toBe("ab");
+	expect(removeVariationSelectors("ab")).toBe("ab");
+	expect(removeVariationSelectors("a\uFE00\uFE01\uFE0Fb")).toBe("ab");
+
+	// Supplement (U+E0100–U+E01EF)
+	const VS_SUP_1 = String.fromCodePoint(0xe0100);
+	const VS_SUP_LAST = String.fromCodePoint(0xe01ef);
+	expect(removeVariationSelectors("a" + VS_SUP_1 + "b")).toBe("ab");
+	expect(removeVariationSelectors("a" + VS_SUP_LAST + "b")).toBe("ab");
+	expect(removeVariationSelectors("a" + VS_SUP_1 + VS_SUP_LAST + "b")).toBe(
+		"ab"
+	);
+
+	const mixed = "テ" + "\uFE0F" + "ス" + VS_SUP_1 + "ト";
+	expect(removeVariationSelectors(mixed)).toBe("テスト");
+
+	expect(removeVariationSelectors("✊\uFE0F")).toBe("✊");
+	expect(removeVariationSelectors("❗️")).toBe("❗");
+
+	expect(removeVariationSelectors("")).toBe("");
+
+	const allVS = "\uFE00\uFE01\uFE0F" + VS_SUP_1 + VS_SUP_LAST;
+	expect(removeVariationSelectors(allVS)).toBe("");
+
+	const control = "abc😀漢字";
+	expect(removeVariationSelectors(control)).toBe(control);
+
+	const many = "A" + "\uFE0F".repeat(1000) + VS_SUP_1.repeat(500) + "B";
+	expect(removeVariationSelectors(many)).toBe("AB");
 });

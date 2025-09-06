@@ -15,6 +15,7 @@ export interface NavLinkHeaderSettings {
 	confirmFileCreation: boolean;
 	annotationStrings: string[];
 	allowSpaceAfterAnnotationString: boolean;
+	ignoreVariationSelectors: boolean;
 	propertyMappings: { property: string; prefix: string }[];
 	prevNextLinksEnabledInDailyNotes: boolean;
 	parentLinkGranularityInDailyNotes: IGranularity | undefined;
@@ -54,6 +55,7 @@ const DEFAULT_SETTINGS: NavLinkHeaderSettings = {
 	confirmFileCreation: true,
 	annotationStrings: [],
 	allowSpaceAfterAnnotationString: false,
+	ignoreVariationSelectors: false,
 	propertyMappings: [],
 	prevNextLinksEnabledInDailyNotes: false,
 	parentLinkGranularityInDailyNotes: undefined,
@@ -432,6 +434,25 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
 					)
 					.onChange((value) => {
 						this.plugin.settingsUnderChange!.allowSpaceAfterAnnotationString =
+							value;
+						this.plugin.triggerSettingsChangedEvent();
+					});
+			});
+
+		new Setting(containerEl)
+			.setName("Ignore variation selectors")
+			.setDesc(
+				"If enabled, variation selectors of unicode characters will be ignored " +
+					"when searching for links."
+			)
+			.addToggle((toggle) => {
+				toggle
+					.setValue(
+						this.plugin.settingsUnderChange!
+							.ignoreVariationSelectors
+					)
+					.onChange((value) => {
+						this.plugin.settingsUnderChange!.ignoreVariationSelectors =
 							value;
 						this.plugin.triggerSettingsChangedEvent();
 					});

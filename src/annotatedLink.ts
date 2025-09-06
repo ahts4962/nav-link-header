@@ -1,6 +1,6 @@
 import { type TAbstractFile, TFile } from "obsidian";
 import type NavLinkHeader from "./main";
-import { removeCode } from "./utils";
+import { removeCode, removeVariationSelectors } from "./utils";
 
 /**
  * Manages the annotated links.
@@ -75,23 +75,42 @@ export class AnnotatedLinksManager {
 				continue;
 			}
 
-			const content = removeCode(
+			let content = removeCode(
 				await this.plugin.app.vault.cachedRead(backlinkFile)
 			);
 
+			const ignoreVariationSelectors =
+				this.plugin.settings!.ignoreVariationSelectors;
+			if (ignoreVariationSelectors) {
+				content = removeVariationSelectors(content);
+			}
+
 			const detectedAnnotations: string[] = [];
 			for (const annotation of annotationStrings) {
+				let annotationForActualSearch = annotation;
+				if (ignoreVariationSelectors) {
+					annotationForActualSearch = removeVariationSelectors(
+						annotationForActualSearch
+					);
+					if (annotationForActualSearch === "") {
+						continue;
+					}
+				}
+
 				if (
 					this.searchAnnotatedLinkInContent(
 						content,
 						backlink,
 						file.path,
-						annotation,
+						annotationForActualSearch,
 						allowSpace
 					)
 				) {
-					detectedAnnotations.push(annotation);
-					yield { destinationPath: backlink, annotation };
+					detectedAnnotations.push(annotationForActualSearch);
+					yield {
+						destinationPath: backlink,
+						annotation: annotationForActualSearch,
+					};
 				}
 			}
 
