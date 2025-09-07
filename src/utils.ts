@@ -1,4 +1,5 @@
 import { normalizePath, type App, type TFile } from "obsidian";
+import emojiRegex from "emoji-regex-xs";
 
 /**
  * Compares two values and returns `true` if these values are equal.
@@ -132,6 +133,14 @@ export function removeCode(content: string): string {
  */
 export function removeVariationSelectors(textInput: string): string {
 	return textInput.replace(/[\uFE00-\uFE0F\u{E0100}-\u{E01EF}]/gu, "");
+}
+
+/**
+ * Generates a regex pattern for matching emojis.
+ * @returns The regex pattern for matching emojis.
+ */
+export function generateEmojiRegexPattern(): string {
+	return emojiRegex().source;
 }
 
 /**

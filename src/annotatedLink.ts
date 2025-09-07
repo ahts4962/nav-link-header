@@ -1,6 +1,10 @@
 import { type TAbstractFile, TFile } from "obsidian";
 import type NavLinkHeader from "./main";
-import { removeCode, removeVariationSelectors } from "./utils";
+import {
+	removeCode,
+	removeVariationSelectors,
+	generateEmojiRegexPattern,
+} from "./utils";
 
 /**
  * Manages the annotated links.
@@ -81,35 +85,54 @@ export class AnnotatedLinksManager {
 
 			const ignoreVariationSelectors =
 				this.plugin.settings!.ignoreVariationSelectors;
+			let variationSelectorsRemovedContent = "";
 			if (ignoreVariationSelectors) {
-				content = removeVariationSelectors(content);
+				variationSelectorsRemovedContent =
+					removeVariationSelectors(content);
 			}
 
 			const detectedAnnotations: string[] = [];
 			for (const annotation of annotationStrings) {
-				let annotationForActualSearch = annotation;
-				if (ignoreVariationSelectors) {
-					annotationForActualSearch = removeVariationSelectors(
-						annotationForActualSearch
-					);
-					if (annotationForActualSearch === "") {
-						continue;
+				let annotationForActualSearch;
+				let contentForActualSearch;
+				if (annotation === "[[E]]") {
+					annotationForActualSearch = generateEmojiRegexPattern();
+					contentForActualSearch = content;
+				} else {
+					if (ignoreVariationSelectors) {
+						annotationForActualSearch =
+							removeVariationSelectors(annotation);
+						if (annotationForActualSearch === "") {
+							continue;
+						}
+						contentForActualSearch =
+							variationSelectorsRemovedContent;
+					} else {
+						annotationForActualSearch = annotation;
+						contentForActualSearch = content;
 					}
+					annotationForActualSearch =
+						annotationForActualSearch.replace(
+							/[.*+?^${}()|[\]\\]/g,
+							"\\$&"
+						); // Escape special characters for regex.
 				}
 
-				if (
-					this.searchAnnotatedLinkInContent(
-						content,
-						backlink,
-						file.path,
-						annotationForActualSearch,
-						allowSpace
-					)
-				) {
-					detectedAnnotations.push(annotationForActualSearch);
+				let matchedAnnotation = this.searchAnnotatedLinkInContent(
+					contentForActualSearch,
+					backlink,
+					file.path,
+					annotationForActualSearch,
+					allowSpace
+				);
+				if (matchedAnnotation) {
+					if (ignoreVariationSelectors && annotation !== "[[E]]") {
+						matchedAnnotation = annotation;
+					}
+					detectedAnnotations.push(matchedAnnotation);
 					yield {
 						destinationPath: backlink,
-						annotation: annotationForActualSearch,
+						annotation: matchedAnnotation,
 					};
 				}
 			}
@@ -128,7 +151,8 @@ export class AnnotatedLinksManager {
 	 * @param filePath The path of the file to search for.
 	 * @param annotationString The annotation string to search for.
 	 * @param allowSpace Whether to allow space after the annotation string.
-	 * @returns Whether the annotated link is found in the content.
+	 * @returns If the annotated link is found in the content, the matched annotation string
+	 *    is returned. Otherwise, `undefined` is returned.
 	 */
 	private searchAnnotatedLinkInContent(
 		content: string,
@@ -136,18 +160,14 @@ export class AnnotatedLinksManager {
 		filePath: string,
 		annotationString: string,
 		allowSpace: boolean
-	): boolean {
+	): string | undefined {
 		const optionalSpace = allowSpace ? " ?" : "";
-		const escapedAnnotationString = annotationString.replace(
-			/[.*+?^${}()|[\]\\]/g,
-			"\\$&"
-		);
 		const configs = [
 			// Wiki style links with annotation.
 			{
 				re: new RegExp(
-					String.raw`${escapedAnnotationString}${optionalSpace}\!?\[\[([^\[\]]+)\]\]`,
-					"g"
+					String.raw`(${annotationString})${optionalSpace}!?\[\[([^\[\]]+)\]\]`,
+					"gu"
 				),
 				extractor: (matchString: string) =>
 					matchString.split(/[|#]/)[0], // Removes the optional string.
@@ -155,8 +175,8 @@ export class AnnotatedLinksManager {
 			// Markdown style links with annotation.
 			{
 				re: new RegExp(
-					String.raw`${escapedAnnotationString}${optionalSpace}\!?\[[^\[\]]+\]\(([^\(\)]+)\)`,
-					"g"
+					String.raw`(${annotationString})${optionalSpace}!?\[[^\[\]]+\]\(([^\(\)]+)\)`,
+					"gu"
 				),
 				extractor: (matchString: string) => {
 					matchString = matchString.split("#")[0]; // Removes the optional string.
@@ -173,15 +193,15 @@ export class AnnotatedLinksManager {
 			for (const match of content.matchAll(re)) {
 				const matchedPath =
 					this.plugin.app.metadataCache.getFirstLinkpathDest(
-						extractor(match[1]),
+						extractor(match[2]),
 						backlinkFilePath
 					)?.path;
 				if (matchedPath === filePath) {
-					return true;
+					return match[1];
 				}
 			}
 		}
 
-		return false;
+		return undefined;
 	}
 }

@@ -2,8 +2,9 @@ import { expect, test } from "vitest";
 import {
 	deepEqual,
 	fileIncludedInFolder,
-	parseWikiLink,
+	generateEmojiRegexPattern,
 	parseMarkdownLink,
+	parseWikiLink,
 	removeCode,
 	removeVariationSelectors,
 } from "src/utils";
@@ -607,4 +608,46 @@ test("remove variation selectors", () => {
 
 	const many = "A" + "\uFE0F".repeat(1000) + VS_SUP_1.repeat(500) + "B";
 	expect(removeVariationSelectors(many)).toBe("AB");
+});
+
+test("generate emoji regex pattern", () => {
+	const pattern = generateEmojiRegexPattern();
+	const re = new RegExp(`^(?:${pattern})$`, "u");
+	expect(re.test("😀")).toBe(true);
+	expect(re.test("✊")).toBe(true);
+	expect(re.test("✊️")).toBe(true);
+	expect(re.test("✊🏻")).toBe(true);
+	expect(re.test("👍")).toBe(true);
+	expect(re.test("👍🏽")).toBe(true);
+	expect(re.test("👨‍👩‍👧")).toBe(true);
+	expect(re.test("👨‍👩‍👧‍👦")).toBe(true);
+	expect(re.test("👩‍💻")).toBe(true);
+	expect(re.test("👨🏽‍💻")).toBe(true);
+	expect(re.test("🏳️‍🌈")).toBe(true);
+	expect(re.test("🇯🇵")).toBe(true);
+	expect(re.test("🇺🇳")).toBe(true);
+	expect(re.test("#️⃣")).toBe(true);
+	expect(re.test("0️⃣")).toBe(true);
+	expect(re.test("9️⃣")).toBe(true);
+	expect(re.test("🏴‍☠️")).toBe(true);
+	expect(re.test("™")).toBe(true);
+	expect(re.test("©")).toBe(true);
+	expect(re.test("A")).toBe(false);
+	expect(re.test("中")).toBe(false);
+	expect(re.test("#")).toBe(false);
+	expect(re.test("1")).toBe(false);
+
+	const re2 = new RegExp(`^(?:${pattern})(?:${pattern})$`, "u");
+	expect(re2.test("😀")).toBe(false);
+	expect(re2.test("😀😀")).toBe(true);
+	expect(re2.test("😀😀😀")).toBe(false);
+	expect(re2.test("🏳️‍🌈")).toBe(false);
+	expect(re2.test("🏳️‍🌈🏳️‍🌈")).toBe(true);
+	expect(re2.test("🏳️‍🌈🏳️‍🌈🏳️‍🌈")).toBe(false);
+	expect(re2.test("😀🏳️‍🌈")).toBe(true);
+
+	const reG = new RegExp(pattern, "gu");
+	const text = "A😀👍🏽🇯🇵👨‍👩‍👧#️⃣B";
+	const matches = text.match(reG);
+	expect(matches).toStrictEqual(["😀", "👍🏽", "🇯🇵", "👨‍👩‍👧", "#️⃣"]);
 });
