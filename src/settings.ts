@@ -1,6 +1,7 @@
 import { normalizePath, PluginSettingTab, Setting } from "obsidian";
 import type { IGranularity } from "obsidian-daily-notes-interface";
 import NavLinkHeader from "./main";
+import { EMOJI_ANNOTATION_PLACEHOLDER } from "./annotatedLink";
 import { deepCopy } from "./utils";
 
 // When adding properties to these interfaces, see also `NavLinkHeader.onSettingsChange`.
@@ -339,16 +340,17 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       .setName("Annotation strings")
       .setDesc(
         "Define the annotation strings. " +
-          "If one of the annotation strings (typically emojis) is placed " +
-          "immediately before a link in a note content, the link is " +
-          "recognized as an annotated link. " +
-          "Notes with annotated links appear as backlinks at the top of the " +
-          "destination note. " +
-          "Any string, including emoji, is acceptable as long as " +
-          "the following link is recognized as a backlink. " +
-          "To specify multiple annotations, separate them with commas. " +
-          'e.g. "📌,🔗" (without double quotes). Leave this field blank ' +
-          "if you are not using this feature."
+          "If one of the annotation strings (typically emojis) is placed immediately before " +
+          "a link in a note content, the link is recognized as an annotated link. " +
+          "Notes with annotated links appear as backlinks at the top of the destination note. " +
+          "Any string, including emoji, is acceptable as long as the following link is " +
+          "recognized as a backlink. To specify multiple annotations, separate them with commas. " +
+          'e.g. "📌,🔗" (without double quotes). ' +
+          `"${EMOJI_ANNOTATION_PLACEHOLDER}" can be used as a special placeholder ` +
+          "that represents any single emoji. For example, if you specify only " +
+          `"${EMOJI_ANNOTATION_PLACEHOLDER}", all links preceded by an emoji will be matched. ` +
+          `You can also mix it with other entries, e.g. "${EMOJI_ANNOTATION_PLACEHOLDER}📌,🔗". ` +
+          "Leave this field blank if you are not using this feature."
       )
       .addText((text) => {
         const annotations = this.plugin.settingsUnderChange!.annotationStrings.join(",");
@@ -375,10 +377,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("Ignore variation selectors")
-      .setDesc(
-        "If enabled, variation selectors of unicode characters will be ignored " +
-          "when searching for links."
-      )
+      .setDesc("If enabled, emoji variation selectors (VS15/VS16) are ignored when matching links.")
       .addToggle((toggle) => {
         toggle
           .setValue(this.plugin.settingsUnderChange!.ignoreVariationSelectors)

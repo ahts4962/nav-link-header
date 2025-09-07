@@ -1,13 +1,5 @@
 import { expect, test } from "vitest";
-import {
-  deepEqual,
-  getEmojiRegexSource,
-  isFileInFolder,
-  parseMarkdownLink,
-  parseWikiLink,
-  removeCode,
-  removeVariationSelectors,
-} from "src/utils";
+import { deepEqual, isFileInFolder, parseMarkdownLink, parseWikiLink, removeCode } from "src/utils";
 
 test("deep equal", () => {
   expect(deepEqual(1, 1)).toBe(true);
@@ -273,80 +265,6 @@ test("remove all codes", () => {
   content = "\n---\na: a\n---\n" + "text`text\n" + "```\ncode\n```\n" + "text`text\n";
   expected = "\n---\na: a\n---\ntext`text\n\ntext`text\n";
   expect(removeCode(content)).toBe(expected);
-});
-
-test("remove variation selectors", () => {
-  // VS1–VS16: U+FE00–U+FE0F
-  expect(removeVariationSelectors("a\uFE00b")).toBe("ab");
-  expect(removeVariationSelectors("a\uFE0Fb")).toBe("ab");
-  expect(removeVariationSelectors("ab")).toBe("ab");
-  expect(removeVariationSelectors("a\uFE00\uFE01\uFE0Fb")).toBe("ab");
-
-  // Supplement (U+E0100–U+E01EF)
-  const VS_SUP_1 = String.fromCodePoint(0xe0100);
-  const VS_SUP_LAST = String.fromCodePoint(0xe01ef);
-  expect(removeVariationSelectors("a" + VS_SUP_1 + "b")).toBe("ab");
-  expect(removeVariationSelectors("a" + VS_SUP_LAST + "b")).toBe("ab");
-  expect(removeVariationSelectors("a" + VS_SUP_1 + VS_SUP_LAST + "b")).toBe("ab");
-
-  const mixed = "テ" + "\uFE0F" + "ス" + VS_SUP_1 + "ト";
-  expect(removeVariationSelectors(mixed)).toBe("テスト");
-
-  expect(removeVariationSelectors("✊\uFE0F")).toBe("✊");
-  expect(removeVariationSelectors("❗️")).toBe("❗");
-
-  expect(removeVariationSelectors("")).toBe("");
-
-  const allVS = "\uFE00\uFE01\uFE0F" + VS_SUP_1 + VS_SUP_LAST;
-  expect(removeVariationSelectors(allVS)).toBe("");
-
-  const control = "abc😀漢字";
-  expect(removeVariationSelectors(control)).toBe(control);
-
-  const many = "A" + "\uFE0F".repeat(1000) + VS_SUP_1.repeat(500) + "B";
-  expect(removeVariationSelectors(many)).toBe("AB");
-});
-
-test("emoji regex pattern", () => {
-  const pattern = getEmojiRegexSource();
-  const re = new RegExp(`^(?:${pattern})$`, "u");
-  expect(re.test("😀")).toBe(true);
-  expect(re.test("✊")).toBe(true);
-  expect(re.test("✊️")).toBe(true);
-  expect(re.test("✊🏻")).toBe(true);
-  expect(re.test("👍")).toBe(true);
-  expect(re.test("👍🏽")).toBe(true);
-  expect(re.test("👨‍👩‍👧")).toBe(true);
-  expect(re.test("👨‍👩‍👧‍👦")).toBe(true);
-  expect(re.test("👩‍💻")).toBe(true);
-  expect(re.test("👨🏽‍💻")).toBe(true);
-  expect(re.test("🏳️‍🌈")).toBe(true);
-  expect(re.test("🇯🇵")).toBe(true);
-  expect(re.test("🇺🇳")).toBe(true);
-  expect(re.test("#️⃣")).toBe(true);
-  expect(re.test("0️⃣")).toBe(true);
-  expect(re.test("9️⃣")).toBe(true);
-  expect(re.test("🏴‍☠️")).toBe(true);
-  expect(re.test("™")).toBe(true);
-  expect(re.test("©")).toBe(true);
-  expect(re.test("A")).toBe(false);
-  expect(re.test("中")).toBe(false);
-  expect(re.test("#")).toBe(false);
-  expect(re.test("1")).toBe(false);
-
-  const re2 = new RegExp(`^(?:${pattern})(?:${pattern})$`, "u");
-  expect(re2.test("😀")).toBe(false);
-  expect(re2.test("😀😀")).toBe(true);
-  expect(re2.test("😀😀😀")).toBe(false);
-  expect(re2.test("🏳️‍🌈")).toBe(false);
-  expect(re2.test("🏳️‍🌈🏳️‍🌈")).toBe(true);
-  expect(re2.test("🏳️‍🌈🏳️‍🌈🏳️‍🌈")).toBe(false);
-  expect(re2.test("😀🏳️‍🌈")).toBe(true);
-
-  const reG = new RegExp(pattern, "gu");
-  const text = "A😀👍🏽🇯🇵👨‍👩‍👧#️⃣B";
-  const matches = text.match(reG);
-  expect(matches).toStrictEqual(["😀", "👍🏽", "🇯🇵", "👨‍👩‍👧", "#️⃣"]);
 });
 
 test("parse wiki style link", () => {

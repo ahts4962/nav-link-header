@@ -1,6 +1,13 @@
 import { type TAbstractFile, TFile } from "obsidian";
+import emojiRegex from "emoji-regex-xs";
 import type NavLinkHeader from "./main";
-import { removeCode, removeVariationSelectors, getEmojiRegexSource } from "./utils";
+import { removeCode, removeEmojiVariationSelectors, sanitizeRegexInput } from "./utils";
+
+export const exportedForTesting = {
+  convertAnnotationString,
+};
+
+export const EMOJI_ANNOTATION_PLACEHOLDER: string = "[[E]]";
 
 /**
  * Manages the annotated links.
@@ -53,8 +60,10 @@ export class AnnotatedLinksManager {
       .filter(([, destinations]) => Object.keys(destinations).includes(file.path))
       .map(([source]) => source);
 
-    const annotationStrings = this.plugin.settings!.annotationStrings;
+    // Snapshot the current settings so they remain stable during asynchronous processing.
+    const annotationStrings = [...this.plugin.settings!.annotationStrings];
     const allowSpace = this.plugin.settings!.allowSpaceAfterAnnotationString;
+    const ignoreVariationSelectors = this.plugin.settings!.ignoreVariationSelectors;
 
     for (const backlink of backlinks) {
       const cachedResult = this.cache.get(backlink)?.get(file.path);
@@ -72,53 +81,26 @@ export class AnnotatedLinksManager {
 
       const content = removeCode(await this.plugin.app.vault.cachedRead(backlinkFile));
 
-      const ignoreVariationSelectors = this.plugin.settings!.ignoreVariationSelectors;
-      let variationSelectorsRemovedContent = "";
-      if (ignoreVariationSelectors) {
-        variationSelectorsRemovedContent = removeVariationSelectors(content);
-      }
-
       const detectedAnnotations: string[] = [];
       for (const annotation of annotationStrings) {
-        let annotationForActualSearch;
-        let contentForActualSearch;
-        if (annotation === "[[E]]") {
-          annotationForActualSearch = getEmojiRegexSource();
-          contentForActualSearch = content;
-        } else {
-          if (ignoreVariationSelectors) {
-            annotationForActualSearch = removeVariationSelectors(annotation);
-            if (annotationForActualSearch === "") {
-              continue;
-            }
-            contentForActualSearch = variationSelectorsRemovedContent;
-          } else {
-            annotationForActualSearch = annotation;
-            contentForActualSearch = content;
-          }
-          annotationForActualSearch = annotationForActualSearch.replace(
-            /[.*+?^${}()|[\]\\]/g,
-            "\\$&"
-          ); // Escape special characters for regex.
-        }
+        const annotationRegex = convertAnnotationString(annotation, ignoreVariationSelectors);
 
-        let matchedAnnotation = this.searchAnnotatedLinkInContent(
-          contentForActualSearch,
+        const matchedAnnotations = this.searchAnnotatedLinksInContent(
+          content,
           backlink,
           file.path,
-          annotationForActualSearch,
+          annotationRegex,
           allowSpace
         );
-        if (matchedAnnotation) {
-          if (ignoreVariationSelectors && annotation !== "[[E]]") {
-            matchedAnnotation = annotation;
-          }
-          detectedAnnotations.push(matchedAnnotation);
-          yield {
-            destinationPath: backlink,
-            annotation: matchedAnnotation,
-          };
+        if (matchedAnnotations.length === 0) {
+          continue;
         }
+
+        detectedAnnotations.push(matchedAnnotations[0]);
+        yield {
+          destinationPath: backlink,
+          annotation: matchedAnnotations[0],
+        };
       }
 
       if (!this.cache.has(backlink)) {
@@ -131,37 +113,40 @@ export class AnnotatedLinksManager {
   /**
    * Helper function for `searchAnnotatedLinks`.
    * @param content The content to search in.
-   * @param backlinkFilePath The path of the backlink file.
-   * @param filePath The path of the file to search for.
-   * @param annotationString The annotation string to search for.
+   * @param backlinkFilePath The path of the backlink file (the file containing `content`).
+   * @param filePath The path of the file (searches for links to this file in `content`).
+   * @param annotationRegex The regex pattern of the annotation string.
    * @param allowSpace Whether to allow space after the annotation string.
-   * @returns If the annotated link is found in the content, the matched annotation string
-   *     is returned. Otherwise, `undefined` is returned.
+   * @returns An array of matched annotation strings.
+   *     If no matches are found, an empty array is returned.
    */
-  private searchAnnotatedLinkInContent(
+  private searchAnnotatedLinksInContent(
     content: string,
     backlinkFilePath: string,
     filePath: string,
-    annotationString: string,
+    annotationRegex: string,
     allowSpace: boolean
-  ): string | undefined {
+  ): string[] {
     const optionalSpace = allowSpace ? " ?" : "";
-    const configs = [
+    const searchConfigs = [
       // Wiki style links with annotation.
       {
-        re: new RegExp(String.raw`(${annotationString})${optionalSpace}!?\[\[([^\[\]]+)\]\]`, "gu"),
-        // Remove the heading and the display text
-        extractor: (matchString: string) => matchString.split(/[|#]/)[0],
+        regex: new RegExp(
+          String.raw`(${annotationRegex})${optionalSpace}!?\[\[([^\[\]]+)\]\]`,
+          "gu"
+        ),
+        extractor: (matchString: string) => {
+          return matchString.split(/[|#]/)[0]; // Remove the heading and the display text
+        },
       },
       // Markdown style links with annotation.
       {
-        re: new RegExp(
-          String.raw`(${annotationString})${optionalSpace}!?\[[^\[\]]+\]\(([^\(\)]+)\)`,
+        regex: new RegExp(
+          String.raw`(${annotationRegex})${optionalSpace}!?\[[^\[\]]+\]\(([^\(\)]+)\)`,
           "gu"
         ),
         extractor: (matchString: string) => {
           matchString = matchString.split("#")[0]; // Remove the heading
-
           try {
             return decodeURIComponent(matchString);
           } catch {
@@ -171,18 +156,40 @@ export class AnnotatedLinksManager {
       },
     ];
 
-    for (const { re, extractor } of configs) {
-      for (const match of content.matchAll(re)) {
+    const matchedAnnotations: string[] = [];
+    for (const { regex, extractor } of searchConfigs) {
+      for (const match of content.matchAll(regex)) {
         const matchedPath = this.plugin.app.metadataCache.getFirstLinkpathDest(
           extractor(match[2]),
           backlinkFilePath
         )?.path;
         if (matchedPath === filePath) {
-          return match[1];
+          matchedAnnotations.push(match[1]);
         }
       }
     }
 
-    return undefined;
+    return matchedAnnotations;
   }
+}
+
+/**
+ * Convert the annotation string to a regex pattern.
+ */
+function convertAnnotationString(input: string, ignoreVariationSelectors: boolean): string {
+  input = sanitizeRegexInput(input);
+
+  if (ignoreVariationSelectors) {
+    // Remove variation selectors from emoji characters,
+    // and then add optional variation selectors after each code point.
+    input = input.replace(emojiRegex(), (matched) => {
+      return Array.from(removeEmojiVariationSelectors(matched))
+        .map((cp) => cp + "[\\uFE0E\\uFE0F]?")
+        .join("");
+    });
+  }
+
+  // Find the sanitized placeholder and replace it with the emoji regex.
+  const placeholder = sanitizeRegexInput(sanitizeRegexInput(EMOJI_ANNOTATION_PLACEHOLDER));
+  return input.replace(new RegExp(placeholder, "g"), `(?:${emojiRegex().source})`);
 }
