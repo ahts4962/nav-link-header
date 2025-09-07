@@ -117,6 +117,7 @@ export class NavigationComponent extends Component {
     }
 
     // Periodic note links
+    this.plugin.syncPeriodicNotesManager();
     if (this.plugin.periodicNotesEnabled) {
       const periodicNoteLinkState = this.constructPeriodicNoteLinkState(
         file,

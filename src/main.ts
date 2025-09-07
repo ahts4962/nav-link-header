@@ -176,6 +176,23 @@ export default class NavLinkHeader extends Plugin {
     return getActiveGranularities(this.settings!, false).length > 0;
   }
 
+  /**
+   * Synchronizes the state of `periodicNotesManager`.
+   * `NavLinkHeader.periodicNotesManager` is controlled to stay in sync with
+   * `NavLinkHeader.periodicNotesEnabled`, but there is one situation where they cannot
+   * be synchronized: when the Periodic Notes plugin itself is enabled or disabled.
+   * There is currently no good way to subscribe to that lifecycle event.
+   * As a workaround, any place that uses `periodicNotesManager` should call this method
+   * first to synchronize its state.
+   */
+  public syncPeriodicNotesManager(): void {
+    if (this.periodicNotesEnabled && this.periodicNotesManager === undefined) {
+      this.periodicNotesManager = new PeriodicNotesManager(this);
+    } else if (!this.periodicNotesEnabled && this.periodicNotesManager !== undefined) {
+      this.periodicNotesManager = undefined;
+    }
+  }
+
   private onSettingsChange = debounce(
     async () => {
       const previousSettings = this.settings!;

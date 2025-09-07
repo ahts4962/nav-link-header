@@ -216,6 +216,7 @@ function openPeriodicNote(
   direction: "previous" | "next" | "parent",
   checking: boolean
 ): boolean {
+  plugin.syncPeriodicNotesManager();
   if (!plugin.periodicNotesEnabled) {
     return false;
   }
