@@ -1,6 +1,6 @@
 import { Vault, TFile, type TAbstractFile } from "obsidian";
 import type NavLinkHeader from "./main";
-import { fileIncludedInFolder, getFirstValueFromFileProperty } from "./utils";
+import { isFileInFolder, getFirstValueFromFileProperty } from "./utils";
 
 /**
  * Manages the list of files in a folder specified by the settings.
@@ -98,7 +98,7 @@ export class FolderLinksManager {
       return;
     }
 
-    if (!fileIncludedInFolder(file.path, folder.path, settings.recursive)) {
+    if (!isFileInFolder(file.path, folder.path, settings.recursive)) {
       return;
     }
 

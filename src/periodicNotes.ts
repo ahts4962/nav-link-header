@@ -23,7 +23,7 @@ import {
 } from "obsidian-daily-notes-interface";
 import type NavLinkHeader from "./main";
 import type { NavLinkHeaderSettings } from "./settings";
-import { fileIncludedInFolder, joinPaths } from "./utils";
+import { isFileInFolder, joinPaths } from "./utils";
 
 const ALL_GRANULARITIES: IGranularity[] = ["day", "week", "month", "quarter", "year"];
 
@@ -297,7 +297,7 @@ export class PeriodicNotesManager {
       if (!fileName.endsWith(".md")) {
         fileName += ".md";
       }
-      result.parentPath = joinPaths(folder ?? "/", fileName);
+      result.parentPath = joinPaths(normalizePath(folder ?? "/"), normalizePath(fileName));
       result.parentDate = date;
     }
 
@@ -322,7 +322,7 @@ export class PeriodicNotesManager {
       if (!this.plugin.app.vault.getFolderByPath(periodicNotesFolder)) {
         continue;
       }
-      if (!fileIncludedInFolder(path, periodicNotesFolder)) {
+      if (!isFileInFolder(path, periodicNotesFolder)) {
         continue;
       }
       const date = getDateFromPath(path, granularity);

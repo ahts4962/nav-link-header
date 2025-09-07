@@ -1,8 +1,8 @@
 import { expect, test } from "vitest";
 import {
   deepEqual,
-  fileIncludedInFolder,
-  generateEmojiRegexPattern,
+  getEmojiRegexSource,
+  isFileInFolder,
   parseMarkdownLink,
   parseWikiLink,
   removeCode,
@@ -45,24 +45,24 @@ test("deep equal", () => {
 });
 
 test("check if the file is included in the folder", () => {
-  expect(fileIncludedInFolder("file", "/")).toBe(true);
-  expect(fileIncludedInFolder("file", "/", false)).toBe(true);
-  expect(fileIncludedInFolder("folder/file", "/")).toBe(true);
-  expect(fileIncludedInFolder("folder/file", "/", false)).toBe(false);
-  expect(fileIncludedInFolder("fol/der/file", "/")).toBe(true);
-  expect(fileIncludedInFolder("fol/der/file", "/", false)).toBe(false);
-  expect(fileIncludedInFolder("file", "folder")).toBe(false);
-  expect(fileIncludedInFolder("file", "folder", false)).toBe(false);
-  expect(fileIncludedInFolder("folder/file", "folder")).toBe(true);
-  expect(fileIncludedInFolder("folder/file", "folder", false)).toBe(true);
-  expect(fileIncludedInFolder("fol/der/file", "folder")).toBe(false);
-  expect(fileIncludedInFolder("fol/der/file", "folder", false)).toBe(false);
-  expect(fileIncludedInFolder("folder/file", "fol")).toBe(false);
-  expect(fileIncludedInFolder("folder/file", "fol", false)).toBe(false);
-  expect(fileIncludedInFolder("fol/der/file", "fol")).toBe(true);
-  expect(fileIncludedInFolder("fol/der/file", "fol", false)).toBe(false);
-  expect(fileIncludedInFolder("fol/der/file", "fol/der")).toBe(true);
-  expect(fileIncludedInFolder("fol/der/file", "fol/der", false)).toBe(true);
+  expect(isFileInFolder("file", "/")).toBe(true);
+  expect(isFileInFolder("file", "/", false)).toBe(true);
+  expect(isFileInFolder("folder/file", "/")).toBe(true);
+  expect(isFileInFolder("folder/file", "/", false)).toBe(false);
+  expect(isFileInFolder("fol/der/file", "/")).toBe(true);
+  expect(isFileInFolder("fol/der/file", "/", false)).toBe(false);
+  expect(isFileInFolder("file", "folder")).toBe(false);
+  expect(isFileInFolder("file", "folder", false)).toBe(false);
+  expect(isFileInFolder("folder/file", "folder")).toBe(true);
+  expect(isFileInFolder("folder/file", "folder", false)).toBe(true);
+  expect(isFileInFolder("fol/der/file", "folder")).toBe(false);
+  expect(isFileInFolder("fol/der/file", "folder", false)).toBe(false);
+  expect(isFileInFolder("folder/file", "fol")).toBe(false);
+  expect(isFileInFolder("folder/file", "fol", false)).toBe(false);
+  expect(isFileInFolder("fol/der/file", "fol")).toBe(true);
+  expect(isFileInFolder("fol/der/file", "fol", false)).toBe(false);
+  expect(isFileInFolder("fol/der/file", "fol/der")).toBe(true);
+  expect(isFileInFolder("fol/der/file", "fol/der", false)).toBe(true);
 });
 
 test("remove YAML front matter", () => {
@@ -275,6 +275,80 @@ test("remove all codes", () => {
   expect(removeCode(content)).toBe(expected);
 });
 
+test("remove variation selectors", () => {
+  // VS1–VS16: U+FE00–U+FE0F
+  expect(removeVariationSelectors("a\uFE00b")).toBe("ab");
+  expect(removeVariationSelectors("a\uFE0Fb")).toBe("ab");
+  expect(removeVariationSelectors("ab")).toBe("ab");
+  expect(removeVariationSelectors("a\uFE00\uFE01\uFE0Fb")).toBe("ab");
+
+  // Supplement (U+E0100–U+E01EF)
+  const VS_SUP_1 = String.fromCodePoint(0xe0100);
+  const VS_SUP_LAST = String.fromCodePoint(0xe01ef);
+  expect(removeVariationSelectors("a" + VS_SUP_1 + "b")).toBe("ab");
+  expect(removeVariationSelectors("a" + VS_SUP_LAST + "b")).toBe("ab");
+  expect(removeVariationSelectors("a" + VS_SUP_1 + VS_SUP_LAST + "b")).toBe("ab");
+
+  const mixed = "テ" + "\uFE0F" + "ス" + VS_SUP_1 + "ト";
+  expect(removeVariationSelectors(mixed)).toBe("テスト");
+
+  expect(removeVariationSelectors("✊\uFE0F")).toBe("✊");
+  expect(removeVariationSelectors("❗️")).toBe("❗");
+
+  expect(removeVariationSelectors("")).toBe("");
+
+  const allVS = "\uFE00\uFE01\uFE0F" + VS_SUP_1 + VS_SUP_LAST;
+  expect(removeVariationSelectors(allVS)).toBe("");
+
+  const control = "abc😀漢字";
+  expect(removeVariationSelectors(control)).toBe(control);
+
+  const many = "A" + "\uFE0F".repeat(1000) + VS_SUP_1.repeat(500) + "B";
+  expect(removeVariationSelectors(many)).toBe("AB");
+});
+
+test("emoji regex pattern", () => {
+  const pattern = getEmojiRegexSource();
+  const re = new RegExp(`^(?:${pattern})$`, "u");
+  expect(re.test("😀")).toBe(true);
+  expect(re.test("✊")).toBe(true);
+  expect(re.test("✊️")).toBe(true);
+  expect(re.test("✊🏻")).toBe(true);
+  expect(re.test("👍")).toBe(true);
+  expect(re.test("👍🏽")).toBe(true);
+  expect(re.test("👨‍👩‍👧")).toBe(true);
+  expect(re.test("👨‍👩‍👧‍👦")).toBe(true);
+  expect(re.test("👩‍💻")).toBe(true);
+  expect(re.test("👨🏽‍💻")).toBe(true);
+  expect(re.test("🏳️‍🌈")).toBe(true);
+  expect(re.test("🇯🇵")).toBe(true);
+  expect(re.test("🇺🇳")).toBe(true);
+  expect(re.test("#️⃣")).toBe(true);
+  expect(re.test("0️⃣")).toBe(true);
+  expect(re.test("9️⃣")).toBe(true);
+  expect(re.test("🏴‍☠️")).toBe(true);
+  expect(re.test("™")).toBe(true);
+  expect(re.test("©")).toBe(true);
+  expect(re.test("A")).toBe(false);
+  expect(re.test("中")).toBe(false);
+  expect(re.test("#")).toBe(false);
+  expect(re.test("1")).toBe(false);
+
+  const re2 = new RegExp(`^(?:${pattern})(?:${pattern})$`, "u");
+  expect(re2.test("😀")).toBe(false);
+  expect(re2.test("😀😀")).toBe(true);
+  expect(re2.test("😀😀😀")).toBe(false);
+  expect(re2.test("🏳️‍🌈")).toBe(false);
+  expect(re2.test("🏳️‍🌈🏳️‍🌈")).toBe(true);
+  expect(re2.test("🏳️‍🌈🏳️‍🌈🏳️‍🌈")).toBe(false);
+  expect(re2.test("😀🏳️‍🌈")).toBe(true);
+
+  const reG = new RegExp(pattern, "gu");
+  const text = "A😀👍🏽🇯🇵👨‍👩‍👧#️⃣B";
+  const matches = text.match(reG);
+  expect(matches).toStrictEqual(["😀", "👍🏽", "🇯🇵", "👨‍👩‍👧", "#️⃣"]);
+});
+
 test("parse wiki style link", () => {
   let text;
   let expected;
@@ -432,7 +506,7 @@ test("parse markdown style link", () => {
   expected = {
     destination: undefined,
     isValidExternalLink: false,
-    displayText: "",
+    displayText: undefined,
   };
   expect(parseMarkdownLink(text)).toStrictEqual(expected);
 
@@ -560,81 +634,7 @@ test("parse markdown style link", () => {
   expected = {
     destination: undefined,
     isValidExternalLink: false,
-    displayText: "",
+    displayText: undefined,
   };
   expect(parseMarkdownLink(text)).toStrictEqual(expected);
-});
-
-test("remove variation selectors", () => {
-  // VS1–VS16: U+FE00–U+FE0F
-  expect(removeVariationSelectors("a\uFE00b")).toBe("ab");
-  expect(removeVariationSelectors("a\uFE0Fb")).toBe("ab");
-  expect(removeVariationSelectors("ab")).toBe("ab");
-  expect(removeVariationSelectors("a\uFE00\uFE01\uFE0Fb")).toBe("ab");
-
-  // Supplement (U+E0100–U+E01EF)
-  const VS_SUP_1 = String.fromCodePoint(0xe0100);
-  const VS_SUP_LAST = String.fromCodePoint(0xe01ef);
-  expect(removeVariationSelectors("a" + VS_SUP_1 + "b")).toBe("ab");
-  expect(removeVariationSelectors("a" + VS_SUP_LAST + "b")).toBe("ab");
-  expect(removeVariationSelectors("a" + VS_SUP_1 + VS_SUP_LAST + "b")).toBe("ab");
-
-  const mixed = "テ" + "\uFE0F" + "ス" + VS_SUP_1 + "ト";
-  expect(removeVariationSelectors(mixed)).toBe("テスト");
-
-  expect(removeVariationSelectors("✊\uFE0F")).toBe("✊");
-  expect(removeVariationSelectors("❗️")).toBe("❗");
-
-  expect(removeVariationSelectors("")).toBe("");
-
-  const allVS = "\uFE00\uFE01\uFE0F" + VS_SUP_1 + VS_SUP_LAST;
-  expect(removeVariationSelectors(allVS)).toBe("");
-
-  const control = "abc😀漢字";
-  expect(removeVariationSelectors(control)).toBe(control);
-
-  const many = "A" + "\uFE0F".repeat(1000) + VS_SUP_1.repeat(500) + "B";
-  expect(removeVariationSelectors(many)).toBe("AB");
-});
-
-test("generate emoji regex pattern", () => {
-  const pattern = generateEmojiRegexPattern();
-  const re = new RegExp(`^(?:${pattern})$`, "u");
-  expect(re.test("😀")).toBe(true);
-  expect(re.test("✊")).toBe(true);
-  expect(re.test("✊️")).toBe(true);
-  expect(re.test("✊🏻")).toBe(true);
-  expect(re.test("👍")).toBe(true);
-  expect(re.test("👍🏽")).toBe(true);
-  expect(re.test("👨‍👩‍👧")).toBe(true);
-  expect(re.test("👨‍👩‍👧‍👦")).toBe(true);
-  expect(re.test("👩‍💻")).toBe(true);
-  expect(re.test("👨🏽‍💻")).toBe(true);
-  expect(re.test("🏳️‍🌈")).toBe(true);
-  expect(re.test("🇯🇵")).toBe(true);
-  expect(re.test("🇺🇳")).toBe(true);
-  expect(re.test("#️⃣")).toBe(true);
-  expect(re.test("0️⃣")).toBe(true);
-  expect(re.test("9️⃣")).toBe(true);
-  expect(re.test("🏴‍☠️")).toBe(true);
-  expect(re.test("™")).toBe(true);
-  expect(re.test("©")).toBe(true);
-  expect(re.test("A")).toBe(false);
-  expect(re.test("中")).toBe(false);
-  expect(re.test("#")).toBe(false);
-  expect(re.test("1")).toBe(false);
-
-  const re2 = new RegExp(`^(?:${pattern})(?:${pattern})$`, "u");
-  expect(re2.test("😀")).toBe(false);
-  expect(re2.test("😀😀")).toBe(true);
-  expect(re2.test("😀😀😀")).toBe(false);
-  expect(re2.test("🏳️‍🌈")).toBe(false);
-  expect(re2.test("🏳️‍🌈🏳️‍🌈")).toBe(true);
-  expect(re2.test("🏳️‍🌈🏳️‍🌈🏳️‍🌈")).toBe(false);
-  expect(re2.test("😀🏳️‍🌈")).toBe(true);
-
-  const reG = new RegExp(pattern, "gu");
-  const text = "A😀👍🏽🇯🇵👨‍👩‍👧#️⃣B";
-  const matches = text.match(reG);
-  expect(matches).toStrictEqual(["😀", "👍🏽", "🇯🇵", "👨‍👩‍👧", "#️⃣"]);
 });

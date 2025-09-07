@@ -1,6 +1,6 @@
 import { type TAbstractFile, TFile } from "obsidian";
 import type NavLinkHeader from "./main";
-import { removeCode, removeVariationSelectors, generateEmojiRegexPattern } from "./utils";
+import { removeCode, removeVariationSelectors, getEmojiRegexSource } from "./utils";
 
 /**
  * Manages the annotated links.
@@ -70,7 +70,7 @@ export class AnnotatedLinksManager {
         continue;
       }
 
-      let content = removeCode(await this.plugin.app.vault.cachedRead(backlinkFile));
+      const content = removeCode(await this.plugin.app.vault.cachedRead(backlinkFile));
 
       const ignoreVariationSelectors = this.plugin.settings!.ignoreVariationSelectors;
       let variationSelectorsRemovedContent = "";
@@ -83,7 +83,7 @@ export class AnnotatedLinksManager {
         let annotationForActualSearch;
         let contentForActualSearch;
         if (annotation === "[[E]]") {
-          annotationForActualSearch = generateEmojiRegexPattern();
+          annotationForActualSearch = getEmojiRegexSource();
           contentForActualSearch = content;
         } else {
           if (ignoreVariationSelectors) {

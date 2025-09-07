@@ -15,7 +15,7 @@ import {
   getPrevNextLinkEnabledSetting,
 } from "./periodicNotes";
 import { FileCreationModal } from "./fileCreationModal";
-import { getStringValuesFromFileProperty, getTitleFromPath, openExternalLink } from "./utils";
+import { getStringValuesFromFileProperty, getFileStemFromPath, openExternalLink } from "./utils";
 import Navigation from "./ui/Navigation.svelte";
 
 /**
@@ -295,7 +295,7 @@ export class NavigationComponent extends Component {
           // Make unresolved link.
           const clickHandlerForUnresolvedLinks: LinkEventHandler = (target, e) => {
             if (this.plugin.settings!.confirmFileCreation) {
-              new FileCreationModal(this.plugin, getTitleFromPath(target.destination), () => {
+              new FileCreationModal(this.plugin, getFileStemFromPath(target.destination), () => {
                 void createPeriodicNote(
                   periodicNoteLinks.parentGranularity!,
                   periodicNoteLinks.parentDate!
@@ -311,7 +311,7 @@ export class NavigationComponent extends Component {
           parent.link = new NavigationLinkState({
             destination: periodicNoteLinks.parentPath,
             isExternal: false,
-            displayText: getTitleFromPath(periodicNoteLinks.parentPath),
+            displayText: getFileStemFromPath(periodicNoteLinks.parentPath),
             resolved: false,
             clickHandler: clickHandlerForUnresolvedLinks,
             mouseOverHandler: () => {},
@@ -577,7 +577,7 @@ export class NavigationComponent extends Component {
       }
     }
 
-    return getTitleFromPath(destination);
+    return getFileStemFromPath(destination);
   }
 
   /**
