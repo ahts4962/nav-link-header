@@ -1,10 +1,6 @@
 import type { App, TFile } from "obsidian";
 import NavLinkHeader from "./main";
-import {
-	getStringValuesFromFileProperty,
-	parseMarkdownLink,
-	parseWikiLink,
-} from "./utils";
+import { getStringValuesFromFileProperty, parseMarkdownLink, parseWikiLink } from "./utils";
 
 /**
  * Gets links from the frontmatter properties of the specified file.
@@ -15,31 +11,31 @@ import {
  *     and the display text (if specified).
  */
 export function getPropertyLinks(
-	plugin: NavLinkHeader,
-	file: TFile
+  plugin: NavLinkHeader,
+  file: TFile
 ): {
-	destination: string;
-	isExternal: boolean;
-	prefix: string;
-	displayText?: string;
+  destination: string;
+  isExternal: boolean;
+  prefix: string;
+  displayText?: string;
 }[] {
-	const result: ReturnType<typeof getPropertyLinks> = [];
+  const result: ReturnType<typeof getPropertyLinks> = [];
 
-	const propertyMappings = plugin.settings!.propertyMappings;
-	for (const { property, prefix } of propertyMappings) {
-		const links = getLinksFromFileProperty(plugin.app, file, property);
+  const propertyMappings = plugin.settings!.propertyMappings;
+  for (const { property, prefix } of propertyMappings) {
+    const links = getLinksFromFileProperty(plugin.app, file, property);
 
-		for (const { destination, isExternal, displayText } of links) {
-			result.push({
-				destination,
-				isExternal,
-				prefix,
-				displayText,
-			});
-		}
-	}
+    for (const { destination, isExternal, displayText } of links) {
+      result.push({
+        destination,
+        isExternal,
+        prefix,
+        displayText,
+      });
+    }
+  }
 
-	return result;
+  return result;
 }
 
 /**
@@ -49,57 +45,45 @@ export function getPropertyLinks(
  * @returns The three-way link.
  */
 export function getThreeWayPropertyLink(
-	plugin: NavLinkHeader,
-	file: TFile
+  plugin: NavLinkHeader,
+  file: TFile
 ): {
-	previous?: {
-		destination: string;
-		isExternal: boolean;
-		displayText?: string;
-	};
-	next?: { destination: string; isExternal: boolean; displayText?: string };
-	parent?: { destination: string; isExternal: boolean; displayText?: string };
+  previous?: {
+    destination: string;
+    isExternal: boolean;
+    displayText?: string;
+  };
+  next?: { destination: string; isExternal: boolean; displayText?: string };
+  parent?: { destination: string; isExternal: boolean; displayText?: string };
 } {
-	const result: ReturnType<typeof getThreeWayPropertyLink> = {
-		previous: undefined,
-		next: undefined,
-		parent: undefined,
-	};
+  const result: ReturnType<typeof getThreeWayPropertyLink> = {
+    previous: undefined,
+    next: undefined,
+    parent: undefined,
+  };
 
-	if (plugin.settings!.previousLinkProperty) {
-		const links = getLinksFromFileProperty(
-			plugin.app,
-			file,
-			plugin.settings!.previousLinkProperty
-		);
-		if (links.length > 0) {
-			result.previous = links[0];
-		}
-	}
+  if (plugin.settings!.previousLinkProperty) {
+    const links = getLinksFromFileProperty(plugin.app, file, plugin.settings!.previousLinkProperty);
+    if (links.length > 0) {
+      result.previous = links[0];
+    }
+  }
 
-	if (plugin.settings!.nextLinkProperty) {
-		const links = getLinksFromFileProperty(
-			plugin.app,
-			file,
-			plugin.settings!.nextLinkProperty
-		);
-		if (links.length > 0) {
-			result.next = links[0];
-		}
-	}
+  if (plugin.settings!.nextLinkProperty) {
+    const links = getLinksFromFileProperty(plugin.app, file, plugin.settings!.nextLinkProperty);
+    if (links.length > 0) {
+      result.next = links[0];
+    }
+  }
 
-	if (plugin.settings!.parentLinkProperty) {
-		const links = getLinksFromFileProperty(
-			plugin.app,
-			file,
-			plugin.settings!.parentLinkProperty
-		);
-		if (links.length > 0) {
-			result.parent = links[0];
-		}
-	}
+  if (plugin.settings!.parentLinkProperty) {
+    const links = getLinksFromFileProperty(plugin.app, file, plugin.settings!.parentLinkProperty);
+    if (links.length > 0) {
+      result.parent = links[0];
+    }
+  }
 
-	return result;
+  return result;
 }
 
 /**
@@ -113,59 +97,52 @@ export function getThreeWayPropertyLink(
  *     If the property does not exist or valid links are not found, an empty array is returned.
  */
 function getLinksFromFileProperty(
-	app: App,
-	file: TFile,
-	propertyName: string
+  app: App,
+  file: TFile,
+  propertyName: string
 ): {
-	destination: string;
-	isExternal: boolean;
-	displayText?: string;
+  destination: string;
+  isExternal: boolean;
+  displayText?: string;
 }[] {
-	const result: ReturnType<typeof getLinksFromFileProperty> = [];
+  const result: ReturnType<typeof getLinksFromFileProperty> = [];
 
-	const propertyValues = getStringValuesFromFileProperty(
-		app,
-		file,
-		propertyName
-	);
+  const propertyValues = getStringValuesFromFileProperty(app, file, propertyName);
 
-	for (const value of propertyValues) {
-		let destination = value;
-		let isExternal = false;
-		let displayText: string | undefined = undefined;
+  for (const value of propertyValues) {
+    let destination = value;
+    let isExternal = false;
+    let displayText: string | undefined = undefined;
 
-		const parsedWikiLink = parseWikiLink(value);
-		if (parsedWikiLink.path) {
-			destination = parsedWikiLink.path;
-			displayText = parsedWikiLink.displayText;
-		} else {
-			const parsedMarkdownLink = parseMarkdownLink(value);
-			if (parsedMarkdownLink.destination) {
-				destination = parsedMarkdownLink.destination;
-				isExternal = parsedMarkdownLink.isValidExternalLink;
-				displayText = parsedMarkdownLink.displayText;
-			} else {
-				isExternal = URL.canParse(value);
-			}
-		}
+    const parsedWikiLink = parseWikiLink(value);
+    if (parsedWikiLink.path) {
+      destination = parsedWikiLink.path;
+      displayText = parsedWikiLink.displayText;
+    } else {
+      const parsedMarkdownLink = parseMarkdownLink(value);
+      if (parsedMarkdownLink.destination) {
+        destination = parsedMarkdownLink.destination;
+        isExternal = parsedMarkdownLink.isValidExternalLink;
+        displayText = parsedMarkdownLink.displayText;
+      } else {
+        isExternal = URL.canParse(value);
+      }
+    }
 
-		if (!isExternal) {
-			const linkedFile = app.metadataCache.getFirstLinkpathDest(
-				destination,
-				file.path
-			);
-			if (!linkedFile) {
-				continue;
-			}
-			destination = linkedFile.path;
-		}
+    if (!isExternal) {
+      const linkedFile = app.metadataCache.getFirstLinkpathDest(destination, file.path);
+      if (!linkedFile) {
+        continue;
+      }
+      destination = linkedFile.path;
+    }
 
-		result.push({
-			destination,
-			isExternal,
-			displayText,
-		});
-	}
+    result.push({
+      destination,
+      isExternal,
+      displayText,
+    });
+  }
 
-	return result;
+  return result;
 }

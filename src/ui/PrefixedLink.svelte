@@ -1,8 +1,8 @@
 <script lang="ts">
-	import type { PrefixedLinkState } from "../navigationLinkState";
-	import NavigationLink from "./NavigationLink.svelte";
+  import type { PrefixedLinkState } from "../navigationLinkState";
+  import NavigationLink from "./NavigationLink.svelte";
 
-	const { state }: { state: PrefixedLinkState } = $props();
+  const { state }: { state: PrefixedLinkState } = $props();
 </script>
 
 <!--
@@ -10,13 +10,13 @@
   A component that represents a link with a prefix string (typically emoji).
 -->
 <div class="nav-link-header-container">
-	<div>{state.prefix}</div>
-	<NavigationLink state={state.link} />
+  <div>{state.prefix}</div>
+  <NavigationLink state={state.link} />
 </div>
 
 <style>
-	.nav-link-header-container {
-		display: flex;
-		flex-wrap: wrap;
-	}
+  .nav-link-header-container {
+    display: flex;
+    flex-wrap: wrap;
+  }
 </style>

@@ -1,18 +1,18 @@
 <script lang="ts">
-	import { setIcon } from "obsidian";
-	import { onMount } from "svelte";
+  import { setIcon } from "obsidian";
+  import { onMount } from "svelte";
 
-	const {
-		iconId,
-		muted = false,
-		size = "var(--icon-m)",
-	}: { iconId: string; muted?: boolean; size?: string } = $props();
+  const {
+    iconId,
+    muted = false,
+    size = "var(--icon-m)",
+  }: { iconId: string; muted?: boolean; size?: string } = $props();
 
-	let container: HTMLDivElement;
+  let container: HTMLDivElement;
 
-	onMount(() => {
-		setIcon(container, iconId);
-	});
+  onMount(() => {
+    setIcon(container, iconId);
+  });
 </script>
 
 <!--
@@ -30,23 +30,23 @@
   like "var(--icon-m)". The default size is "var(--icon-m)".
 -->
 <div
-	class={["nav-link-header-container", muted && "nav-link-header-muted"]}
-	bind:this={container}
-	style={`--icon-size: ${size};`}
+  class={["nav-link-header-container", muted && "nav-link-header-muted"]}
+  bind:this={container}
+  style={`--icon-size: ${size};`}
 ></div>
 
 <style>
-	.nav-link-header-container {
-		display: inline-block;
-		vertical-align: middle;
-		color: var(--text-normal);
+  .nav-link-header-container {
+    display: inline-block;
+    vertical-align: middle;
+    color: var(--text-normal);
 
-		& > :global(svg) {
-			display: block;
-		}
-	}
+    & > :global(svg) {
+      display: block;
+    }
+  }
 
-	.nav-link-header-muted {
-		color: var(--text-faint);
-	}
+  .nav-link-header-muted {
+    color: var(--text-faint);
+  }
 </style>

@@ -1,34 +1,34 @@
 .nav-link-header-navigation {
-	z-index: 1;
+  z-index: 1;
 }
 
 /* Styles for the parent element of the navigation in the hover popover */
 .popover.hover-popover > .markdown-embed:has(> .nav-link-header-navigation) {
-	display: flex;
-	flex-direction: column;
+  display: flex;
+  flex-direction: column;
 
-	> .markdown-embed-content {
-		flex: 1;
-		overflow: auto;
-	}
+  > .markdown-embed-content {
+    flex: 1;
+    overflow: auto;
+  }
 }
 
 /* Adjust the position of the "Open link" button in the hover popover. */
 @supports (anchor-name: --a) {
-	.popover.hover-popover .nav-link-header-navigation {
-		anchor-name: --nav-link-header-anchor;
+  .popover.hover-popover .nav-link-header-navigation {
+    anchor-name: --nav-link-header-anchor;
 
-		~ .markdown-embed-link {
-			position-anchor: --nav-link-header-anchor;
-			top: anchor(bottom);
-		}
-	}
+    ~ .markdown-embed-link {
+      position-anchor: --nav-link-header-anchor;
+      top: anchor(bottom);
+    }
+  }
 }
 
 /* If the web view does not support the anchor-name property,
    fall back to margin adjustments. */
 @supports not (anchor-name: --a) {
-	.popover.hover-popover .nav-link-header-navigation {
-		margin-right: 30px;
-	}
+  .popover.hover-popover .nav-link-header-navigation {
+    margin-right: 30px;
+  }
 }

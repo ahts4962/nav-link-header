@@ -1,10 +1,10 @@
 {
-	"id": "nav-link-header",
-	"name": "Nav Link Header",
-	"version": "2.1.1",
-	"minAppVersion": "1.7.4",
-	"description": "Display navigation links at the top of the notes.",
-	"author": "ahts4962",
-	"authorUrl": "https://github.com/ahts4962",
-	"isDesktopOnly": false
+  "id": "nav-link-header",
+  "name": "Nav Link Header",
+  "version": "2.1.1",
+  "minAppVersion": "1.7.4",
+  "description": "Display navigation links at the top of the notes.",
+  "author": "ahts4962",
+  "authorUrl": "https://github.com/ahts4962",
+  "isDesktopOnly": false
 }
