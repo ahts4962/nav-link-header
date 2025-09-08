@@ -26,10 +26,12 @@ export class NavigationComponent extends Component {
   private navigationProps: {
     links: (PrefixedLinkState | ThreeWayLinkState)[];
     isLoading: boolean;
+    matchWidthToLineLength: boolean;
     displayPlaceholder: boolean;
   } = $state({
     links: [],
     isLoading: false,
+    matchWidthToLineLength: false,
     displayPlaceholder: false,
   });
   private currentFilePath?: string;
@@ -50,6 +52,7 @@ export class NavigationComponent extends Component {
   public onload(): void {
     this.navigationProps.links = [];
     this.navigationProps.isLoading = false;
+    this.navigationProps.matchWidthToLineLength = false;
     this.navigationProps.displayPlaceholder = false;
     this.navigation = mount(Navigation, {
       target: this.containerEl,
@@ -81,6 +84,8 @@ export class NavigationComponent extends Component {
     }
 
     this.navigationProps.isLoading = true;
+    this.navigationProps.matchWidthToLineLength =
+      this.plugin.settings!.matchNavigationWidthToLineLength;
     this.navigationProps.displayPlaceholder = this.plugin.settings!.displayPlaceholder;
 
     const filePath = file.path;

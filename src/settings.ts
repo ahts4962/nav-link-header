@@ -8,6 +8,7 @@ import { deepCopy } from "./utils";
 export interface NavLinkHeaderSettings {
   displayInMarkdownViews: boolean;
   displayInHoverPopovers: boolean;
+  matchNavigationWidthToLineLength: boolean;
   displayOrderOfLinks: string[];
   propertyNameForDisplayText: string;
   filterDuplicateNotes: boolean;
@@ -48,6 +49,7 @@ export interface FolderLinksSettings {
 const DEFAULT_SETTINGS: NavLinkHeaderSettings = {
   displayInMarkdownViews: true,
   displayInHoverPopovers: true,
+  matchNavigationWidthToLineLength: false,
   displayOrderOfLinks: [],
   propertyNameForDisplayText: "",
   filterDuplicateNotes: true,
@@ -239,6 +241,22 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           .setValue(this.plugin.settingsUnderChange!.displayInHoverPopovers)
           .onChange((value) => {
             this.plugin.settingsUnderChange!.displayInHoverPopovers = value;
+            this.plugin.triggerSettingsChangedEvent();
+          });
+      });
+
+    new Setting(containerEl)
+      .setName("Match navigation width to line length")
+      .setDesc(
+        "If enabled, the width of the navigation will match the line length of the note. " +
+          'Here, "line length" refers to the width defined when ' +
+          'Obsidian\'s "Readable line length" option is enabled.'
+      )
+      .addToggle((toggle) => {
+        toggle
+          .setValue(this.plugin.settingsUnderChange!.matchNavigationWidthToLineLength)
+          .onChange((value) => {
+            this.plugin.settingsUnderChange!.matchNavigationWidthToLineLength = value;
             this.plugin.triggerSettingsChangedEvent();
           });
       });

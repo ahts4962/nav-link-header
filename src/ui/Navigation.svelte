@@ -6,10 +6,12 @@
   const {
     links,
     isLoading,
+    matchWidthToLineLength,
     displayPlaceholder,
   }: {
     links: (PrefixedLinkState | ThreeWayLinkState)[];
     isLoading: boolean;
+    matchWidthToLineLength: boolean;
     displayPlaceholder: boolean;
   } = $props();
 </script>
@@ -25,8 +27,18 @@
   "No links" will be displayed.
 -->
 {#if links.length > 0 || displayPlaceholder}
-  <div class="nav-link-header-background">
-    <div class="nav-link-header-container">
+  <div
+    class={[
+      "nav-link-header-background",
+      matchWidthToLineLength && "nav-link-header-width-matched",
+    ]}
+  >
+    <div
+      class={[
+        "nav-link-header-container",
+        matchWidthToLineLength && "nav-link-header-width-matched",
+      ]}
+    >
       {#each links as link}
         {#if link instanceof PrefixedLinkState}
           <PrefixedLink state={link} />
@@ -48,6 +60,14 @@
   .nav-link-header-background {
     padding: 0.4em;
     background-color: var(--background-primary);
+
+    &.nav-link-header-width-matched {
+      padding: var(--file-margins);
+      padding-top: 0.4em;
+      padding-bottom: 0.4em;
+      overflow-y: auto;
+      scrollbar-gutter: stable;
+    }
   }
 
   .nav-link-header-container {
@@ -57,6 +77,12 @@
     padding: 0.4em;
     border: 1px solid var(--background-modifier-border);
     border-radius: var(--radius-s);
+
+    &.nav-link-header-width-matched {
+      margin-left: auto;
+      margin-right: auto;
+      max-width: var(--file-line-width);
+    }
   }
 
   .nav-link-header-muted {
