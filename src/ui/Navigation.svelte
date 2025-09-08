@@ -8,14 +8,22 @@
     isLoading,
     matchWidthToLineLength,
     hideAnnotatedLinkPrefix,
+    displayLoadingMessage,
     displayPlaceholder,
   }: {
     links: (PrefixedLinkState | ThreeWayLinkState)[];
     isLoading: boolean;
     matchWidthToLineLength: boolean;
     hideAnnotatedLinkPrefix: boolean;
+    displayLoadingMessage: boolean;
     displayPlaceholder: boolean;
   } = $props();
+
+  const showNavigation = $derived(
+    links.length > 0 ||
+      (isLoading && displayLoadingMessage) ||
+      (links.length === 0 && !isLoading && displayPlaceholder),
+  );
 </script>
 
 <!--
@@ -28,7 +36,7 @@
   If `links` is empty and `isLoading` is `false` and `displayPlaceholder` is `true`,
   "No links" will be displayed.
 -->
-{#if links.length > 0 || displayPlaceholder}
+{#if showNavigation}
   <div
     class={[
       "nav-link-header-background",
@@ -48,7 +56,7 @@
           <ThreeWayLink state={link} />
         {/if}
       {/each}
-      {#if isLoading && displayPlaceholder}
+      {#if isLoading && displayLoadingMessage}
         <div class="nav-link-header-muted">Loading...</div>
       {/if}
       {#if links.length === 0 && !isLoading && displayPlaceholder}

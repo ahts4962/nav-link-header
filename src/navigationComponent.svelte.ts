@@ -28,12 +28,14 @@ export class NavigationComponent extends Component {
     isLoading: boolean;
     matchWidthToLineLength: boolean;
     hideAnnotatedLinkPrefix: boolean;
+    displayLoadingMessage: boolean;
     displayPlaceholder: boolean;
   } = $state({
     links: [],
     isLoading: false,
     matchWidthToLineLength: false,
     hideAnnotatedLinkPrefix: false,
+    displayLoadingMessage: false,
     displayPlaceholder: false,
   });
   private currentFilePath?: string;
@@ -56,6 +58,7 @@ export class NavigationComponent extends Component {
     this.navigationProps.isLoading = false;
     this.navigationProps.matchWidthToLineLength = false;
     this.navigationProps.hideAnnotatedLinkPrefix = false;
+    this.navigationProps.displayLoadingMessage = false;
     this.navigationProps.displayPlaceholder = false;
     this.navigation = mount(Navigation, {
       target: this.containerEl,
@@ -90,6 +93,7 @@ export class NavigationComponent extends Component {
     this.navigationProps.matchWidthToLineLength =
       this.plugin.settings!.matchNavigationWidthToLineLength;
     this.navigationProps.hideAnnotatedLinkPrefix = this.plugin.settings!.hideAnnotatedLinkPrefix;
+    this.navigationProps.displayLoadingMessage = this.plugin.settings!.displayLoadingMessage;
     this.navigationProps.displayPlaceholder = this.plugin.settings!.displayPlaceholder;
 
     const filePath = file.path;
@@ -161,10 +165,7 @@ export class NavigationComponent extends Component {
       });
     }
 
-    if (fileChanged) {
-      // If the file has changed, update the navigation as soon as possible.
-      this.navigationProps.links = [...newLinks.getLinks()];
-    }
+    this.navigationProps.links = [...newLinks.getLinks()];
 
     // Annotated links
     if (this.plugin.settings!.annotationStrings.length > 0) {
@@ -174,17 +175,8 @@ export class NavigationComponent extends Component {
           return; // Handles the async gap.
         }
         newLinks.addLink(link);
-        if (fileChanged) {
-          // If the file has changed, update the navigation as soon as possible.
-          this.navigationProps.links = [...newLinks.getLinks()];
-        }
+        this.navigationProps.links = [...newLinks.getLinks()];
       }
-    }
-
-    if (!fileChanged) {
-      // If the file has not changed, update the navigation after all links are added.
-      // This is to prevent flickering.
-      this.navigationProps.links = [...newLinks.getLinks()];
     }
 
     this.navigationProps.isLoading = false;

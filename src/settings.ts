@@ -13,6 +13,7 @@ export interface NavLinkHeaderSettings {
   propertyNameForDisplayText: string;
   filterDuplicateNotes: boolean;
   duplicateNoteFilteringPriority: string[];
+  displayLoadingMessage: boolean;
   displayPlaceholder: boolean;
   confirmFileCreation: boolean;
   annotationStrings: string[];
@@ -55,6 +56,7 @@ const DEFAULT_SETTINGS: NavLinkHeaderSettings = {
   propertyNameForDisplayText: "",
   filterDuplicateNotes: true,
   duplicateNoteFilteringPriority: [],
+  displayLoadingMessage: true,
   displayPlaceholder: false,
   confirmFileCreation: true,
   annotationStrings: [],
@@ -325,6 +327,21 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
             parsePrefixStrings(value);
           this.plugin.triggerSettingsChangedEvent();
         });
+      });
+
+    new Setting(containerEl)
+      .setName("Display loading message")
+      .setDesc(
+        'Display a loading message ("Loading...") in the navigation ' +
+          "while links are being loaded."
+      )
+      .addToggle((toggle) => {
+        toggle
+          .setValue(this.plugin.settingsUnderChange!.displayLoadingMessage)
+          .onChange((value) => {
+            this.plugin.settingsUnderChange!.displayLoadingMessage = value;
+            this.plugin.triggerSettingsChangedEvent();
+          });
       });
 
     new Setting(containerEl)
