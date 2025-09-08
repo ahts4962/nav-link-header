@@ -15,7 +15,6 @@ export class Updater {
    * @param container The container element to add the navigation links to.
    * @param nextSibling The element to add the navigation links before.
    * @param file The file object currently opened in the parent component.
-   * @param hoverParent The parent component to add the hover popover to.
    * @param forced See `NavigationComponent.update`.
    */
   protected updateNavigation({
@@ -23,14 +22,12 @@ export class Updater {
     container,
     nextSibling,
     file,
-    hoverParent,
     forced,
   }: {
     parent: Component;
     container: Element;
     nextSibling: Element | null;
     file: TFile;
-    hoverParent: Component;
     forced: boolean;
   }): void {
     let navigationElement = container.querySelector(".nav-link-header-navigation");
@@ -50,7 +47,7 @@ export class Updater {
     if ("_children" in parent && parent._children instanceof Array) {
       for (const child of parent._children) {
         if (child instanceof NavigationComponent) {
-          void child.update(file, hoverParent, forced);
+          void child.update(file, forced);
           break;
         }
       }

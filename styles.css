@@ -13,6 +13,16 @@
   }
 }
 
+.popover.hover-popover > .canvas-embed:has(> .nav-link-header-navigation) {
+  display: flex;
+  flex-direction: column;
+
+  > .canvas-minimap {
+    flex: 1;
+    overflow: auto;
+  }
+}
+
 /* Adjust the position of the "Open link" button in the hover popover. */
 @supports (anchor-name: --a) {
   .popover.hover-popover .nav-link-header-navigation {

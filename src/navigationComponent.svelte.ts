@@ -70,13 +70,11 @@ export class NavigationComponent extends Component {
   /**
    * Updates the navigation component with the specified file.
    * @param file The file object currently opened in the parent component.
-   * @param hoverParent The parent component to add the hover popover when
-   *     the link in this component is hovered.
    * @param forced If `true`, the navigation component is always updated.
    *     If `false`, the navigation component will not be updated if the file path
    *     has not changed since the last update.
    */
-  public async update(file: TFile, hoverParent: Component, forced: boolean): Promise<void> {
+  public async update(file: TFile, forced: boolean): Promise<void> {
     if (!this.loaded) {
       return;
     }
@@ -114,7 +112,7 @@ export class NavigationComponent extends Component {
         this.plugin.app.workspace.trigger("hover-link", {
           event: e,
           source: "nav-link-header",
-          hoverParent,
+          hoverParent: this,
           targetEl: e.target,
           linktext: target.destination,
           sourcePath: filePath,

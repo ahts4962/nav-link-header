@@ -1,11 +1,4 @@
-import {
-  Component,
-  HoverPopover,
-  MarkdownRenderer,
-  TFile,
-  type WorkspaceWindow,
-  type HoverParent,
-} from "obsidian";
+import { Component, HoverPopover, TFile, type WorkspaceWindow, type HoverParent } from "obsidian";
 import type NavLinkHeader from "./main";
 import { Updater } from "./updater";
 
@@ -119,26 +112,18 @@ export class HoverPopoverUpdater extends Updater {
         "containerEl" in child &&
         child.containerEl instanceof Element
       ) {
-        // Specify the hover parent to be used when displaying more hover popovers
-        // from this hover popover later.
-        // Here, `MarkdownRenderer` of this hover popover is used.
-        // This seems to be the default behavior of the Obsidian's own hover popover.
-        let hoverParent: Component = child;
-        if ("_children" in child && child._children instanceof Array) {
-          for (const grandChild of child._children) {
-            if (grandChild instanceof MarkdownRenderer) {
-              hoverParent = grandChild;
-              break;
-            }
-          }
+        const nextSibling =
+          child.containerEl.querySelector(".markdown-embed-content") ??
+          child.containerEl.querySelector(".canvas-minimap");
+        if (nextSibling === null) {
+          continue;
         }
 
         this.updateNavigation({
           parent: child,
           container: child.containerEl,
-          nextSibling: child.containerEl.querySelector(".markdown-embed-content"),
+          nextSibling,
           file: child.file,
-          hoverParent,
           forced: true,
         });
       }

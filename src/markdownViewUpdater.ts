@@ -1,4 +1,4 @@
-import { debounce, MarkdownRenderer, MarkdownView, type Component } from "obsidian";
+import { debounce, MarkdownView, TFile } from "obsidian";
 import type NavLinkHeader from "./main";
 import { Updater } from "./updater";
 import { NavigationComponent } from "./navigationComponent.svelte";
@@ -39,31 +39,16 @@ export class MarkdownViewUpdater extends Updater {
     this.plugin.app.workspace.iterateAllLeaves((leaf) => {
       const view = leaf.view;
 
-      if (view instanceof MarkdownView && view.file) {
-        // Set hover parent to the `MarkdownView` when source mode.
-        // Set hover parent to the `MarkdownRenderer` of the `MarkdownView` when preview mode.
-        // This seems to be the default behavior of the Obsidian's own hover popover.
-        const state = view.getState() as { mode: string };
-        let hoverParent: Component = view;
-        if (state.mode === "preview") {
-          if ("_children" in view && view._children instanceof Array) {
-            for (const child of view._children) {
-              if (child instanceof MarkdownRenderer) {
-                hoverParent = child;
-                break;
-              }
-            }
-          }
+      if (view.getViewType() === "markdown" || view.getViewType() === "canvas") {
+        if ("file" in view && view.file instanceof TFile) {
+          this.updateNavigation({
+            parent: view,
+            container: view.containerEl,
+            nextSibling: view.containerEl.querySelector(".view-content"),
+            file: view.file,
+            forced,
+          });
         }
-
-        this.updateNavigation({
-          parent: view,
-          container: view.containerEl,
-          nextSibling: view.containerEl.querySelector(".view-content"),
-          file: view.file,
-          hoverParent,
-          forced,
-        });
       }
     });
   }
@@ -76,7 +61,7 @@ export class MarkdownViewUpdater extends Updater {
 
     this.plugin.app.workspace.iterateAllLeaves((leaf) => {
       const view = leaf.view;
-      if (view instanceof MarkdownView) {
+      if (view.getViewType() === "markdown" || view.getViewType() === "canvas") {
         // Removes the added html elements.
         view.containerEl.querySelector(".nav-link-header-navigation")?.remove();
 
