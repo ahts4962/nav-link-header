@@ -1,9 +1,9 @@
-import { debounce, MarkdownView, TFile } from "obsidian";
+import { debounce, TFile } from "obsidian";
 import type NavLinkHeader from "./main";
 import { Updater } from "./updater";
 import { NavigationComponent } from "./navigationComponent.svelte";
 
-export class MarkdownViewUpdater extends Updater {
+export class LeavesUpdater extends Updater {
   constructor(plugin: NavLinkHeader) {
     super(plugin);
     this.debouncedUpdateAll();
@@ -32,14 +32,17 @@ export class MarkdownViewUpdater extends Updater {
   );
 
   /**
-   * Updates the navigation links for all markdown views.
+   * Updates the navigation links for all leaves.
    * @param forced See `NavigationComponent.update`.
    */
   public updateAll({ forced }: { forced: boolean }): void {
     this.plugin.app.workspace.iterateAllLeaves((leaf) => {
       const view = leaf.view;
 
-      if (view.getViewType() === "markdown" || view.getViewType() === "canvas") {
+      if (
+        (this.plugin.settings!.displayInMarkdownViews && view.getViewType() === "markdown") ||
+        (this.plugin.settings!.displayInCanvasViews && view.getViewType() === "canvas")
+      ) {
         if ("file" in view && view.file instanceof TFile) {
           this.updateNavigation({
             parent: view,

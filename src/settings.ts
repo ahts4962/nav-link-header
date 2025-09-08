@@ -6,8 +6,10 @@ import { deepCopy } from "./utils";
 
 // When adding properties to these interfaces, see also `NavLinkHeader.onSettingsChange`.
 export interface NavLinkHeaderSettings {
-  displayInMarkdownViews: boolean;
+  displayInLeaves: boolean;
   displayInHoverPopovers: boolean;
+  displayInMarkdownViews: boolean;
+  displayInCanvasViews: boolean;
   matchNavigationWidthToLineLength: boolean;
   displayOrderOfLinks: string[];
   propertyNameForDisplayText: string;
@@ -49,8 +51,10 @@ export interface FolderLinksSettings {
 }
 
 const DEFAULT_SETTINGS: NavLinkHeaderSettings = {
-  displayInMarkdownViews: true,
+  displayInLeaves: true,
   displayInHoverPopovers: true,
+  displayInMarkdownViews: true,
+  displayInCanvasViews: true,
   matchNavigationWidthToLineLength: false,
   displayOrderOfLinks: [],
   propertyNameForDisplayText: "",
@@ -97,6 +101,14 @@ export async function loadSettings(plugin: NavLinkHeader): Promise<void> {
 
   for (const key of Object.keys(DEFAULT_SETTINGS) as (keyof NavLinkHeaderSettings)[]) {
     // Migration from old settings.
+    if (
+      key === "displayInLeaves" &&
+      !("displayInLeaves" in loadedData) &&
+      "displayInMarkdownViews" in loadedData
+    ) {
+      result[key] = loadedData["displayInMarkdownViews"];
+    }
+
     if (
       key === "displayOrderOfLinks" &&
       "annotatedLinksEnabled" in loadedData &&
@@ -230,12 +242,10 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName("Display navigation links in each view")
       .addToggle((toggle) => {
-        toggle
-          .setValue(this.plugin.settingsUnderChange!.displayInMarkdownViews)
-          .onChange((value) => {
-            this.plugin.settingsUnderChange!.displayInMarkdownViews = value;
-            this.plugin.triggerSettingsChangedEvent();
-          });
+        toggle.setValue(this.plugin.settingsUnderChange!.displayInLeaves).onChange((value) => {
+          this.plugin.settingsUnderChange!.displayInLeaves = value;
+          this.plugin.triggerSettingsChangedEvent();
+        });
       });
 
     new Setting(containerEl)
@@ -247,6 +257,26 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
             this.plugin.settingsUnderChange!.displayInHoverPopovers = value;
             this.plugin.triggerSettingsChangedEvent();
           });
+      });
+
+    new Setting(containerEl)
+      .setName("Display navigation links when the view content is Markdown")
+      .addToggle((toggle) => {
+        toggle
+          .setValue(this.plugin.settingsUnderChange!.displayInMarkdownViews)
+          .onChange((value) => {
+            this.plugin.settingsUnderChange!.displayInMarkdownViews = value;
+            this.plugin.triggerSettingsChangedEvent();
+          });
+      });
+
+    new Setting(containerEl)
+      .setName("Display navigation links when the view content is canvas")
+      .addToggle((toggle) => {
+        toggle.setValue(this.plugin.settingsUnderChange!.displayInCanvasViews).onChange((value) => {
+          this.plugin.settingsUnderChange!.displayInCanvasViews = value;
+          this.plugin.triggerSettingsChangedEvent();
+        });
       });
 
     new Setting(containerEl)

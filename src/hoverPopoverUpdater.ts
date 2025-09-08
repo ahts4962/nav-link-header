@@ -112,9 +112,13 @@ export class HoverPopoverUpdater extends Updater {
         "containerEl" in child &&
         child.containerEl instanceof Element
       ) {
-        const nextSibling =
-          child.containerEl.querySelector(".markdown-embed-content") ??
-          child.containerEl.querySelector(".canvas-minimap");
+        let nextSibling = null;
+        if (this.plugin.settings!.displayInMarkdownViews) {
+          nextSibling = child.containerEl.querySelector(".markdown-embed-content");
+        }
+        if (nextSibling === null && this.plugin.settings!.displayInCanvasViews) {
+          nextSibling = child.containerEl.querySelector(".canvas-minimap");
+        }
         if (nextSibling === null) {
           continue;
         }

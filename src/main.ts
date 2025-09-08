@@ -1,5 +1,5 @@
 import { debounce, Plugin, type HoverParent } from "obsidian";
-import { MarkdownViewUpdater } from "./markdownViewUpdater";
+import { LeavesUpdater } from "./leavesUpdater";
 import { HoverPopoverUpdater } from "./hoverPopoverUpdater";
 import { AnnotatedLinksManager } from "./annotatedLink";
 import { getActiveGranularities, PeriodicNotesManager } from "./periodicNotes";
@@ -9,7 +9,7 @@ import { loadSettings, NavLinkHeaderSettingTab, type NavLinkHeaderSettings } fro
 import { deepCopy, deepEqual } from "./utils";
 
 export default class NavLinkHeader extends Plugin {
-  private markdownViewUpdater?: MarkdownViewUpdater;
+  private leavesUpdater?: LeavesUpdater;
   private hoverPopoverUpdater?: HoverPopoverUpdater;
   public annotatedLinksManager?: AnnotatedLinksManager;
   public periodicNotesManager?: PeriodicNotesManager;
@@ -35,13 +35,20 @@ export default class NavLinkHeader extends Plugin {
 
     this.app.workspace.onLayoutReady(() => {
       this.activateComponents();
+
       this.registerEvents();
+
+      // Registers the hover link source for the hover popover.
+      this.registerHoverLinkSource("nav-link-header", {
+        defaultMod: true,
+        display: "Nav Link Header",
+      });
     });
   }
 
   private activateComponents(): void {
-    if (this.settings!.displayInMarkdownViews) {
-      this.markdownViewUpdater = new MarkdownViewUpdater(this);
+    if (this.settings!.displayInLeaves) {
+      this.leavesUpdater = new LeavesUpdater(this);
     }
 
     if (this.settings!.displayInHoverPopovers) {
@@ -84,15 +91,9 @@ export default class NavLinkHeader extends Plugin {
       })
     );
 
-    // Registers the hover link source for the hover popover.
-    this.registerHoverLinkSource("nav-link-header", {
-      defaultMod: true,
-      display: "Nav Link Header",
-    });
-
     this.registerEvent(
       this.app.workspace.on("layout-change", () => {
-        this.markdownViewUpdater?.onLayoutChange();
+        this.leavesUpdater?.onLayoutChange();
       })
     );
 
@@ -102,7 +103,7 @@ export default class NavLinkHeader extends Plugin {
         this.folderLinksManagers.forEach((manager) => {
           manager.onFileCreated(file);
         });
-        this.markdownViewUpdater?.onVaultChange();
+        this.leavesUpdater?.onVaultChange();
       })
     );
 
@@ -113,7 +114,7 @@ export default class NavLinkHeader extends Plugin {
         this.folderLinksManagers.forEach((manager) => {
           manager.onFileDeleted(file);
         });
-        this.markdownViewUpdater?.onVaultChange();
+        this.leavesUpdater?.onVaultChange();
       })
     );
 
@@ -124,7 +125,7 @@ export default class NavLinkHeader extends Plugin {
         this.folderLinksManagers.forEach((manager) => {
           manager.onFileRenamed(file, oldPath);
         });
-        this.markdownViewUpdater?.onVaultChange();
+        this.leavesUpdater?.onVaultChange();
       })
     );
 
@@ -134,7 +135,7 @@ export default class NavLinkHeader extends Plugin {
         this.folderLinksManagers.forEach((manager) => {
           manager.onFileModified(file);
         });
-        this.markdownViewUpdater?.onVaultChange();
+        this.leavesUpdater?.onVaultChange();
       })
     );
 
@@ -199,11 +200,18 @@ export default class NavLinkHeader extends Plugin {
       this.settings = deepCopy(this.settingsUnderChange!);
 
       // Update the state of the components.
-      if (!previousSettings.displayInMarkdownViews && this.settings.displayInMarkdownViews) {
-        this.markdownViewUpdater = new MarkdownViewUpdater(this);
-      } else if (previousSettings.displayInMarkdownViews && !this.settings.displayInMarkdownViews) {
-        this.markdownViewUpdater!.dispose();
-        this.markdownViewUpdater = undefined;
+      if (!previousSettings.displayInLeaves && this.settings.displayInLeaves) {
+        this.leavesUpdater = new LeavesUpdater(this);
+      } else if (previousSettings.displayInLeaves && !this.settings.displayInLeaves) {
+        this.leavesUpdater!.dispose();
+        this.leavesUpdater = undefined;
+      } else if (
+        this.settings.displayInLeaves &&
+        (previousSettings.displayInMarkdownViews !== this.settings!.displayInMarkdownViews ||
+          previousSettings.displayInCanvasViews !== this.settings!.displayInCanvasViews)
+      ) {
+        this.leavesUpdater?.dispose();
+        this.leavesUpdater = new LeavesUpdater(this);
       }
 
       if (!previousSettings.displayInHoverPopovers && this.settings.displayInHoverPopovers) {
@@ -275,7 +283,7 @@ export default class NavLinkHeader extends Plugin {
         }
       }
 
-      this.markdownViewUpdater?.onSettingsChange();
+      this.leavesUpdater?.onSettingsChange();
 
       await this.saveData(this.settings);
     },
@@ -293,7 +301,7 @@ export default class NavLinkHeader extends Plugin {
         this.periodicNotesManager = new PeriodicNotesManager(this);
       }
 
-      this.markdownViewUpdater?.onSettingsChange();
+      this.leavesUpdater?.onSettingsChange();
     },
     500,
     true
@@ -306,9 +314,9 @@ export default class NavLinkHeader extends Plugin {
     this.onSettingsChange.cancel();
     void this.saveData(this.settingsUnderChange);
 
-    if (this.markdownViewUpdater) {
-      this.markdownViewUpdater.dispose();
-      this.markdownViewUpdater = undefined;
+    if (this.leavesUpdater) {
+      this.leavesUpdater.dispose();
+      this.leavesUpdater = undefined;
     }
 
     if (this.hoverPopoverUpdater) {
