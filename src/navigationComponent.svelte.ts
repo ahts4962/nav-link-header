@@ -27,11 +27,13 @@ export class NavigationComponent extends Component {
     links: (PrefixedLinkState | ThreeWayLinkState)[];
     isLoading: boolean;
     matchWidthToLineLength: boolean;
+    hideAnnotatedLinkPrefix: boolean;
     displayPlaceholder: boolean;
   } = $state({
     links: [],
     isLoading: false,
     matchWidthToLineLength: false,
+    hideAnnotatedLinkPrefix: false,
     displayPlaceholder: false,
   });
   private currentFilePath?: string;
@@ -53,6 +55,7 @@ export class NavigationComponent extends Component {
     this.navigationProps.links = [];
     this.navigationProps.isLoading = false;
     this.navigationProps.matchWidthToLineLength = false;
+    this.navigationProps.hideAnnotatedLinkPrefix = false;
     this.navigationProps.displayPlaceholder = false;
     this.navigation = mount(Navigation, {
       target: this.containerEl,
@@ -86,6 +89,7 @@ export class NavigationComponent extends Component {
     this.navigationProps.isLoading = true;
     this.navigationProps.matchWidthToLineLength =
       this.plugin.settings!.matchNavigationWidthToLineLength;
+    this.navigationProps.hideAnnotatedLinkPrefix = this.plugin.settings!.hideAnnotatedLinkPrefix;
     this.navigationProps.displayPlaceholder = this.plugin.settings!.displayPlaceholder;
 
     const filePath = file.path;
@@ -204,6 +208,7 @@ export class NavigationComponent extends Component {
     for (const link of propertyLinks) {
       result.push(
         new PrefixedLinkState({
+          type: "property",
           prefix: link.prefix,
           link: new NavigationLinkState({
             destination: link.destination,
@@ -533,6 +538,7 @@ export class NavigationComponent extends Component {
     const generator = this.plugin.annotatedLinksManager!.searchAnnotatedLinks(file);
     for await (const link of generator) {
       yield new PrefixedLinkState({
+        type: "annotated",
         prefix: link.annotation,
         link: new NavigationLinkState({
           destination: link.destinationPath,

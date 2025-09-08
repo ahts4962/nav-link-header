@@ -48,14 +48,25 @@ export class NavigationLinkState {
  * The state of a PrefixedLink.
  */
 export class PrefixedLinkState {
+  public type: "annotated" | "property";
   public prefix: string;
   public link: NavigationLinkState;
 
   /**
+   * @param type The type of the link.
    * @param prefix The string (typically emoji) placed before the link.
    * @param link The link.
    */
-  constructor({ prefix, link }: { prefix: string; link: NavigationLinkState }) {
+  constructor({
+    type,
+    prefix,
+    link,
+  }: {
+    type: "annotated" | "property";
+    prefix: string;
+    link: NavigationLinkState;
+  }) {
+    this.type = type;
     this.prefix = prefix;
     this.link = link;
   }

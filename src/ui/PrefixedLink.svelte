@@ -2,7 +2,10 @@
   import type { PrefixedLinkState } from "../navigationLinkState";
   import NavigationLink from "./NavigationLink.svelte";
 
-  const { state }: { state: PrefixedLinkState } = $props();
+  const {
+    state,
+    hideAnnotatedLinkPrefix,
+  }: { state: PrefixedLinkState; hideAnnotatedLinkPrefix: boolean } = $props();
 </script>
 
 <!--
@@ -10,7 +13,9 @@
   A component that represents a link with a prefix string (typically emoji).
 -->
 <div class="nav-link-header-container">
-  <div>{state.prefix}</div>
+  {#if state.type !== "annotated" || !hideAnnotatedLinkPrefix}
+    <div>{state.prefix}</div>
+  {/if}
   <NavigationLink state={state.link} />
 </div>
 

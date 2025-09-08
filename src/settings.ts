@@ -18,6 +18,7 @@ export interface NavLinkHeaderSettings {
   annotationStrings: string[];
   allowSpaceAfterAnnotationString: boolean;
   ignoreVariationSelectors: boolean;
+  hideAnnotatedLinkPrefix: boolean;
   propertyMappings: { property: string; prefix: string }[];
   prevNextLinksEnabledInDailyNotes: boolean;
   parentLinkGranularityInDailyNotes: IGranularity | undefined;
@@ -59,6 +60,7 @@ const DEFAULT_SETTINGS: NavLinkHeaderSettings = {
   annotationStrings: [],
   allowSpaceAfterAnnotationString: false,
   ignoreVariationSelectors: false,
+  hideAnnotatedLinkPrefix: false,
   propertyMappings: [],
   prevNextLinksEnabledInDailyNotes: false,
   parentLinkGranularityInDailyNotes: undefined,
@@ -401,6 +403,20 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           .setValue(this.plugin.settingsUnderChange!.ignoreVariationSelectors)
           .onChange((value) => {
             this.plugin.settingsUnderChange!.ignoreVariationSelectors = value;
+            this.plugin.triggerSettingsChangedEvent();
+          });
+      });
+
+    new Setting(containerEl)
+      .setName("Hide annotation strings in navigation")
+      .setDesc(
+        "If enabled, annotation strings (e.g. emojis) will be hidden in the navigation links."
+      )
+      .addToggle((toggle) => {
+        toggle
+          .setValue(this.plugin.settingsUnderChange!.hideAnnotatedLinkPrefix)
+          .onChange((value) => {
+            this.plugin.settingsUnderChange!.hideAnnotatedLinkPrefix = value;
             this.plugin.triggerSettingsChangedEvent();
           });
       });
