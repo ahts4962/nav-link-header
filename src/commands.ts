@@ -192,6 +192,19 @@ export function addCommands(plugin: NavLinkHeader): void {
       return false;
     },
   });
+
+  plugin.addCommand({
+    id: "toggle-match-navigation-width",
+    name: 'Toggle "Match navigation width to line length"',
+    checkCallback: (checking: boolean) => {
+      if (!checking) {
+        plugin.settingsUnderChange.matchNavigationWidthToLineLength =
+          !plugin.settingsUnderChange.matchNavigationWidthToLineLength;
+        plugin.triggerSettingsChanged();
+      }
+      return true;
+    },
+  });
 }
 
 /**
