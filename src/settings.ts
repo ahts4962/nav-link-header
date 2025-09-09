@@ -1,10 +1,14 @@
 import { normalizePath, PluginSettingTab, Setting } from "obsidian";
 import type { IGranularity } from "obsidian-daily-notes-interface";
-import NavLinkHeader from "./main";
+import type NavLinkHeader from "./main";
+import {
+  DISPLAY_ORDER_PLACEHOLDER_FOLDER,
+  DISPLAY_ORDER_PLACEHOLDER_PERIODIC,
+  DISPLAY_ORDER_PLACEHOLDER_PROPERTY,
+} from "./linkContainer";
 import { EMOJI_ANNOTATION_PLACEHOLDER } from "./annotatedLink";
 import { deepCopy } from "./utils";
 
-// When adding properties to these interfaces, see also `NavLinkHeader.onSettingsChange`.
 export interface NavLinkHeaderSettings {
   displayInLeaves: boolean;
   displayInHoverPopovers: boolean;
@@ -50,7 +54,7 @@ export interface FolderLinksSettings {
   parentPath: string;
 }
 
-const DEFAULT_SETTINGS: NavLinkHeaderSettings = {
+export const DEFAULT_SETTINGS: NavLinkHeaderSettings = {
   displayInLeaves: true,
   displayInHoverPopovers: true,
   displayInMarkdownViews: true,
@@ -95,20 +99,33 @@ const DEFAULT_FOLDER_LINKS_SETTINGS: FolderLinksSettings = {
   parentPath: "",
 };
 
-export async function loadSettings(plugin: NavLinkHeader): Promise<void> {
+/**
+ * Loads and migrates the plugin settings for NavLinkHeader.
+ * This function retrieves the saved settings data using the provided plugin instance,
+ * applies necessary migrations from older settings formats, and ensures all settings
+ * keys are populated with either loaded or default values.
+ * @param plugin The `NavLinkHeader` plugin instance used to load persisted data.
+ * @returns A promise that resolves to the fully populated and
+ *     migrated `NavLinkHeaderSettings` object.
+ */
+export async function loadSettings(plugin: NavLinkHeader): Promise<NavLinkHeaderSettings> {
   const result = {} as Record<keyof NavLinkHeaderSettings, unknown>;
   const loadedData = ((await plugin.loadData()) ?? {}) as Record<string, unknown>;
 
   for (const key of Object.keys(DEFAULT_SETTINGS) as (keyof NavLinkHeaderSettings)[]) {
     // Migration from old settings.
+
+    // Introduced in 2.2.0
     if (
       key === "displayInLeaves" &&
       !("displayInLeaves" in loadedData) &&
       "displayInMarkdownViews" in loadedData
     ) {
       result[key] = loadedData["displayInMarkdownViews"];
+      continue;
     }
 
+    // Introduced in 2.0.0
     if (
       key === "displayOrderOfLinks" &&
       "annotatedLinksEnabled" in loadedData &&
@@ -225,11 +242,12 @@ export async function loadSettings(plugin: NavLinkHeader): Promise<void> {
     }
   }
 
-  plugin.settings = result as NavLinkHeaderSettings;
-  plugin.settingsUnderChange = deepCopy(plugin.settings);
-  await plugin.saveData(plugin.settings);
+  return result as NavLinkHeaderSettings;
 }
 
+/**
+ * Represents the settings tab for the Nav Link Header plugin in Obsidian.
+ */
 export class NavLinkHeaderSettingTab extends PluginSettingTab {
   constructor(private plugin: NavLinkHeader) {
     super(plugin.app, plugin);
@@ -240,42 +258,52 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
     containerEl.empty();
 
     new Setting(containerEl)
-      .setName("Display navigation links in each view")
+      .setName("Display navigation links in panes")
+      .setDesc(
+        "This setting applies to note containers (panes). To show links, also enable one or both " +
+          "view-specific options below (Markdown views and/or Canvas views)."
+      )
       .addToggle((toggle) => {
-        toggle.setValue(this.plugin.settingsUnderChange!.displayInLeaves).onChange((value) => {
-          this.plugin.settingsUnderChange!.displayInLeaves = value;
-          this.plugin.triggerSettingsChangedEvent();
+        toggle.setValue(this.plugin.settingsUnderChange.displayInLeaves).onChange((value) => {
+          this.plugin.settingsUnderChange.displayInLeaves = value;
+          this.plugin.triggerSettingsChangedDebounced();
         });
       });
 
     new Setting(containerEl)
-      .setName("Display navigation links in page preview")
+      .setName("Display navigation links in page previews")
+      .setDesc(
+        "This setting applies to note containers (page previews). To show links, also enable " +
+          "one or both view-specific options below (Markdown views and/or Canvas views)."
+      )
       .addToggle((toggle) => {
         toggle
-          .setValue(this.plugin.settingsUnderChange!.displayInHoverPopovers)
+          .setValue(this.plugin.settingsUnderChange.displayInHoverPopovers)
           .onChange((value) => {
-            this.plugin.settingsUnderChange!.displayInHoverPopovers = value;
-            this.plugin.triggerSettingsChangedEvent();
+            this.plugin.settingsUnderChange.displayInHoverPopovers = value;
+            this.plugin.triggerSettingsChangedDebounced();
           });
       });
 
     new Setting(containerEl)
-      .setName("Display navigation links when the view content is Markdown")
+      .setName("Display navigation links in Markdown views")
+      .setDesc("Show navigation links when viewing Markdown documents.")
       .addToggle((toggle) => {
         toggle
-          .setValue(this.plugin.settingsUnderChange!.displayInMarkdownViews)
+          .setValue(this.plugin.settingsUnderChange.displayInMarkdownViews)
           .onChange((value) => {
-            this.plugin.settingsUnderChange!.displayInMarkdownViews = value;
-            this.plugin.triggerSettingsChangedEvent();
+            this.plugin.settingsUnderChange.displayInMarkdownViews = value;
+            this.plugin.triggerSettingsChangedDebounced();
           });
       });
 
     new Setting(containerEl)
-      .setName("Display navigation links when the view content is canvas")
+      .setName("Display navigation links in Canvas views")
+      .setDesc("Show navigation links when viewing Canvas.")
       .addToggle((toggle) => {
-        toggle.setValue(this.plugin.settingsUnderChange!.displayInCanvasViews).onChange((value) => {
-          this.plugin.settingsUnderChange!.displayInCanvasViews = value;
-          this.plugin.triggerSettingsChangedEvent();
+        toggle.setValue(this.plugin.settingsUnderChange.displayInCanvasViews).onChange((value) => {
+          this.plugin.settingsUnderChange.displayInCanvasViews = value;
+          this.plugin.triggerSettingsChangedDebounced();
         });
       });
 
@@ -288,48 +316,47 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       )
       .addToggle((toggle) => {
         toggle
-          .setValue(this.plugin.settingsUnderChange!.matchNavigationWidthToLineLength)
+          .setValue(this.plugin.settingsUnderChange.matchNavigationWidthToLineLength)
           .onChange((value) => {
-            this.plugin.settingsUnderChange!.matchNavigationWidthToLineLength = value;
-            this.plugin.triggerSettingsChangedEvent();
+            this.plugin.settingsUnderChange.matchNavigationWidthToLineLength = value;
+            this.plugin.triggerSettingsChangedDebounced();
           });
       });
 
     new Setting(containerEl)
       .setName("Display order of links")
       .setDesc(
-        "Specify the order in which the links are displayed. " +
-          'For example, if you specify "[[p]],[[P]],[[f]],🏠,⬆️,📌,🔗" ' +
+        "Specify the order in which the links are displayed. For example, if you specify " +
+          `"${DISPLAY_ORDER_PLACEHOLDER_PERIODIC},${DISPLAY_ORDER_PLACEHOLDER_PROPERTY},` +
+          `${DISPLAY_ORDER_PLACEHOLDER_FOLDER},🏠,⬆️,📌,🔗" ` +
           "(without double quotes), links will be displayed in that order " +
-          "(see also the descriptions in Annotation strings and " +
-          "Property mappings below). " +
-          '"[[p]]", "[[P]]", and "[[f]]" are special strings that correspond to ' +
+          "(see also the descriptions in Annotation strings and Property mappings below). " +
+          `"${DISPLAY_ORDER_PLACEHOLDER_PERIODIC}", "${DISPLAY_ORDER_PLACEHOLDER_PROPERTY}", ` +
+          `and "${DISPLAY_ORDER_PLACEHOLDER_FOLDER}" are special strings that correspond to ` +
           "periodic notes, previous/next/parent notes specified by properties, " +
-          "and notes in a folder, respectively " +
-          "(see also the descriptions below)."
+          "and notes in a folder, respectively (see also the descriptions below)."
       )
       .addText((text) => {
-        const order = this.plugin.settingsUnderChange!.displayOrderOfLinks.join(",");
+        const order = this.plugin.settingsUnderChange.displayOrderOfLinks.join(",");
         text.setValue(order).onChange((value) => {
-          this.plugin.settingsUnderChange!.displayOrderOfLinks = parsePrefixStrings(value);
-          this.plugin.triggerSettingsChangedEvent();
+          this.plugin.settingsUnderChange.displayOrderOfLinks = parsePrefixStrings(value);
+          this.plugin.triggerSettingsChangedDebounced();
         });
       });
 
     new Setting(containerEl)
       .setName("Property name to specify display text")
       .setDesc(
-        "If you want to use file properties to specify the note's display text, " +
-          "set the property name to this field. Leave this field blank " +
-          "if you are not using this feature."
+        "If you want to use file properties to specify the note's display text, set the property " +
+          "name to this field. Leave this field blank if you are not using this feature."
       )
       .addText((text) => {
         text
-          .setValue(this.plugin.settingsUnderChange!.propertyNameForDisplayText)
+          .setValue(this.plugin.settingsUnderChange.propertyNameForDisplayText)
           .setPlaceholder("title")
           .onChange((value) => {
-            this.plugin.settingsUnderChange!.propertyNameForDisplayText = value;
-            this.plugin.triggerSettingsChangedEvent();
+            this.plugin.settingsUnderChange.propertyNameForDisplayText = value;
+            this.plugin.triggerSettingsChangedDebounced();
           });
       });
 
@@ -337,9 +364,9 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       .setName("Filter duplicate links")
       .setDesc("Filter out duplicates when multiple links with the same destination are detected.")
       .addToggle((toggle) => {
-        toggle.setValue(this.plugin.settingsUnderChange!.filterDuplicateNotes).onChange((value) => {
-          this.plugin.settingsUnderChange!.filterDuplicateNotes = value;
-          this.plugin.triggerSettingsChangedEvent();
+        toggle.setValue(this.plugin.settingsUnderChange.filterDuplicateNotes).onChange((value) => {
+          this.plugin.settingsUnderChange.filterDuplicateNotes = value;
+          this.plugin.triggerSettingsChangedDebounced();
         });
       });
 
@@ -351,40 +378,33 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           'the link with "🏠" will be displayed with the highest priority.'
       )
       .addText((text) => {
-        const priority = this.plugin.settingsUnderChange!.duplicateNoteFilteringPriority.join(",");
+        const priority = this.plugin.settingsUnderChange.duplicateNoteFilteringPriority.join(",");
         text.setValue(priority).onChange((value) => {
-          this.plugin.settingsUnderChange!.duplicateNoteFilteringPriority =
+          this.plugin.settingsUnderChange.duplicateNoteFilteringPriority =
             parsePrefixStrings(value);
-          this.plugin.triggerSettingsChangedEvent();
+          this.plugin.triggerSettingsChangedDebounced();
         });
       });
 
     new Setting(containerEl)
       .setName("Display loading message")
       .setDesc(
-        'Display a loading message ("Loading...") in the navigation ' +
-          "while links are being loaded."
+        'Display a loading message ("Loading...") in the navigation while links are being loaded.'
       )
       .addToggle((toggle) => {
-        toggle
-          .setValue(this.plugin.settingsUnderChange!.displayLoadingMessage)
-          .onChange((value) => {
-            this.plugin.settingsUnderChange!.displayLoadingMessage = value;
-            this.plugin.triggerSettingsChangedEvent();
-          });
+        toggle.setValue(this.plugin.settingsUnderChange.displayLoadingMessage).onChange((value) => {
+          this.plugin.settingsUnderChange.displayLoadingMessage = value;
+          this.plugin.triggerSettingsChangedDebounced();
+        });
       });
 
     new Setting(containerEl)
       .setName("Display placeholder")
-      .setDesc(
-        "Display a placeholder when there is nothing to display. " +
-          "This prevents the contents of the view from being " +
-          "rattled when the link is loaded."
-      )
+      .setDesc('Display a placeholder ("No links") when there is nothing to display.')
       .addToggle((toggle) => {
-        toggle.setValue(this.plugin.settingsUnderChange!.displayPlaceholder).onChange((value) => {
-          this.plugin.settingsUnderChange!.displayPlaceholder = value;
-          this.plugin.triggerSettingsChangedEvent();
+        toggle.setValue(this.plugin.settingsUnderChange.displayPlaceholder).onChange((value) => {
+          this.plugin.settingsUnderChange.displayPlaceholder = value;
+          this.plugin.triggerSettingsChangedDebounced();
         });
       });
 
@@ -395,9 +415,9 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           "This option is currently only used for periodic notes."
       )
       .addToggle((toggle) => {
-        toggle.setValue(this.plugin.settingsUnderChange!.confirmFileCreation).onChange((value) => {
-          this.plugin.settingsUnderChange!.confirmFileCreation = value;
-          this.plugin.triggerSettingsChangedEvent();
+        toggle.setValue(this.plugin.settingsUnderChange.confirmFileCreation).onChange((value) => {
+          this.plugin.settingsUnderChange.confirmFileCreation = value;
+          this.plugin.triggerSettingsChangedDebounced();
         });
       });
 
@@ -420,25 +440,25 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           "Leave this field blank if you are not using this feature."
       )
       .addText((text) => {
-        const annotations = this.plugin.settingsUnderChange!.annotationStrings.join(",");
+        const annotations = this.plugin.settingsUnderChange.annotationStrings.join(",");
         text.setValue(annotations).onChange((value) => {
-          this.plugin.settingsUnderChange!.annotationStrings = parsePrefixStrings(value);
-          this.plugin.triggerSettingsChangedEvent();
+          this.plugin.settingsUnderChange.annotationStrings = parsePrefixStrings(value);
+          this.plugin.triggerSettingsChangedDebounced();
         });
       });
 
     new Setting(containerEl)
       .setName("Allow a space between the annotation string and the link")
       .setDesc(
-        "Even if there is a space between the annotation string and the link, " +
-          "the link is still recognized as an annotated link."
+        "If enabled, a link will still be recognized as an annotated link even if there is a " +
+          "space between the annotation string and the link."
       )
       .addToggle((toggle) => {
         toggle
-          .setValue(this.plugin.settingsUnderChange!.allowSpaceAfterAnnotationString)
+          .setValue(this.plugin.settingsUnderChange.allowSpaceAfterAnnotationString)
           .onChange((value) => {
-            this.plugin.settingsUnderChange!.allowSpaceAfterAnnotationString = value;
-            this.plugin.triggerSettingsChangedEvent();
+            this.plugin.settingsUnderChange.allowSpaceAfterAnnotationString = value;
+            this.plugin.triggerSettingsChangedDebounced();
           });
       });
 
@@ -447,10 +467,10 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       .setDesc("If enabled, emoji variation selectors (VS15/VS16) are ignored when matching links.")
       .addToggle((toggle) => {
         toggle
-          .setValue(this.plugin.settingsUnderChange!.ignoreVariationSelectors)
+          .setValue(this.plugin.settingsUnderChange.ignoreVariationSelectors)
           .onChange((value) => {
-            this.plugin.settingsUnderChange!.ignoreVariationSelectors = value;
-            this.plugin.triggerSettingsChangedEvent();
+            this.plugin.settingsUnderChange.ignoreVariationSelectors = value;
+            this.plugin.triggerSettingsChangedDebounced();
           });
       });
 
@@ -461,10 +481,10 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       )
       .addToggle((toggle) => {
         toggle
-          .setValue(this.plugin.settingsUnderChange!.hideAnnotatedLinkPrefix)
+          .setValue(this.plugin.settingsUnderChange.hideAnnotatedLinkPrefix)
           .onChange((value) => {
-            this.plugin.settingsUnderChange!.hideAnnotatedLinkPrefix = value;
-            this.plugin.triggerSettingsChangedEvent();
+            this.plugin.settingsUnderChange.hideAnnotatedLinkPrefix = value;
+            this.plugin.triggerSettingsChangedDebounced();
           });
       });
 
@@ -473,30 +493,24 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName("Property mappings")
       .setDesc(
-        "Define the property mappings. " +
-          "If the file property specified here points to a specific note, " +
-          "that note will be displayed in navigation " +
-          "(URLs to the website are also supported). " +
-          "Each mapping consists of a property name and a string " +
-          "that will be placed at the beginning of the link when " +
-          "it appears in the navigation (use emojis in this string if " +
-          "you want it to appear like an icon). " +
-          'Each line should be in the format "property name:preceding string" ' +
-          "(without double quotes). Leave this field blank " +
-          "if you are not using this feature."
+        "Define the property mappings. If the file property specified here points to a " +
+          "specific note, that note will be displayed in navigation (URLs to the website are " +
+          "also supported). Each mapping consists of a property name and a string that will " +
+          "be placed at the beginning of the link when it appears in the navigation (use " +
+          "emojis in this string if you want it to appear like an icon). Each line should be " +
+          'in the format "property name:preceding string" (without double quotes). Leave this ' +
+          "field blank if you are not using this feature."
       )
       .addTextArea((text) => {
-        const mappings = this.plugin
-          .settingsUnderChange!.propertyMappings.map(
-            (mapping) => `${mapping.property}:${mapping.prefix}`
-          )
+        const mappings = this.plugin.settingsUnderChange.propertyMappings
+          .map((mapping) => `${mapping.property}:${mapping.prefix}`)
           .join("\n");
         text
           .setValue(mappings)
           .setPlaceholder("up:⬆️\nhome:🏠")
           .onChange((value) => {
-            this.plugin.settingsUnderChange!.propertyMappings = parsePropertyMappings(value);
-            this.plugin.triggerSettingsChangedEvent();
+            this.plugin.settingsUnderChange.propertyMappings = parsePropertyMappings(value);
+            this.plugin.triggerSettingsChangedDebounced();
           });
       });
 
@@ -510,10 +524,10 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       )
       .addToggle((toggle) => {
         toggle
-          .setValue(this.plugin.settingsUnderChange!.prevNextLinksEnabledInDailyNotes)
+          .setValue(this.plugin.settingsUnderChange.prevNextLinksEnabledInDailyNotes)
           .onChange((value) => {
-            this.plugin.settingsUnderChange!.prevNextLinksEnabledInDailyNotes = value;
-            this.plugin.triggerSettingsChangedEvent();
+            this.plugin.settingsUnderChange.prevNextLinksEnabledInDailyNotes = value;
+            this.plugin.triggerSettingsChangedDebounced();
           });
       });
 
@@ -526,11 +540,11 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           quarter: "Quarterly",
           year: "Yearly",
         })
-        .setValue(this.plugin.settingsUnderChange!.parentLinkGranularityInDailyNotes ?? "none")
+        .setValue(this.plugin.settingsUnderChange.parentLinkGranularityInDailyNotes ?? "none")
         .onChange((value) => {
-          this.plugin.settingsUnderChange!.parentLinkGranularityInDailyNotes =
+          this.plugin.settingsUnderChange.parentLinkGranularityInDailyNotes =
             value !== "none" ? (value as IGranularity) : undefined;
-          this.plugin.triggerSettingsChangedEvent();
+          this.plugin.triggerSettingsChangedDebounced();
         });
     });
 
@@ -539,10 +553,10 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       .setDesc("To use this option, weekly notes must be enabled in Periodic Notes plugin.")
       .addToggle((toggle) => {
         toggle
-          .setValue(this.plugin.settingsUnderChange!.prevNextLinksEnabledInWeeklyNotes)
+          .setValue(this.plugin.settingsUnderChange.prevNextLinksEnabledInWeeklyNotes)
           .onChange((value) => {
-            this.plugin.settingsUnderChange!.prevNextLinksEnabledInWeeklyNotes = value;
-            this.plugin.triggerSettingsChangedEvent();
+            this.plugin.settingsUnderChange.prevNextLinksEnabledInWeeklyNotes = value;
+            this.plugin.triggerSettingsChangedDebounced();
           });
       });
 
@@ -554,11 +568,11 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           quarter: "Quarterly",
           year: "Yearly",
         })
-        .setValue(this.plugin.settingsUnderChange!.parentLinkGranularityInWeeklyNotes ?? "none")
+        .setValue(this.plugin.settingsUnderChange.parentLinkGranularityInWeeklyNotes ?? "none")
         .onChange((value) => {
-          this.plugin.settingsUnderChange!.parentLinkGranularityInWeeklyNotes =
+          this.plugin.settingsUnderChange.parentLinkGranularityInWeeklyNotes =
             value !== "none" ? (value as IGranularity) : undefined;
-          this.plugin.triggerSettingsChangedEvent();
+          this.plugin.triggerSettingsChangedDebounced();
         });
     });
 
@@ -567,10 +581,10 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       .setDesc("To use this option, monthly notes must be enabled in Periodic Notes plugin.")
       .addToggle((toggle) => {
         toggle
-          .setValue(this.plugin.settingsUnderChange!.prevNextLinksEnabledInMonthlyNotes)
+          .setValue(this.plugin.settingsUnderChange.prevNextLinksEnabledInMonthlyNotes)
           .onChange((value) => {
-            this.plugin.settingsUnderChange!.prevNextLinksEnabledInMonthlyNotes = value;
-            this.plugin.triggerSettingsChangedEvent();
+            this.plugin.settingsUnderChange.prevNextLinksEnabledInMonthlyNotes = value;
+            this.plugin.triggerSettingsChangedDebounced();
           });
       });
 
@@ -581,11 +595,11 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           quarter: "Quarterly",
           year: "Yearly",
         })
-        .setValue(this.plugin.settingsUnderChange!.parentLinkGranularityInMonthlyNotes ?? "none")
+        .setValue(this.plugin.settingsUnderChange.parentLinkGranularityInMonthlyNotes ?? "none")
         .onChange((value) => {
-          this.plugin.settingsUnderChange!.parentLinkGranularityInMonthlyNotes =
+          this.plugin.settingsUnderChange.parentLinkGranularityInMonthlyNotes =
             value !== "none" ? (value as IGranularity) : undefined;
-          this.plugin.triggerSettingsChangedEvent();
+          this.plugin.triggerSettingsChangedDebounced();
         });
     });
 
@@ -594,10 +608,10 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       .setDesc("To use this option, quarterly notes must be enabled in Periodic Notes plugin.")
       .addToggle((toggle) => {
         toggle
-          .setValue(this.plugin.settingsUnderChange!.prevNextLinksEnabledInQuarterlyNotes)
+          .setValue(this.plugin.settingsUnderChange.prevNextLinksEnabledInQuarterlyNotes)
           .onChange((value) => {
-            this.plugin.settingsUnderChange!.prevNextLinksEnabledInQuarterlyNotes = value;
-            this.plugin.triggerSettingsChangedEvent();
+            this.plugin.settingsUnderChange.prevNextLinksEnabledInQuarterlyNotes = value;
+            this.plugin.triggerSettingsChangedDebounced();
           });
       });
 
@@ -607,11 +621,11 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           none: "None",
           year: "Yearly",
         })
-        .setValue(this.plugin.settingsUnderChange!.parentLinkGranularityInQuarterlyNotes ?? "none")
+        .setValue(this.plugin.settingsUnderChange.parentLinkGranularityInQuarterlyNotes ?? "none")
         .onChange((value) => {
-          this.plugin.settingsUnderChange!.parentLinkGranularityInQuarterlyNotes =
+          this.plugin.settingsUnderChange.parentLinkGranularityInQuarterlyNotes =
             value !== "none" ? (value as IGranularity) : undefined;
-          this.plugin.triggerSettingsChangedEvent();
+          this.plugin.triggerSettingsChangedDebounced();
         });
     });
 
@@ -620,10 +634,10 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       .setDesc("To use this option, yearly notes must be enabled in Periodic Notes plugin.")
       .addToggle((toggle) => {
         toggle
-          .setValue(this.plugin.settingsUnderChange!.prevNextLinksEnabledInYearlyNotes)
+          .setValue(this.plugin.settingsUnderChange.prevNextLinksEnabledInYearlyNotes)
           .onChange((value) => {
-            this.plugin.settingsUnderChange!.prevNextLinksEnabledInYearlyNotes = value;
-            this.plugin.triggerSettingsChangedEvent();
+            this.plugin.settingsUnderChange.prevNextLinksEnabledInYearlyNotes = value;
+            this.plugin.triggerSettingsChangedDebounced();
           });
       });
 
@@ -639,11 +653,11 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       )
       .addText((text) => {
         text
-          .setValue(this.plugin.settingsUnderChange!.previousLinkProperty)
+          .setValue(this.plugin.settingsUnderChange.previousLinkProperty)
           .setPlaceholder("previous")
           .onChange((value) => {
-            this.plugin.settingsUnderChange!.previousLinkProperty = value;
-            this.plugin.triggerSettingsChangedEvent();
+            this.plugin.settingsUnderChange.previousLinkProperty = value;
+            this.plugin.triggerSettingsChangedDebounced();
           });
       });
 
@@ -655,11 +669,11 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       )
       .addText((text) => {
         text
-          .setValue(this.plugin.settingsUnderChange!.nextLinkProperty)
+          .setValue(this.plugin.settingsUnderChange.nextLinkProperty)
           .setPlaceholder("next")
           .onChange((value) => {
-            this.plugin.settingsUnderChange!.nextLinkProperty = value;
-            this.plugin.triggerSettingsChangedEvent();
+            this.plugin.settingsUnderChange.nextLinkProperty = value;
+            this.plugin.triggerSettingsChangedDebounced();
           });
       });
 
@@ -671,11 +685,11 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       )
       .addText((text) => {
         text
-          .setValue(this.plugin.settingsUnderChange!.parentLinkProperty)
+          .setValue(this.plugin.settingsUnderChange.parentLinkProperty)
           .setPlaceholder("parent")
           .onChange((value) => {
-            this.plugin.settingsUnderChange!.parentLinkProperty = value;
-            this.plugin.triggerSettingsChangedEvent();
+            this.plugin.settingsUnderChange.parentLinkProperty = value;
+            this.plugin.triggerSettingsChangedDebounced();
           });
       });
 
@@ -683,7 +697,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       .setName("Previous, next, and parent links for ordered notes in specified folders")
       .setHeading();
 
-    const folderLinksSettingsArray = this.plugin.settingsUnderChange!.folderLinksSettingsArray;
+    const folderLinksSettingsArray = this.plugin.settingsUnderChange.folderLinksSettingsArray;
     for (let i = 0; i < folderLinksSettingsArray.length; i++) {
       const folderLinkSettings = folderLinksSettingsArray[i];
 
@@ -703,7 +717,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
             .onChange((value) => {
               const trimmed = value.trim();
               folderLinkSettings.folderPath = trimmed === "" ? "" : normalizePath(trimmed);
-              this.plugin.triggerSettingsChangedEvent();
+              this.plugin.triggerSettingsChangedDebounced();
             });
         });
 
@@ -713,7 +727,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
         .addToggle((toggle) => {
           toggle.setValue(folderLinkSettings.recursive).onChange((value) => {
             folderLinkSettings.recursive = value;
-            this.plugin.triggerSettingsChangedEvent();
+            this.plugin.triggerSettingsChangedDebounced();
           });
         });
 
@@ -729,7 +743,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
             .setPlaceholder("^\\d{3}_.+\\.md$")
             .onChange((value) => {
               folderLinkSettings.filterRegex = value;
-              this.plugin.triggerSettingsChangedEvent();
+              this.plugin.triggerSettingsChangedDebounced();
             });
         });
 
@@ -742,7 +756,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           .setValue(folderLinkSettings.filterBy)
           .onChange((value) => {
             folderLinkSettings.filterBy = value as "filename" | "property";
-            this.plugin.triggerSettingsChangedEvent();
+            this.plugin.triggerSettingsChangedDebounced();
           });
       });
 
@@ -755,7 +769,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
         .addText((text) => {
           text.setValue(folderLinkSettings.filterPropertyName).onChange((value) => {
             folderLinkSettings.filterPropertyName = value;
-            this.plugin.triggerSettingsChangedEvent();
+            this.plugin.triggerSettingsChangedDebounced();
           });
         });
 
@@ -768,7 +782,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           .setValue(folderLinkSettings.sortOrder)
           .onChange((value) => {
             folderLinkSettings.sortOrder = value as "asc" | "desc";
-            this.plugin.triggerSettingsChangedEvent();
+            this.plugin.triggerSettingsChangedDebounced();
           });
       });
 
@@ -783,7 +797,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           .setValue(folderLinkSettings.sortBy)
           .onChange((value) => {
             folderLinkSettings.sortBy = value as "filename" | "created" | "modified" | "property";
-            this.plugin.triggerSettingsChangedEvent();
+            this.plugin.triggerSettingsChangedDebounced();
           });
       });
 
@@ -796,7 +810,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
         .addText((text) => {
           text.setValue(folderLinkSettings.sortPropertyName).onChange((value) => {
             folderLinkSettings.sortPropertyName = value;
-            this.plugin.triggerSettingsChangedEvent();
+            this.plugin.triggerSettingsChangedDebounced();
           });
         });
 
@@ -807,7 +821,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           .onChange((value) => {
             const trimmed = value.trim();
             folderLinkSettings.parentPath = trimmed === "" ? "" : normalizePath(trimmed);
-            this.plugin.triggerSettingsChangedEvent();
+            this.plugin.triggerSettingsChangedDebounced();
           });
       });
 
@@ -816,14 +830,14 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
         .addButton((button) => {
           button.setButtonText("Move up").onClick(() => {
             this.swapFolderLinksSettings(i, i - 1);
-            this.plugin.triggerSettingsChangedEvent();
+            this.plugin.triggerSettingsChangedDebounced();
             this.display(); // Force re-render.
           });
         })
         .addButton((button) => {
           button.setButtonText("Move down").onClick(() => {
             this.swapFolderLinksSettings(i, i + 1);
-            this.plugin.triggerSettingsChangedEvent();
+            this.plugin.triggerSettingsChangedDebounced();
             this.display(); // Force re-render.
           });
         })
@@ -833,7 +847,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
             .setWarning()
             .onClick(() => {
               folderLinksSettingsArray.splice(i, 1);
-              this.plugin.triggerSettingsChangedEvent();
+              this.plugin.triggerSettingsChangedDebounced();
               this.display(); // Force re-render.
             });
         });
@@ -844,23 +858,23 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
         .setButtonText("Add a new folder")
         .setCta()
         .onClick(() => {
-          this.plugin.settingsUnderChange!.folderLinksSettingsArray.push(
+          this.plugin.settingsUnderChange.folderLinksSettingsArray.push(
             deepCopy(DEFAULT_FOLDER_LINKS_SETTINGS)
           );
-          this.plugin.triggerSettingsChangedEvent();
+          this.plugin.triggerSettingsChangedDebounced();
           this.display(); // Force re-render.
         });
     });
   }
 
   /**
-   * Swaps the elements at the specified indices in the array.
+   * Swaps the elements at the specified indices in the `folderLinksSettingsArray`.
    * If the indices are out of range, nothing happens.
    * @param index1 The index of the first element.
    * @param index2 The index of the second element.
    */
   private swapFolderLinksSettings(index1: number, index2: number): void {
-    const folderLinksSettingsArray = this.plugin.settingsUnderChange!.folderLinksSettingsArray;
+    const folderLinksSettingsArray = this.plugin.settingsUnderChange.folderLinksSettingsArray;
     if (index1 < 0 || index1 >= folderLinksSettingsArray.length) {
       return;
     }

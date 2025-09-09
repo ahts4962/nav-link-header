@@ -10,6 +10,7 @@
   A component that represents a link to a note.
 
   If `state.resolved` is `false`, the link will be rendered as an unresolved link.
+  If `state.isExternal` is `true`, an external link icon will be displayed next to the link.
 -->
 <div class="nav-link-header-container">
   <a

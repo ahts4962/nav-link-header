@@ -28,13 +28,12 @@
 
 <!--
   @component
-  The container for navigation links.
+  Container for navigation links.
 
-  Links are displayed in the order they are provided in the `links` prop.
-  If `isLoading` is `true` and `displayPlaceholder` is `true`, "Loading..."
-  will be displayed after the links that have already been loaded.
-  If `links` is empty and `isLoading` is `false` and `displayPlaceholder` is `true`,
-  "No links" will be displayed.
+  Links are displayed in the order provided by the `links` prop.
+  The loading message and "No links" placeholder are shown based on the relevant properties.
+  If `matchWidthToLineLength` is `true`, the navigation width matches
+  the note's content line length.
 -->
 {#if showNavigation}
   <div

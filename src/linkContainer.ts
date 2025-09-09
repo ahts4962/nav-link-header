@@ -1,6 +1,10 @@
 import type NavLinkHeader from "./main";
 import { PrefixedLinkState, type ThreeWayLinkState } from "./navigationLinkState";
 
+export const DISPLAY_ORDER_PLACEHOLDER_PERIODIC = "[[p]]";
+export const DISPLAY_ORDER_PLACEHOLDER_PROPERTY = "[[P]]";
+export const DISPLAY_ORDER_PLACEHOLDER_FOLDER = "[[f]]";
+
 /**
  * A container for links.
  * This class is used to store, sort, and filter links.
@@ -24,7 +28,7 @@ export class LinkContainer {
    */
   public addLink(link: PrefixedLinkState | ThreeWayLinkState) {
     // Filter out any prefixed links that have the same destination.
-    if (this.plugin.settings!.filterDuplicateNotes && link instanceof PrefixedLinkState) {
+    if (this.plugin.settings.filterDuplicateNotes && link instanceof PrefixedLinkState) {
       const i = this.links.findIndex((l) => {
         return l instanceof PrefixedLinkState && l.link.destination === link.link.destination;
       });
@@ -32,7 +36,7 @@ export class LinkContainer {
         // If the link is already in the list
         const existingPrefix = (this.links[i] as PrefixedLinkState).prefix;
         const newPrefix = link.prefix;
-        const priority = this.plugin.settings!.duplicateNoteFilteringPriority;
+        const priority = this.plugin.settings.duplicateNoteFilteringPriority;
         const existingIndex = priority.indexOf(existingPrefix);
         const newIndex = priority.indexOf(newPrefix);
         if (existingIndex === -1 && newIndex === -1) {
@@ -60,8 +64,12 @@ export class LinkContainer {
     }
 
     // Sort the links.
-    const order = [...this.plugin.settings!.displayOrderOfLinks];
-    ["[[p]]", "[[P]]", "[[f]]"].forEach((tag) => {
+    const order = [...this.plugin.settings.displayOrderOfLinks];
+    [
+      DISPLAY_ORDER_PLACEHOLDER_PERIODIC,
+      DISPLAY_ORDER_PLACEHOLDER_PROPERTY,
+      DISPLAY_ORDER_PLACEHOLDER_FOLDER,
+    ].forEach((tag) => {
       if (!order.includes(tag)) {
         order.push(tag);
       }
@@ -85,7 +93,7 @@ export class LinkContainer {
         return -1;
       } else {
         if (aIndex === bIndex) {
-          if (aSortTag === "[[f]]") {
+          if (aSortTag === DISPLAY_ORDER_PLACEHOLDER_FOLDER) {
             return (a as ThreeWayLinkState).index - (b as ThreeWayLinkState).index;
           } else {
             return (a as PrefixedLinkState).link.displayText.localeCompare(
@@ -108,11 +116,11 @@ export class LinkContainer {
       return link.prefix;
     } else {
       if (link.type === "periodic") {
-        return "[[p]]";
+        return DISPLAY_ORDER_PLACEHOLDER_PERIODIC;
       } else if (link.type === "property") {
-        return "[[P]]";
+        return DISPLAY_ORDER_PLACEHOLDER_PROPERTY;
       } else {
-        return "[[f]]";
+        return DISPLAY_ORDER_PLACEHOLDER_FOLDER;
       }
     }
   }

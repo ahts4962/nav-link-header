@@ -1,4 +1,4 @@
-import { type Moment } from "moment";
+import type { Moment } from "moment";
 import { normalizePath, TFile, type TAbstractFile } from "obsidian";
 import {
   appHasDailyNotesPluginLoaded,
@@ -22,150 +22,65 @@ import {
   type IGranularity,
 } from "obsidian-daily-notes-interface";
 import type NavLinkHeader from "./main";
+import { PluginComponent } from "./pluginComponent";
 import type { NavLinkHeaderSettings } from "./settings";
-import { isFileInFolder, joinPaths } from "./utils";
+import { deepEqual, isFileInFolder, joinPaths } from "./utils";
 
 const ALL_GRANULARITIES: IGranularity[] = ["day", "week", "month", "quarter", "year"];
 
 /**
- * Returns the granularities that are active (corresponding settings enabled).
- * @param settings The settings of the plugin.
- * @param cacheRequiredOnly If `true`, only the granularities that require note cache
- *     will be returned.
- *     For example, if `prevNextLinksEnabledInMonthlyNotes` is `false` and
- *     `parentLinkGranularityInMonthlyNotes` is "year" and "month" is not referenced
- *     as parent from any other granularities, monthly notes do not require caching, while
- *     Periodic Notes settings must be enabled for monthly notes to determine if
- *     a particular note is a monthly note.
- *     In this case, if `cacheRequiredOnly` is `true`, "month" will not be returned.
- * @returns The active granularities.
- */
-export function getActiveGranularities(
-  settings: NavLinkHeaderSettings,
-  cacheRequiredOnly: boolean
-): IGranularity[] {
-  const periodicNotesSettingFunctions = {
-    day: appHasDailyNotesPluginLoaded,
-    week: appHasWeeklyNotesPluginLoaded,
-    month: appHasMonthlyNotesPluginLoaded,
-    quarter: appHasQuarterlyNotesPluginLoaded,
-    year: appHasYearlyNotesPluginLoaded,
-  };
-  const usedForParent = new Set(
-    [
-      settings.parentLinkGranularityInDailyNotes,
-      settings.parentLinkGranularityInWeeklyNotes,
-      settings.parentLinkGranularityInMonthlyNotes,
-      settings.parentLinkGranularityInQuarterlyNotes,
-    ].filter((value) => value != undefined)
-  );
-
-  if (cacheRequiredOnly) {
-    return ALL_GRANULARITIES.filter((granularity) => {
-      return (
-        periodicNotesSettingFunctions[granularity]() &&
-        (getPrevNextLinkEnabledSetting(settings, granularity) || usedForParent.has(granularity))
-      );
-    });
-  } else {
-    return ALL_GRANULARITIES.filter((granularity) => {
-      return (
-        periodicNotesSettingFunctions[granularity]() &&
-        (getPrevNextLinkEnabledSetting(settings, granularity) ||
-          getParentLinkGranularitySetting(settings, granularity) ||
-          usedForParent.has(granularity))
-      );
-    });
-  }
-}
-
-/**
- * Gets `prevNextLinksEnabled` setting for the specified granularity.
- */
-export function getPrevNextLinkEnabledSetting(
-  settings: NavLinkHeaderSettings,
-  granularity: IGranularity
-): boolean {
-  return {
-    day: settings.prevNextLinksEnabledInDailyNotes,
-    week: settings.prevNextLinksEnabledInWeeklyNotes,
-    month: settings.prevNextLinksEnabledInMonthlyNotes,
-    quarter: settings.prevNextLinksEnabledInQuarterlyNotes,
-    year: settings.prevNextLinksEnabledInYearlyNotes,
-  }[granularity];
-}
-
-/**
- * Gets `parentLinkGranularity` setting for the specified granularity.
- */
-export function getParentLinkGranularitySetting(
-  settings: NavLinkHeaderSettings,
-  granularity: IGranularity
-): IGranularity | undefined {
-  return {
-    day: settings.parentLinkGranularityInDailyNotes,
-    week: settings.parentLinkGranularityInWeeklyNotes,
-    month: settings.parentLinkGranularityInMonthlyNotes,
-    quarter: settings.parentLinkGranularityInQuarterlyNotes,
-    year: undefined,
-  }[granularity];
-}
-
-/**
- * Gets all periodic notes for the specified granularity.
- * @param granularity The granularity of the notes.
- * @returns The record of note UID and TFile.
- *     If the periodic notes folder is not found
- *     (e.g., the folder path in the Periodic Notes plugin settings is invalid),
- *     empty object is returned.
- */
-function getAllPeriodicNotes(granularity: IGranularity): Record<string, TFile> {
-  try {
-    return {
-      day: getAllDailyNotes,
-      week: getAllWeeklyNotes,
-      month: getAllMonthlyNotes,
-      quarter: getAllQuarterlyNotes,
-      year: getAllYearlyNotes,
-    }[granularity]();
-  } catch (e) {
-    if (e instanceof Error) {
-      if (
-        e.message === "Failed to find daily notes folder" ||
-        e.message === "Failed to find weekly notes folder" ||
-        e.message === "Failed to find monthly notes folder" ||
-        e.message === "Failed to find quarterly notes folder" ||
-        e.message === "Failed to find yearly notes folder"
-      ) {
-        return {};
-      }
-    }
-    throw e;
-  }
-}
-
-export function createPeriodicNote(granularity: IGranularity, date: Moment): Promise<TFile> {
-  return {
-    day: createDailyNote,
-    week: createWeeklyNote,
-    month: createMonthlyNote,
-    quarter: createQuarterlyNote,
-    year: createYearlyNote,
-  }[granularity](date);
-}
-
-/**
  * Manages the periodic notes cache.
- * The instance must be re-created when the settings related to periodic notes are changed.
  */
-export class PeriodicNotesManager {
+export class PeriodicNotesManager extends PluginComponent {
   private noteCache: Map<IGranularity, Record<string, TFile>> = new Map();
 
   // Sorted keys of the noteCache.
   private noteUIDCache: Map<IGranularity, string[]> = new Map();
 
+  private _isActive: boolean = false;
+
+  public get isActive(): boolean {
+    return this._isActive;
+  }
+
+  private set isActive(val: boolean) {
+    if (!this._isActive && val) {
+      this.initializeNoteCache();
+    } else if (this._isActive && !val) {
+      this.noteCache.clear();
+      this.noteUIDCache.clear();
+    }
+    this._isActive = val;
+  }
+
   constructor(private plugin: NavLinkHeader) {
-    const granularities = getActiveGranularities(this.plugin.settings!, true);
+    super();
+
+    this.syncActiveState();
+  }
+
+  /**
+   * Synchronizes the active state.
+   * Whether this manager is active or not is determined by the plugin settings and
+   * the state of the Periodic Notes plugin.
+   * This is almost always synchronized by handling events, but there is one situation
+   * where they cannot be synchronized: when the Periodic Notes plugin itself is enabled
+   * or disabled. There is currently no good way to subscribe to that lifecycle event,
+   * so any place that uses this manager should call this method first.
+   */
+  public syncActiveState(): void {
+    this.isActive = this.getActiveGranularities(false).length > 0;
+  }
+
+  /**
+   * Initializes the note cache for each active granularity.
+   * This method retrieves all active granularities and, for each one,
+   * fetches all associated periodic notes. It then updates the internal
+   * caches: `noteCache` is populated with the notes for each granularity,
+   * and `noteUIDCache` is populated with the sorted list of note UIDs.
+   */
+  private initializeNoteCache(): void {
+    const granularities = this.getActiveGranularities(true);
     for (const granularity of granularities) {
       const allNotes = getAllPeriodicNotes(granularity);
       this.noteCache.set(granularity, allNotes);
@@ -173,22 +88,22 @@ export class PeriodicNotesManager {
     }
   }
 
-  public onFileCreated(file: TAbstractFile): void {
-    if (!(file instanceof TFile)) {
+  public override onFileCreated(file: TAbstractFile): void {
+    if (!this.isActive || !(file instanceof TFile)) {
       return;
     }
     this.addNoteToCache(file);
   }
 
-  public onFileDeleted(file: TAbstractFile): void {
-    if (!(file instanceof TFile)) {
+  public override onFileDeleted(file: TAbstractFile): void {
+    if (!this.isActive || !(file instanceof TFile)) {
       return;
     }
     this.removeNoteFromCache(file.path);
   }
 
-  public onFileRenamed(file: TAbstractFile, oldPath: string): void {
-    if (!(file instanceof TFile)) {
+  public override onFileRenamed(file: TAbstractFile, oldPath: string): void {
+    if (!this.isActive || !(file instanceof TFile)) {
       return;
     }
     this.removeNoteFromCache(oldPath);
@@ -233,6 +148,49 @@ export class PeriodicNotesManager {
     }
   }
 
+  public override onSettingsChanged(
+    previous: NavLinkHeaderSettings,
+    current: NavLinkHeaderSettings
+  ): void {
+    const isCurrentlyActive = this.getActiveGranularities(false).length > 0;
+    if (isCurrentlyActive !== this.isActive) {
+      this.isActive = isCurrentlyActive;
+    } else if (isCurrentlyActive) {
+      const keys: (keyof NavLinkHeaderSettings)[] = [
+        "prevNextLinksEnabledInDailyNotes",
+        "prevNextLinksEnabledInWeeklyNotes",
+        "prevNextLinksEnabledInMonthlyNotes",
+        "prevNextLinksEnabledInQuarterlyNotes",
+        "prevNextLinksEnabledInYearlyNotes",
+        "parentLinkGranularityInDailyNotes",
+        "parentLinkGranularityInWeeklyNotes",
+        "parentLinkGranularityInMonthlyNotes",
+        "parentLinkGranularityInQuarterlyNotes",
+      ];
+      if (keys.some((key) => !deepEqual(previous[key], current[key]))) {
+        this.noteCache.clear();
+        this.noteUIDCache.clear();
+        this.initializeNoteCache();
+      }
+    }
+  }
+
+  public onPeriodicNoteSettingsChanged(): void {
+    const isCurrentlyActive = this.getActiveGranularities(false).length > 0;
+    if (isCurrentlyActive !== this.isActive) {
+      this.isActive = isCurrentlyActive;
+    } else if (isCurrentlyActive) {
+      this.noteCache.clear();
+      this.noteUIDCache.clear();
+      this.initializeNoteCache();
+    }
+  }
+
+  public override dispose(): void {
+    this.noteCache.clear();
+    this.noteUIDCache.clear();
+  }
+
   /**
    * Searches for the adjacent notes of the specified file.
    * @returns `currentGranularity` is the granularity of the current note.
@@ -241,7 +199,7 @@ export class PeriodicNotesManager {
    *     and parent notes, respectively. If not found, `undefined` is returned for each.
    *     If `parentDate` is not `undefined`, it means that the parent note does not exist,
    *     but can be created by using this date (`parentPath` is also available).
-   *    `parentGranularity` is the granularity of the parent note.
+   *     `parentGranularity` is the granularity of the parent note.
    */
   public searchAdjacentNotes(file: TFile): {
     currentGranularity?: IGranularity;
@@ -266,7 +224,7 @@ export class PeriodicNotesManager {
     }
     result.currentGranularity = granularity;
 
-    if (getPrevNextLinkEnabledSetting(this.plugin.settings!, granularity)) {
+    if (this.isPrevNextLinkEnabled(granularity)) {
       const allNotes = this.noteCache.get(granularity)!;
       const uids = this.noteUIDCache.get(granularity)!;
       const dateUID = getDateUID(date, granularity);
@@ -276,7 +234,7 @@ export class PeriodicNotesManager {
       result.nextPath = index < uids.length - 1 ? allNotes[uids[index + 1]].path : undefined;
     }
 
-    const parentGranularity = getParentLinkGranularitySetting(this.plugin.settings!, granularity);
+    const parentGranularity = this.getParentLinkGranularity(granularity);
     if (!parentGranularity) {
       return result;
     }
@@ -315,7 +273,7 @@ export class PeriodicNotesManager {
     date?: Moment;
     granularity?: IGranularity;
   } {
-    const granularities = getActiveGranularities(this.plugin.settings!, false);
+    const granularities = this.getActiveGranularities(false);
     for (const granularity of granularities) {
       const { folder } = getPeriodicNoteSettings(granularity);
       const periodicNotesFolder = normalizePath(folder ?? "/");
@@ -331,5 +289,125 @@ export class PeriodicNotesManager {
       }
     }
     return { date: undefined, granularity: undefined };
+  }
+
+  /**
+   * Returns the granularities that are active (corresponding settings enabled).
+   * @param cacheRequiredOnly If `true`, only the granularities that require note cache
+   *     will be returned.
+   *     For example, if `prevNextLinksEnabledInMonthlyNotes` is `false` and
+   *     `parentLinkGranularityInMonthlyNotes` is "year" and "month" is not referenced
+   *     as parent from any other granularities, monthly notes do not require caching, while
+   *     Periodic Notes settings must be enabled for monthly notes to determine if
+   *     a particular note is a monthly note.
+   *     In this case, if `cacheRequiredOnly` is `true`, "month" will not be returned.
+   * @returns The active granularities.
+   */
+  private getActiveGranularities(cacheRequiredOnly: boolean): IGranularity[] {
+    const settings = this.plugin.settings;
+    const periodicNotesSettingFunctions = {
+      day: appHasDailyNotesPluginLoaded,
+      week: appHasWeeklyNotesPluginLoaded,
+      month: appHasMonthlyNotesPluginLoaded,
+      quarter: appHasQuarterlyNotesPluginLoaded,
+      year: appHasYearlyNotesPluginLoaded,
+    };
+    const usedForParent = new Set(
+      [
+        settings.parentLinkGranularityInDailyNotes,
+        settings.parentLinkGranularityInWeeklyNotes,
+        settings.parentLinkGranularityInMonthlyNotes,
+        settings.parentLinkGranularityInQuarterlyNotes,
+      ].filter((value) => value != undefined)
+    );
+
+    if (cacheRequiredOnly) {
+      return ALL_GRANULARITIES.filter((granularity) => {
+        return (
+          periodicNotesSettingFunctions[granularity]() &&
+          (this.isPrevNextLinkEnabled(granularity) || usedForParent.has(granularity))
+        );
+      });
+    } else {
+      return ALL_GRANULARITIES.filter((granularity) => {
+        return (
+          periodicNotesSettingFunctions[granularity]() &&
+          (this.isPrevNextLinkEnabled(granularity) ||
+            this.getParentLinkGranularity(granularity) ||
+            usedForParent.has(granularity))
+        );
+      });
+    }
+  }
+
+  /**
+   * Returns the `prevNextLinksEnabled` setting for the specified granularity.
+   */
+  public isPrevNextLinkEnabled(granularity: IGranularity): boolean {
+    const settings = this.plugin.settings;
+    return {
+      day: settings.prevNextLinksEnabledInDailyNotes,
+      week: settings.prevNextLinksEnabledInWeeklyNotes,
+      month: settings.prevNextLinksEnabledInMonthlyNotes,
+      quarter: settings.prevNextLinksEnabledInQuarterlyNotes,
+      year: settings.prevNextLinksEnabledInYearlyNotes,
+    }[granularity];
+  }
+
+  /**
+   * Returns the `parentLinkGranularity` setting for the specified granularity.
+   */
+  public getParentLinkGranularity(granularity: IGranularity): IGranularity | undefined {
+    const settings = this.plugin.settings;
+    return {
+      day: settings.parentLinkGranularityInDailyNotes,
+      week: settings.parentLinkGranularityInWeeklyNotes,
+      month: settings.parentLinkGranularityInMonthlyNotes,
+      quarter: settings.parentLinkGranularityInQuarterlyNotes,
+      year: undefined,
+    }[granularity];
+  }
+}
+
+export function createPeriodicNote(granularity: IGranularity, date: Moment): Promise<TFile> {
+  return {
+    day: createDailyNote,
+    week: createWeeklyNote,
+    month: createMonthlyNote,
+    quarter: createQuarterlyNote,
+    year: createYearlyNote,
+  }[granularity](date);
+}
+
+/**
+ * Gets all periodic notes for the specified granularity.
+ * @param granularity The granularity of the notes.
+ * @returns The record of note UID and TFile.
+ *     If the periodic notes folder is not found
+ *     (e.g., the folder path in the Periodic Notes plugin settings is invalid),
+ *     empty object is returned.
+ */
+function getAllPeriodicNotes(granularity: IGranularity): Record<string, TFile> {
+  try {
+    return {
+      day: getAllDailyNotes,
+      week: getAllWeeklyNotes,
+      month: getAllMonthlyNotes,
+      quarter: getAllQuarterlyNotes,
+      year: getAllYearlyNotes,
+    }[granularity]();
+  } catch (e) {
+    if (e instanceof Error) {
+      if (
+        e.message === "Failed to find daily notes folder" ||
+        e.message === "Failed to find weekly notes folder" ||
+        e.message === "Failed to find monthly notes folder" ||
+        e.message === "Failed to find quarterly notes folder" ||
+        e.message === "Failed to find yearly notes folder"
+      ) {
+        return {};
+      }
+    }
+    throw e;
   }
 }

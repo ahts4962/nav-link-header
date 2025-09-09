@@ -8,10 +8,10 @@
 
 <!-- 
   @component
-  A component that represents a composite link that includes previous, next, and parent links.
+  A component that displays a composite link with previous, next, and parent links.
 
-  For each of previous, next, and parent, if `link` of the state object is `undefined`
-  and `hidden` is `false`, a placeholder is displayed. If `hidden` is `true`, nothing is displayed.
+  For each of previous, next, and parent: if the `link` property in the state object is `undefined`
+  and `hidden` is `false`, a placeholder is shown. If `hidden` is `true`, nothing is displayed.
 -->
 <div class="nav-link-header-container">
   <Icon iconId="chevrons-left" />

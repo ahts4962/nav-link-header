@@ -35,8 +35,7 @@
   }
 }
 
-/* If the web view does not support the anchor-name property,
-   fall back to margin adjustments. */
+/* If the web view does not support the anchor-name property, fall back to margin adjustments. */
 @supports not (anchor-name: --a) {
   .popover.hover-popover .nav-link-header-navigation {
     margin-right: 30px;

@@ -1,10 +1,13 @@
 import { type TAbstractFile, TFile } from "obsidian";
 import emojiRegex from "emoji-regex-xs";
 import type NavLinkHeader from "./main";
-import { removeCode, removeEmojiVariationSelectors, sanitizeRegexInput } from "./utils";
+import { PluginComponent } from "./pluginComponent";
+import type { NavLinkHeaderSettings } from "./settings";
+import { deepEqual, PluginError } from "./utils";
 
 export const exportedForTesting = {
-  convertAnnotationString,
+  convertAnnotationStringToRegex,
+  removeCode,
 };
 
 export const EMOJI_ANNOTATION_PLACEHOLDER: string = "[[E]]";
@@ -12,31 +15,52 @@ export const EMOJI_ANNOTATION_PLACEHOLDER: string = "[[E]]";
 /**
  * Manages the annotated links.
  * This class is used to search annotated links and cache the search results.
- * If the settings related to annotated links are changed, the instance must be re-created.
  */
-export class AnnotatedLinksManager {
+export class AnnotatedLinksManager extends PluginComponent {
   // The cache object that stores the result of annotated links search.
   // Cache structure: cache[backlinkFilePath][currentFilePath] = [annotation1, annotation2, ...]
   private cache: Map<string, Map<string, string[]>> = new Map();
 
-  constructor(private plugin: NavLinkHeader) {}
+  private _isActive: boolean = false;
 
-  public onFileDeleted(file: TAbstractFile): void {
-    if (!(file instanceof TFile)) {
+  public get isActive(): boolean {
+    return this._isActive;
+  }
+
+  private set isActive(val: boolean) {
+    if (this._isActive && !val) {
+      // Create a new Map instead of clearing the existing one
+      // to avoid issues with ongoing asynchronous iterations.
+      this.cache = new Map();
+    }
+    this._isActive = val;
+  }
+
+  constructor(private plugin: NavLinkHeader) {
+    super();
+
+    const settings = this.plugin.settings;
+    if (settings.annotationStrings.length > 0) {
+      this.isActive = true;
+    }
+  }
+
+  public override onFileDeleted(file: TAbstractFile): void {
+    if (!this.isActive || !(file instanceof TFile)) {
       return;
     }
     this.removeFileFromCache(file.path);
   }
 
-  public onFileRenamed(file: TAbstractFile, oldPath: string): void {
-    if (!(file instanceof TFile)) {
+  public override onFileRenamed(file: TAbstractFile, oldPath: string): void {
+    if (!this.isActive || !(file instanceof TFile)) {
       return;
     }
     this.removeFileFromCache(oldPath);
   }
 
-  public onFileModified(file: TAbstractFile): void {
-    if (!(file instanceof TFile)) {
+  public override onFileModified(file: TAbstractFile): void {
+    if (!this.isActive || !(file instanceof TFile)) {
       return;
     }
     this.removeFileFromCache(file.path);
@@ -48,25 +72,57 @@ export class AnnotatedLinksManager {
     }
   }
 
+  public override onSettingsChanged(
+    previous: NavLinkHeaderSettings,
+    current: NavLinkHeaderSettings
+  ): void {
+    if (!this.isActive && current.annotationStrings.length > 0) {
+      this.isActive = true;
+    } else if (this.isActive && current.annotationStrings.length === 0) {
+      this.isActive = false;
+    } else if (this.isActive) {
+      const keys: (keyof NavLinkHeaderSettings)[] = [
+        "annotationStrings",
+        "allowSpaceAfterAnnotationString",
+        "ignoreVariationSelectors",
+      ];
+      if (keys.some((key) => !deepEqual(previous[key], current[key]))) {
+        this.cache = new Map();
+      }
+    }
+  }
+
+  public override dispose(): void {
+    this.isActive = false;
+  }
+
   /**
-   * Searches the annotated links from the content of the backlinks of the specified file.
+   * Searches for annotated links in the content of the backlinks of the specified file.
    * @param file Annotated links are searched from the backlinks of this file.
-   * @returns Return annotated links asynchronously, one at a time.
+   * @returns Returns annotated links asynchronously, one at a time.
+   * @throws {PluginError} Throws if `AnnotatedLinksManager` is deactivated or reset
+   *     during the asynchronous operation.
    */
   public async *searchAnnotatedLinks(
     file: TFile
   ): AsyncGenerator<{ destinationPath: string; annotation: string }> {
+    if (!this.isActive) {
+      return;
+    }
+
     const backlinks = Object.entries(this.plugin.app.metadataCache.resolvedLinks)
       .filter(([, destinations]) => Object.keys(destinations).includes(file.path))
       .map(([source]) => source);
 
-    // Snapshot the current settings so they remain stable during asynchronous processing.
-    const annotationStrings = [...this.plugin.settings!.annotationStrings];
-    const allowSpace = this.plugin.settings!.allowSpaceAfterAnnotationString;
-    const ignoreVariationSelectors = this.plugin.settings!.ignoreVariationSelectors;
+    // Snapshot the current values so they remain stable during asynchronous processing.
+    const annotationStrings = [...this.plugin.settings.annotationStrings];
+    const allowSpace = this.plugin.settings.allowSpaceAfterAnnotationString;
+    const ignoreVariationSelectors = this.plugin.settings.ignoreVariationSelectors;
+
+    const cache: Map<string, Map<string, string[]>> = this.cache;
 
     for (const backlink of backlinks) {
-      const cachedResult = this.cache.get(backlink)?.get(file.path);
+      const cachedResult = cache.get(backlink)?.get(file.path);
       if (cachedResult) {
         for (const annotation of cachedResult) {
           yield { destinationPath: backlink, annotation };
@@ -80,10 +136,17 @@ export class AnnotatedLinksManager {
       }
 
       const content = removeCode(await this.plugin.app.vault.cachedRead(backlinkFile));
+      if (cache !== this.cache) {
+        // The cache has been reset during the asynchronous operation.
+        throw new PluginError("AnnotatedLinksManager was reset during operation.");
+      }
 
       const detectedAnnotations: string[] = [];
       for (const annotation of annotationStrings) {
-        const annotationRegex = convertAnnotationString(annotation, ignoreVariationSelectors);
+        const annotationRegex = convertAnnotationStringToRegex(
+          annotation,
+          ignoreVariationSelectors
+        );
 
         const matchedAnnotations = this.searchAnnotatedLinksInContent(
           content,
@@ -103,10 +166,10 @@ export class AnnotatedLinksManager {
         };
       }
 
-      if (!this.cache.has(backlink)) {
-        this.cache.set(backlink, new Map());
+      if (!cache.has(backlink)) {
+        cache.set(backlink, new Map());
       }
-      this.cache.get(backlink)!.set(file.path, detectedAnnotations);
+      cache.get(backlink)!.set(file.path, detectedAnnotations);
     }
   }
 
@@ -174,16 +237,35 @@ export class AnnotatedLinksManager {
 }
 
 /**
+ * Removes YAML front matter, code blocks, and inline code from the text.
+ * @param text The text to remove code from.
+ * @returns The text without code.
+ */
+function removeCode(text: string): string {
+  return (
+    text
+      // Removes YAML front matter.
+      .replace(/^---\n(?:.*?\n)?---(?:$|\n)/s, "")
+      // Removes code blocks (leaves the last line break for the processing of inline code).
+      .replace(/^ *(```+)[^`\n]*\n(?:.*?\n)? *\1`* *$/gms, "")
+      .replace(/(^|\n) *```+[^`\n]*(?:$|\n.*$)/s, "$1")
+      // Removes inline code.
+      .replace(/(`+)(?=[^`])(?:[^\n]|\n[^\n])*?[^`]\1(?=(?:$|[^`]))/gs, "")
+  );
+}
+
+/**
  * Convert the annotation string to a regex pattern.
  */
-function convertAnnotationString(input: string, ignoreVariationSelectors: boolean): string {
+function convertAnnotationStringToRegex(input: string, ignoreVariationSelectors: boolean): string {
   input = sanitizeRegexInput(input);
 
   if (ignoreVariationSelectors) {
     // Remove variation selectors from emoji characters,
     // and then add optional variation selectors after each code point.
     input = input.replace(emojiRegex(), (matched) => {
-      return Array.from(removeEmojiVariationSelectors(matched))
+      const removed = matched.replace(/[\uFE0E\uFE0F]/gu, "");
+      return Array.from(removed)
         .map((cp) => cp + "[\\uFE0E\\uFE0F]?")
         .join("");
     });
@@ -192,4 +274,11 @@ function convertAnnotationString(input: string, ignoreVariationSelectors: boolea
   // Find the sanitized placeholder and replace it with the emoji regex.
   const placeholder = sanitizeRegexInput(sanitizeRegexInput(EMOJI_ANNOTATION_PLACEHOLDER));
   return input.replace(new RegExp(placeholder, "g"), `(?:${emojiRegex().source})`);
+}
+
+/**
+ * Escapes special characters in a string for use in a regular expression.
+ */
+function sanitizeRegexInput(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

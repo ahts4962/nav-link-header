@@ -1,47 +1,78 @@
-import { debounce, TFile } from "obsidian";
+import { TFile } from "obsidian";
 import type NavLinkHeader from "./main";
 import { Updater } from "./updater";
 import { NavigationComponent } from "./navigationComponent.svelte";
+import type { NavLinkHeaderSettings } from "./settings";
 
+/**
+ * Updates and manages navigation in Obsidian workspace leaves.
+ * The `LeavesUpdater` class is responsible for updating navigation links in all
+ * relevant workspace leaves (such as markdown and canvas views) based on plugin
+ * settings. It listens for navigation and settings changes, and updates or cleans up
+ * navigation components as needed.
+ */
 export class LeavesUpdater extends Updater {
+  private _isActive: boolean = false;
+
+  public get isActive(): boolean {
+    return this._isActive;
+  }
+
+  private set isActive(val: boolean) {
+    if (this._isActive && !val) {
+      this.cleanup();
+    }
+    this._isActive = val;
+  }
+
   constructor(plugin: NavLinkHeader) {
     super(plugin);
-    this.debouncedUpdateAll();
+
+    this.isActive = this.plugin.settings.displayInLeaves;
   }
 
-  public onLayoutChange(): void {
-    this.updateAll({ forced: false });
+  public override onNavigationUpdateRequired(): void {
+    if (this.isActive) {
+      this.updateAllLeaves(false);
+    }
   }
 
-  public onVaultChange(): void {
-    // Updates the navigation links when any file is changed.
-    this.debouncedUpdateAll();
+  public override onForcedNavigationUpdateRequired(): void {
+    if (this.isActive) {
+      this.updateAllLeaves(true);
+    }
   }
 
-  public onSettingsChange(): void {
-    // Updates the navigation links when the settings is changed.
-    this.updateAll({ forced: true });
+  public override onSettingsChanged(
+    previous: NavLinkHeaderSettings,
+    current: NavLinkHeaderSettings
+  ): void {
+    if (previous.displayInLeaves !== current.displayInLeaves) {
+      this.isActive = current.displayInLeaves;
+    } else if (
+      current.displayInLeaves &&
+      (previous.displayInMarkdownViews !== current.displayInMarkdownViews ||
+        previous.displayInCanvasViews !== current.displayInCanvasViews)
+    ) {
+      this.cleanup();
+    }
   }
 
-  private debouncedUpdateAll = debounce(
-    () => {
-      this.updateAll({ forced: true });
-    },
-    500,
-    true
-  );
+  public override dispose(): void {
+    this.isActive = false;
+  }
 
   /**
    * Updates the navigation links for all leaves.
-   * @param forced See `NavigationComponent.update`.
+   * @param forced See `NavigationComponent.update()`.
    */
-  public updateAll({ forced }: { forced: boolean }): void {
+  public updateAllLeaves(forced: boolean): void {
     this.plugin.app.workspace.iterateAllLeaves((leaf) => {
       const view = leaf.view;
 
       if (
-        (this.plugin.settings!.displayInMarkdownViews && view.getViewType() === "markdown") ||
-        (this.plugin.settings!.displayInCanvasViews && view.getViewType() === "canvas")
+        (this.plugin.settings.displayInMarkdownViews && view.getViewType() === "markdown") ||
+        (this.plugin.settings.displayInCanvasViews && view.getViewType() === "canvas")
       ) {
         if ("file" in view && view.file instanceof TFile) {
           this.updateNavigation({
@@ -59,11 +90,10 @@ export class LeavesUpdater extends Updater {
   /**
    * Cleans up the resources.
    */
-  public dispose(): void {
-    this.debouncedUpdateAll.cancel();
-
+  private cleanup(): void {
     this.plugin.app.workspace.iterateAllLeaves((leaf) => {
       const view = leaf.view;
+
       if (view.getViewType() === "markdown" || view.getViewType() === "canvas") {
         // Removes the added html elements.
         view.containerEl.querySelector(".nav-link-header-navigation")?.remove();

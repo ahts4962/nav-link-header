@@ -1,4 +1,14 @@
-import { type App, type TFile } from "obsidian";
+import type { App, TFile } from "obsidian";
+
+/**
+ * Represents an error specific to the plugin.
+ */
+export class PluginError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "PluginError";
+  }
+}
 
 /**
  * Compares two values and returns `true` if these values are equal.
@@ -94,40 +104,6 @@ export function joinPaths(path1: string, path2: string): string {
   } else {
     return path1 + "/" + path2;
   }
-}
-
-/**
- * Removes YAML front matter, code blocks, and inline code from the text.
- * @param text The text to remove code from.
- * @returns The text without code.
- */
-export function removeCode(text: string): string {
-  return (
-    text
-      // Removes YAML front matter.
-      .replace(/^---\n(?:.*?\n)?---(?:$|\n)/s, "")
-      // Removes code blocks (leaves the last line break for the processing of inline code).
-      .replace(/^ *(```+)[^`\n]*\n(?:.*?\n)? *\1`* *$/gms, "")
-      .replace(/(^|\n) *```+[^`\n]*(?:$|\n.*$)/s, "$1")
-      // Removes inline code.
-      .replace(/(`+)(?=[^`])(?:[^\n]|\n[^\n])*?[^`]\1(?=(?:$|[^`]))/gs, "")
-  );
-}
-
-/**
- * Removes variation selectors used in emojis from the text.
- * @param text The text to remove variation selectors from.
- * @returns The text without variation selectors.
- */
-export function removeEmojiVariationSelectors(text: string): string {
-  return text.replace(/[\uFE0E\uFE0F]/gu, "");
-}
-
-/**
- * Escapes special characters in a string for use in a regular expression.
- */
-export function sanitizeRegexInput(text: string): string {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 /**

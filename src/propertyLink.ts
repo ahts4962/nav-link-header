@@ -1,5 +1,5 @@
 import type { App, TFile } from "obsidian";
-import NavLinkHeader from "./main";
+import type NavLinkHeader from "./main";
 import { getStringValuesFromFileProperty, parseMarkdownLink, parseWikiLink } from "./utils";
 
 /**
@@ -21,7 +21,7 @@ export function getPropertyLinks(
 }[] {
   const result: ReturnType<typeof getPropertyLinks> = [];
 
-  const propertyMappings = plugin.settings!.propertyMappings;
+  const propertyMappings = plugin.settings.propertyMappings;
   for (const { property, prefix } of propertyMappings) {
     const links = getLinksFromFileProperty(plugin.app, file, property);
 
@@ -48,11 +48,7 @@ export function getThreeWayPropertyLink(
   plugin: NavLinkHeader,
   file: TFile
 ): {
-  previous?: {
-    destination: string;
-    isExternal: boolean;
-    displayText?: string;
-  };
+  previous?: { destination: string; isExternal: boolean; displayText?: string };
   next?: { destination: string; isExternal: boolean; displayText?: string };
   parent?: { destination: string; isExternal: boolean; displayText?: string };
 } {
@@ -62,22 +58,22 @@ export function getThreeWayPropertyLink(
     parent: undefined,
   };
 
-  if (plugin.settings!.previousLinkProperty) {
-    const links = getLinksFromFileProperty(plugin.app, file, plugin.settings!.previousLinkProperty);
+  if (plugin.settings.previousLinkProperty) {
+    const links = getLinksFromFileProperty(plugin.app, file, plugin.settings.previousLinkProperty);
     if (links.length > 0) {
       result.previous = links[0];
     }
   }
 
-  if (plugin.settings!.nextLinkProperty) {
-    const links = getLinksFromFileProperty(plugin.app, file, plugin.settings!.nextLinkProperty);
+  if (plugin.settings.nextLinkProperty) {
+    const links = getLinksFromFileProperty(plugin.app, file, plugin.settings.nextLinkProperty);
     if (links.length > 0) {
       result.next = links[0];
     }
   }
 
-  if (plugin.settings!.parentLinkProperty) {
-    const links = getLinksFromFileProperty(plugin.app, file, plugin.settings!.parentLinkProperty);
+  if (plugin.settings.parentLinkProperty) {
+    const links = getLinksFromFileProperty(plugin.app, file, plugin.settings.parentLinkProperty);
     if (links.length > 0) {
       result.parent = links[0];
     }

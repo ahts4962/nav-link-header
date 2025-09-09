@@ -1,6 +1,7 @@
-import { Component, HoverPopover, TFile, type WorkspaceWindow, type HoverParent } from "obsidian";
+import { Component, HoverPopover, TFile, type HoverParent, type WorkspaceWindow } from "obsidian";
 import type NavLinkHeader from "./main";
 import { Updater } from "./updater";
+import type { NavLinkHeaderSettings } from "./settings";
 
 /**
  * A class that monitors hover popovers. When a hover popover is created, this class
@@ -14,21 +15,63 @@ export class HoverPopoverUpdater extends Updater {
   // This is necessary because hover-link event does not directly create a popover.
   private lastHoverParent?: WeakRef<HoverParent>;
 
+  private _isActive: boolean = false;
+
+  public get isActive(): boolean {
+    return this._isActive;
+  }
+
+  private set isActive(val: boolean) {
+    if (!this._isActive && val) {
+      // Adds observers to the existing windows.
+      this.plugin.app.workspace.iterateAllLeaves((leaf) => {
+        this.addObserver(leaf.view.containerEl.closest("body"));
+      });
+    }
+    if (this._isActive && !val) {
+      this.cleanup();
+    }
+    this._isActive = val;
+  }
+
   constructor(plugin: NavLinkHeader) {
     super(plugin);
 
-    // Adds observers to the existing windows.
-    this.plugin.app.workspace.iterateAllLeaves((leaf) => {
-      this.addObserver(leaf.view.containerEl.closest("body"));
-    });
+    this.isActive = this.plugin.settings.displayInHoverPopovers;
   }
 
-  /**
-   * Call this method when a new window is opened.
-   */
-  public onWindowOpen(window: WorkspaceWindow): void {
+  public override onWindowOpen(window: WorkspaceWindow): void {
     // Adds an observer when a new window is opened.
     this.addObserver(window.doc.querySelector("body"));
+  }
+
+  public override onWindowClose(window: WorkspaceWindow): void {
+    // Removes the observer when a window is closed.
+    const body = window.doc.querySelector("body");
+    if (body) {
+      const observer = this.observers.get(body);
+      if (observer) {
+        observer.disconnect();
+        this.observers.delete(body);
+      }
+    }
+  }
+
+  public override onHoverLink(hoverParent: HoverParent): void {
+    // Stores the hover parent when the hover-link event is triggered.
+    // This is used when the hover popover is actually created later.
+    this.lastHoverParent = new WeakRef(hoverParent);
+  }
+
+  public override onSettingsChanged(
+    previous: NavLinkHeaderSettings,
+    current: NavLinkHeaderSettings
+  ): void {
+    this.isActive = current.displayInHoverPopovers;
+  }
+
+  public override dispose(): void {
+    this.isActive = false;
   }
 
   /**
@@ -62,30 +105,6 @@ export class HoverPopoverUpdater extends Updater {
   }
 
   /**
-   * Call this method when a window is closed.
-   */
-  public onWindowClose(window: WorkspaceWindow): void {
-    // Removes the observer when a window is closed.
-    const body = window.doc.querySelector("body");
-    if (body) {
-      const observer = this.observers.get(body);
-      if (observer) {
-        observer.disconnect();
-        this.observers.delete(body);
-      }
-    }
-  }
-
-  /**
-   * Call this method when the hover-link event is triggered.
-   */
-  public onHoverLink(hoverParent: HoverParent): void {
-    // Stores the hover parent when the hover-link event is triggered.
-    // This is used when the hover popover is actually created later.
-    this.lastHoverParent = new WeakRef(hoverParent);
-  }
-
-  /**
    * Adds the navigation links to the newly created hover popover.
    */
   private updateHoverPopover(): void {
@@ -112,11 +131,11 @@ export class HoverPopoverUpdater extends Updater {
         "containerEl" in child &&
         child.containerEl instanceof Element
       ) {
-        let nextSibling = null;
-        if (this.plugin.settings!.displayInMarkdownViews) {
+        let nextSibling: Element | null = null;
+        if (this.plugin.settings.displayInMarkdownViews) {
           nextSibling = child.containerEl.querySelector(".markdown-embed-content");
         }
-        if (nextSibling === null && this.plugin.settings!.displayInCanvasViews) {
+        if (nextSibling === null && this.plugin.settings.displayInCanvasViews) {
           nextSibling = child.containerEl.querySelector(".canvas-minimap");
         }
         if (nextSibling === null) {
@@ -137,11 +156,12 @@ export class HoverPopoverUpdater extends Updater {
   /**
    * Cleans up the resources.
    */
-  public dispose(): void {
+  public cleanup(): void {
     // Disconnects all observers.
     for (const observer of this.observers.values()) {
       observer.disconnect();
     }
     this.observers.clear();
+    this.lastHoverParent = undefined;
   }
 }

@@ -1,12 +1,15 @@
 import type { Component, TFile } from "obsidian";
 import type NavLinkHeader from "./main";
 import { NavigationComponent } from "./navigationComponent.svelte";
+import { PluginComponent } from "./pluginComponent";
 
 /**
  * The base class for updating the navigation links.
  */
-export class Updater {
-  constructor(protected plugin: NavLinkHeader) {}
+export class Updater extends PluginComponent {
+  constructor(protected plugin: NavLinkHeader) {
+    super();
+  }
 
   /**
    * Adds the navigation component to the specified element.

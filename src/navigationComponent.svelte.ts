@@ -8,21 +8,25 @@ import {
   type LinkEventHandler,
 } from "./navigationLinkState";
 import { LinkContainer } from "./linkContainer";
+import { AnnotatedLinksManager } from "./annotatedLink";
 import { getPropertyLinks, getThreeWayPropertyLink } from "./propertyLink";
-import {
-  createPeriodicNote,
-  getParentLinkGranularitySetting,
-  getPrevNextLinkEnabledSetting,
-} from "./periodicNotes";
+import { createPeriodicNote, PeriodicNotesManager } from "./periodicNotes";
+import { FolderLinksManager } from "./folderLink";
 import { FileCreationModal } from "./fileCreationModal";
-import { getStringValuesFromFileProperty, getFileStemFromPath, openExternalLink } from "./utils";
 import Navigation from "./ui/Navigation.svelte";
+import {
+  getStringValuesFromFileProperty,
+  getFileStemFromPath,
+  openExternalLink,
+  PluginError,
+} from "./utils";
 
 /**
  * Navigation component to add the navigation links to.
  */
 export class NavigationComponent extends Component {
   private navigation?: ReturnType<typeof Navigation>;
+
   private navigationProps: {
     links: (PrefixedLinkState | ThreeWayLinkState)[];
     isLoading: boolean;
@@ -38,7 +42,9 @@ export class NavigationComponent extends Component {
     displayLoadingMessage: false,
     displayPlaceholder: false,
   });
+
   private currentFilePath?: string;
+
   private loaded: boolean = false;
 
   /**
@@ -79,20 +85,17 @@ export class NavigationComponent extends Component {
       return;
     }
 
-    const fileChanged = this.currentFilePath !== file.path;
-    this.currentFilePath = file.path;
-
-    // Prevents unnecessary updates.
-    if (!forced && !fileChanged) {
+    if (!forced && this.currentFilePath === file.path) {
       return;
     }
+    this.currentFilePath = file.path;
 
     this.navigationProps.isLoading = true;
     this.navigationProps.matchWidthToLineLength =
-      this.plugin.settings!.matchNavigationWidthToLineLength;
-    this.navigationProps.hideAnnotatedLinkPrefix = this.plugin.settings!.hideAnnotatedLinkPrefix;
-    this.navigationProps.displayLoadingMessage = this.plugin.settings!.displayLoadingMessage;
-    this.navigationProps.displayPlaceholder = this.plugin.settings!.displayPlaceholder;
+      this.plugin.settings.matchNavigationWidthToLineLength;
+    this.navigationProps.hideAnnotatedLinkPrefix = this.plugin.settings.hideAnnotatedLinkPrefix;
+    this.navigationProps.displayLoadingMessage = this.plugin.settings.displayLoadingMessage;
+    this.navigationProps.displayPlaceholder = this.plugin.settings.displayPlaceholder;
 
     const filePath = file.path;
     const newLinks = new LinkContainer(this.plugin);
@@ -120,64 +123,63 @@ export class NavigationComponent extends Component {
       }
     };
 
-    // Property links
-    if (this.plugin.settings!.propertyMappings.length > 0) {
-      this.constructPropertyLinkStates(file, clickHandler, mouseOverHandler).forEach((link) => {
-        newLinks.addLink(link);
-      });
+    this.constructPropertyLinkStates(file, clickHandler, mouseOverHandler).forEach((link) => {
+      newLinks.addLink(link);
+    });
+
+    const periodicNoteLinkState = this.constructPeriodicNoteLinkState(
+      file,
+      clickHandler,
+      mouseOverHandler
+    );
+    if (periodicNoteLinkState) {
+      newLinks.addLink(periodicNoteLinkState);
     }
 
-    // Periodic note links
-    this.plugin.syncPeriodicNotesManager();
-    if (this.plugin.periodicNotesEnabled) {
-      const periodicNoteLinkState = this.constructPeriodicNoteLinkState(
-        file,
-        clickHandler,
-        mouseOverHandler
-      );
-      if (periodicNoteLinkState) {
-        newLinks.addLink(periodicNoteLinkState);
-      }
+    const threeWayPropertyLink = this.constructThreeWayPropertyLinkState(
+      file,
+      clickHandler,
+      mouseOverHandler
+    );
+    if (threeWayPropertyLink) {
+      newLinks.addLink(threeWayPropertyLink);
     }
 
-    // Three-way property links
-    if (
-      this.plugin.settings!.previousLinkProperty ||
-      this.plugin.settings!.nextLinkProperty ||
-      this.plugin.settings!.parentLinkProperty
-    ) {
-      const threeWayPropertyLink = this.constructThreeWayPropertyLinkState(
-        file,
-        clickHandler,
-        mouseOverHandler
-      );
-      if (threeWayPropertyLink) {
-        newLinks.addLink(threeWayPropertyLink);
-      }
-    }
-
-    // Folder links
-    if (this.plugin.settings!.folderLinksSettingsArray.length > 0) {
-      this.constructFolderLinkStates(file, clickHandler, mouseOverHandler).forEach((link) => {
-        newLinks.addLink(link);
-      });
-    }
+    this.constructFolderLinkStates(file, clickHandler, mouseOverHandler).forEach((link) => {
+      newLinks.addLink(link);
+    });
 
     this.navigationProps.links = [...newLinks.getLinks()];
 
-    // Annotated links
-    if (this.plugin.settings!.annotationStrings.length > 0) {
+    try {
       const generator = this.constructAnnotatedLinkStates(file, clickHandler, mouseOverHandler);
       for await (const link of generator) {
         if (!this.loaded) {
-          return; // Handles the async gap.
+          return;
         }
         newLinks.addLink(link);
         this.navigationProps.links = [...newLinks.getLinks()];
       }
+    } catch (e) {
+      if (e instanceof PluginError) {
+        // Exit if the PeriodicNotesManager has been reset.
+        return;
+      }
     }
 
     this.navigationProps.isLoading = false;
+  }
+
+  /**
+   * Unloads the navigation component
+   */
+  public onunload(): void {
+    if (this.navigation) {
+      void unmount(this.navigation);
+      this.navigation = undefined;
+    }
+    this.currentFilePath = undefined;
+    this.loaded = false;
   }
 
   /**
@@ -193,6 +195,10 @@ export class NavigationComponent extends Component {
     mouseOverHandler: LinkEventHandler
   ): PrefixedLinkState[] {
     const result: PrefixedLinkState[] = [];
+
+    if (this.plugin.settings.propertyMappings.length === 0) {
+      return result;
+    }
 
     const propertyLinks = getPropertyLinks(this.plugin, file);
     for (const link of propertyLinks) {
@@ -227,7 +233,13 @@ export class NavigationComponent extends Component {
     clickHandler: LinkEventHandler,
     mouseOverHandler: LinkEventHandler
   ): ThreeWayLinkState | undefined {
-    const periodicNoteLinks = this.plugin.periodicNotesManager!.searchAdjacentNotes(file);
+    const periodicNotesManager = this.plugin.findComponent(PeriodicNotesManager)!;
+    periodicNotesManager.syncActiveState();
+    if (!periodicNotesManager.isActive) {
+      return undefined;
+    }
+
+    const periodicNoteLinks = periodicNotesManager.searchAdjacentNotes(file);
     if (!periodicNoteLinks.currentGranularity) {
       return undefined;
     }
@@ -246,9 +258,7 @@ export class NavigationComponent extends Component {
     } = { link: undefined, hidden: true };
 
     // Previous and next links
-    if (
-      getPrevNextLinkEnabledSetting(this.plugin.settings!, periodicNoteLinks.currentGranularity)
-    ) {
+    if (periodicNotesManager.isPrevNextLinkEnabled(periodicNoteLinks.currentGranularity)) {
       previous.hidden = false;
       next.hidden = false;
 
@@ -275,8 +285,7 @@ export class NavigationComponent extends Component {
     }
 
     // Parent link
-    const parentGranularity = getParentLinkGranularitySetting(
-      this.plugin.settings!,
+    const parentGranularity = periodicNotesManager.getParentLinkGranularity(
       periodicNoteLinks.currentGranularity
     );
     if (parentGranularity) {
@@ -295,7 +304,7 @@ export class NavigationComponent extends Component {
         } else {
           // Make unresolved link.
           const clickHandlerForUnresolvedLinks: LinkEventHandler = (target, e) => {
-            if (this.plugin.settings!.confirmFileCreation) {
+            if (this.plugin.settings.confirmFileCreation) {
               new FileCreationModal(this.plugin, getFileStemFromPath(target.destination), () => {
                 void createPeriodicNote(
                   periodicNoteLinks.parentGranularity!,
@@ -345,6 +354,14 @@ export class NavigationComponent extends Component {
     clickHandler: LinkEventHandler,
     mouseOverHandler: LinkEventHandler
   ): ThreeWayLinkState | undefined {
+    if (
+      !this.plugin.settings.previousLinkProperty &&
+      !this.plugin.settings.nextLinkProperty &&
+      !this.plugin.settings.parentLinkProperty
+    ) {
+      return undefined;
+    }
+
     const threeWayPropertyLink = getThreeWayPropertyLink(this.plugin, file);
     if (
       !threeWayPropertyLink.previous &&
@@ -367,7 +384,7 @@ export class NavigationComponent extends Component {
       hidden: boolean;
     } = { link: undefined, hidden: true };
 
-    if (this.plugin.settings!.previousLinkProperty) {
+    if (this.plugin.settings.previousLinkProperty) {
       previous.hidden = false;
       if (threeWayPropertyLink.previous) {
         previous.link = new NavigationLinkState({
@@ -385,7 +402,7 @@ export class NavigationComponent extends Component {
       }
     }
 
-    if (this.plugin.settings!.nextLinkProperty) {
+    if (this.plugin.settings.nextLinkProperty) {
       next.hidden = false;
       if (threeWayPropertyLink.next) {
         next.link = new NavigationLinkState({
@@ -403,7 +420,7 @@ export class NavigationComponent extends Component {
       }
     }
 
-    if (this.plugin.settings!.parentLinkProperty) {
+    if (this.plugin.settings.parentLinkProperty) {
       parent.hidden = false;
       if (threeWayPropertyLink.parent) {
         parent.link = new NavigationLinkState({
@@ -443,13 +460,12 @@ export class NavigationComponent extends Component {
   ): ThreeWayLinkState[] {
     const result: ThreeWayLinkState[] = [];
 
-    for (let i = 0; i < this.plugin.folderLinksManagers.length; i++) {
-      const manager = this.plugin.folderLinksManagers[i];
-      const files = manager.getAdjacentFiles(file);
-      if (!files.currentFileIncluded) {
-        continue;
-      }
+    const folderLinksManager = this.plugin.findComponent(FolderLinksManager)!;
+    if (!folderLinksManager.isActive) {
+      return result;
+    }
 
+    for (const adjacentFiles of folderLinksManager.getAdjacentFiles(file)) {
       const previous: {
         link?: NavigationLinkState;
         hidden: boolean;
@@ -463,35 +479,35 @@ export class NavigationComponent extends Component {
         hidden: boolean;
       } = { link: undefined, hidden: true };
 
-      if (files.previous) {
+      if (adjacentFiles.previous) {
         previous.link = new NavigationLinkState({
-          destination: files.previous,
+          destination: adjacentFiles.previous,
           isExternal: false,
-          displayText: this.getDisplayText(files.previous, false),
+          displayText: this.getDisplayText(adjacentFiles.previous, false),
           resolved: true,
           clickHandler,
           mouseOverHandler,
         });
       }
 
-      if (files.next) {
+      if (adjacentFiles.next) {
         next.link = new NavigationLinkState({
-          destination: files.next,
+          destination: adjacentFiles.next,
           isExternal: false,
-          displayText: this.getDisplayText(files.next, false),
+          displayText: this.getDisplayText(adjacentFiles.next, false),
           resolved: true,
           clickHandler,
           mouseOverHandler,
         });
       }
 
-      if (this.plugin.settings!.folderLinksSettingsArray[i].parentPath) {
+      if (this.plugin.settings.folderLinksSettingsArray[adjacentFiles.index].parentPath) {
         parent.hidden = false;
-        if (files.parent) {
+        if (adjacentFiles.parent) {
           parent.link = new NavigationLinkState({
-            destination: files.parent,
+            destination: adjacentFiles.parent,
             isExternal: false,
-            displayText: this.getDisplayText(files.parent, false),
+            displayText: this.getDisplayText(adjacentFiles.parent, false),
             resolved: true,
             clickHandler,
             mouseOverHandler,
@@ -502,7 +518,7 @@ export class NavigationComponent extends Component {
       result.push(
         new ThreeWayLinkState({
           type: "folder",
-          index: i,
+          index: adjacentFiles.index,
           previous: previous,
           next: next,
           parent: parent,
@@ -519,13 +535,20 @@ export class NavigationComponent extends Component {
    * @param clickHandler The click handler for the links.
    * @param mouseOverHandler The mouse over handler for the links.
    * @returns The annotated link states.
+   * @throws {PluginError} Throws when the AnnotatedLinksManager has been reset
+   *     during async operation.
    */
   private async *constructAnnotatedLinkStates(
     file: TFile,
     clickHandler: LinkEventHandler,
     mouseOverHandler: LinkEventHandler
   ): AsyncGenerator<PrefixedLinkState> {
-    const generator = this.plugin.annotatedLinksManager!.searchAnnotatedLinks(file);
+    const annotatedLinksManager = this.plugin.findComponent(AnnotatedLinksManager)!;
+    if (!annotatedLinksManager.isActive) {
+      return;
+    }
+
+    const generator = annotatedLinksManager.searchAnnotatedLinks(file);
     for await (const link of generator) {
       yield new PrefixedLinkState({
         type: "annotated",
@@ -568,7 +591,7 @@ export class NavigationComponent extends Component {
       return destination;
     }
 
-    const propertyName = this.plugin.settings!.propertyNameForDisplayText;
+    const propertyName = this.plugin.settings.propertyNameForDisplayText;
     if (propertyName) {
       const linkedFile = this.plugin.app.vault.getFileByPath(destination);
       if (linkedFile) {
@@ -580,17 +603,5 @@ export class NavigationComponent extends Component {
     }
 
     return getFileStemFromPath(destination);
-  }
-
-  /**
-   * Unloads the navigation component
-   */
-  public onunload(): void {
-    if (this.navigation) {
-      void unmount(this.navigation);
-      this.navigation = undefined;
-    }
-    this.currentFilePath = undefined;
-    this.loaded = false;
   }
 }

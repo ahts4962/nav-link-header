@@ -11,6 +11,9 @@
 <!--
   @component
   A component that represents a link with a prefix string (typically emoji).
+
+  If `state.type` is `"annotated"` and `hideAnnotatedLinkPrefix` is `true`,
+  the prefix will be hidden.
 -->
 <div class="nav-link-header-container">
   {#if state.type !== "annotated" || !hideAnnotatedLinkPrefix}
