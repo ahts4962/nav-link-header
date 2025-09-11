@@ -15,15 +15,15 @@
   If `state.type` is `"annotated"` and `hideAnnotatedLinkPrefix` is `true`,
   the prefix will be hidden.
 -->
-<div class="nav-link-header-container">
+<div class="nav-link-header-link-container nav-link-header-prefixed">
   {#if state.type !== "annotated" || !hideAnnotatedLinkPrefix}
-    <div>{state.prefix}</div>
+    <div class="nav-link-header-link-prefix">{state.prefix}</div>
   {/if}
   <NavigationLink state={state.link} />
 </div>
 
 <style>
-  .nav-link-header-container {
+  .nav-link-header-link-container {
     display: flex;
     flex-wrap: wrap;
   }

@@ -56,10 +56,10 @@
         {/if}
       {/each}
       {#if isLoading && displayLoadingMessage}
-        <div class="nav-link-header-muted">Loading...</div>
+        <div class="nav-link-header-message nav-link-header-muted">Loading...</div>
       {/if}
       {#if links.length === 0 && !isLoading && displayPlaceholder}
-        <div class="nav-link-header-muted">No links</div>
+        <div class="nav-link-header-message nav-link-header-muted">No links</div>
       {/if}
     </div>
   </div>

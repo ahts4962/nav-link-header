@@ -30,13 +30,13 @@
   like "var(--icon-m)". The default size is "var(--icon-m)".
 -->
 <div
-  class={["nav-link-header-container", muted && "nav-link-header-muted"]}
+  class={["nav-link-header-icon", muted && "nav-link-header-muted"]}
   bind:this={container}
   style={`--icon-size: ${size};`}
 ></div>
 
 <style>
-  .nav-link-header-container {
+  .nav-link-header-icon {
     display: inline-block;
     vertical-align: middle;
     color: var(--text-normal);

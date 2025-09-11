@@ -12,7 +12,7 @@
   If `state.resolved` is `false`, the link will be rendered as an unresolved link.
   If `state.isExternal` is `true`, an external link icon will be displayed next to the link.
 -->
-<div class="nav-link-header-container">
+<div class="nav-link-header-link">
   <a
     class={[!state.resolved && "nav-link-header-unresolved"]}
     href="#top"
@@ -35,7 +35,7 @@
 </div>
 
 <style>
-  .nav-link-header-container {
+  .nav-link-header-link {
     display: flex;
     flex-wrap: wrap;
   }
