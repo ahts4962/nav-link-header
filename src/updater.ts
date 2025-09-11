@@ -17,6 +17,7 @@ export class Updater extends PluginComponent {
    * @param parent The parent component to add the navigation component to.
    * @param container The container element to add the navigation links to.
    * @param nextSibling The element to add the navigation links before.
+   *     If null, the links will be added to at the top of the container.
    * @param file The file object currently opened in the parent component.
    * @param forced See `NavigationComponent.update`.
    */
@@ -42,6 +43,8 @@ export class Updater extends PluginComponent {
       });
       if (nextSibling) {
         container.insertBefore(navigationElement, nextSibling);
+      } else {
+        container.prepend(navigationElement);
       }
 
       parent.addChild(new NavigationComponent(this.plugin, navigationElement));

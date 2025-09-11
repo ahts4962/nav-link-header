@@ -93,7 +93,7 @@ export class HoverPopoverUpdater extends Updater {
             node.classList.contains("popover") &&
             node.classList.contains("hover-popover")
           ) {
-            this.updateHoverPopover();
+            void this.updateHoverPopover();
             return;
           }
         }
@@ -107,7 +107,7 @@ export class HoverPopoverUpdater extends Updater {
   /**
    * Adds the navigation links to the newly created hover popover.
    */
-  private updateHoverPopover(): void {
+  private async updateHoverPopover(): Promise<void> {
     // Parent component is retrieved from the last hover-link event.
     const hoverParent = this.lastHoverParent?.deref();
     if (!(hoverParent?.hoverPopover instanceof HoverPopover)) {
@@ -131,20 +131,130 @@ export class HoverPopoverUpdater extends Updater {
         "containerEl" in child &&
         child.containerEl instanceof Element
       ) {
+        // Some plugins update the contents of the popover asynchronously, so wait a bit.
+        await new Promise((resolve) => setTimeout(resolve, 0));
+
+        let processed: boolean = false;
         let nextSibling: Element | null = null;
-        if (this.plugin.settings.displayInMarkdownViews) {
-          nextSibling = child.containerEl.querySelector(".markdown-embed-content");
+
+        // The file formats are taken from https://help.obsidian.md/file-formats
+        switch (child.file.extension.toLowerCase()) {
+          case "md":
+            nextSibling = child.containerEl.querySelector(".markdown-embed-content");
+            if (nextSibling !== null) {
+              if (!this.plugin.settings.displayInMarkdownViews) {
+                continue;
+              }
+              processed = true;
+            }
+            break;
+          case "avif":
+          case "bmp":
+          case "gif":
+          case "jpeg":
+          case "jpg":
+          case "png":
+          case "svg":
+          case "webp":
+            nextSibling = child.containerEl.querySelector("img");
+            if (nextSibling !== null) {
+              if (!this.plugin.settings.displayInImageViews) {
+                continue;
+              }
+              processed = true;
+            }
+            break;
+          case "mkv":
+          case "mov":
+          case "mp4":
+          case "ogv":
+            nextSibling = child.containerEl.querySelector("video");
+            if (nextSibling !== null) {
+              if (!this.plugin.settings.displayInVideoViews) {
+                continue;
+              }
+              processed = true;
+            }
+            break;
+          case "flac":
+          case "m4a":
+          case "mp3":
+          case "ogg":
+          case "wav":
+          case "3gp":
+            nextSibling = child.containerEl.querySelector("audio");
+            if (nextSibling !== null) {
+              if (!this.plugin.settings.displayInAudioViews) {
+                continue;
+              }
+              processed = true;
+            }
+            break;
+          case "webm":
+            nextSibling = child.containerEl.querySelector("video");
+            if (nextSibling !== null) {
+              if (!this.plugin.settings.displayInVideoViews) {
+                continue;
+              }
+              processed = true;
+            } else {
+              nextSibling = child.containerEl.querySelector("audio");
+              if (nextSibling !== null) {
+                if (!this.plugin.settings.displayInAudioViews) {
+                  continue;
+                }
+                processed = true;
+              }
+            }
+            break;
+          case "pdf":
+            // The sibling element does not exist at this time
+            if (!this.plugin.settings.displayInPdfViews) {
+              continue;
+            }
+            processed = true;
+            break;
+          case "canvas":
+            nextSibling = child.containerEl.querySelector(".canvas-minimap");
+            if (nextSibling !== null) {
+              if (!this.plugin.settings.displayInCanvasViews) {
+                continue;
+              }
+              processed = true;
+            }
+            break;
+          case "base":
+            nextSibling = child.containerEl.querySelector(".bases-header");
+            if (nextSibling !== null) {
+              if (!this.plugin.settings.displayInBasesViews) {
+                continue;
+              }
+              processed = true;
+            }
+            break;
         }
-        if (nextSibling === null && this.plugin.settings.displayInCanvasViews) {
-          nextSibling = child.containerEl.querySelector(".canvas-minimap");
-        }
-        if (nextSibling === null) {
-          continue;
+
+        let container = child.containerEl;
+
+        if (!processed) {
+          // Handle as "Other views"
+          if (!this.plugin.settings.displayInOtherViews) {
+            continue;
+          }
+
+          // For some plugins, the contents of the hover popover may be replaced,
+          // making child.containerEl unusable as the container.
+          // Assume that the container is the first child element of the hover popover.
+          if (hoverPopover.hoverEl.children.length === 0) {
+            continue;
+          }
+          container = hoverPopover.hoverEl.children[0];
+          nextSibling = null;
         }
 
         this.updateNavigation({
           parent: child,
-          container: child.containerEl,
+          container,
           nextSibling,
           file: child.file,
           forced: true,

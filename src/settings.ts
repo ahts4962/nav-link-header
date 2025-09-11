@@ -10,10 +10,6 @@ import { EMOJI_ANNOTATION_PLACEHOLDER } from "./annotatedLink";
 import { deepCopy } from "./utils";
 
 export interface NavLinkHeaderSettings {
-  displayInLeaves: boolean;
-  displayInHoverPopovers: boolean;
-  displayInMarkdownViews: boolean;
-  displayInCanvasViews: boolean;
   matchNavigationWidthToLineLength: boolean;
   displayOrderOfLinks: string[];
   propertyNameForDisplayText: string;
@@ -22,6 +18,16 @@ export interface NavLinkHeaderSettings {
   displayLoadingMessage: boolean;
   displayPlaceholder: boolean;
   confirmFileCreation: boolean;
+  displayInLeaves: boolean;
+  displayInHoverPopovers: boolean;
+  displayInMarkdownViews: boolean;
+  displayInImageViews: boolean;
+  displayInVideoViews: boolean;
+  displayInAudioViews: boolean;
+  displayInPdfViews: boolean;
+  displayInCanvasViews: boolean;
+  displayInBasesViews: boolean;
+  displayInOtherViews: boolean;
   annotationStrings: string[];
   allowSpaceAfterAnnotationString: boolean;
   ignoreVariationSelectors: boolean;
@@ -55,10 +61,6 @@ export interface FolderLinksSettings {
 }
 
 export const DEFAULT_SETTINGS: NavLinkHeaderSettings = {
-  displayInLeaves: true,
-  displayInHoverPopovers: true,
-  displayInMarkdownViews: true,
-  displayInCanvasViews: true,
   matchNavigationWidthToLineLength: false,
   displayOrderOfLinks: [],
   propertyNameForDisplayText: "",
@@ -67,6 +69,16 @@ export const DEFAULT_SETTINGS: NavLinkHeaderSettings = {
   displayLoadingMessage: true,
   displayPlaceholder: false,
   confirmFileCreation: true,
+  displayInLeaves: true,
+  displayInHoverPopovers: true,
+  displayInMarkdownViews: true,
+  displayInImageViews: true,
+  displayInVideoViews: true,
+  displayInAudioViews: true,
+  displayInPdfViews: true,
+  displayInCanvasViews: true,
+  displayInBasesViews: true,
+  displayInOtherViews: false,
   annotationStrings: [],
   allowSpaceAfterAnnotationString: false,
   ignoreVariationSelectors: false,
@@ -258,56 +270,6 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
     containerEl.empty();
 
     new Setting(containerEl)
-      .setName("Display navigation links in panes")
-      .setDesc(
-        "This setting applies to note containers (panes). To show links, also enable one or both " +
-          "view-specific options below (Markdown views and/or Canvas views)."
-      )
-      .addToggle((toggle) => {
-        toggle.setValue(this.plugin.settingsUnderChange.displayInLeaves).onChange((value) => {
-          this.plugin.settingsUnderChange.displayInLeaves = value;
-          this.plugin.triggerSettingsChangedDebounced();
-        });
-      });
-
-    new Setting(containerEl)
-      .setName("Display navigation links in page previews")
-      .setDesc(
-        "This setting applies to note containers (page previews). To show links, also enable " +
-          "one or both view-specific options below (Markdown views and/or Canvas views)."
-      )
-      .addToggle((toggle) => {
-        toggle
-          .setValue(this.plugin.settingsUnderChange.displayInHoverPopovers)
-          .onChange((value) => {
-            this.plugin.settingsUnderChange.displayInHoverPopovers = value;
-            this.plugin.triggerSettingsChangedDebounced();
-          });
-      });
-
-    new Setting(containerEl)
-      .setName("Display navigation links in Markdown views")
-      .setDesc("Show navigation links when viewing Markdown documents.")
-      .addToggle((toggle) => {
-        toggle
-          .setValue(this.plugin.settingsUnderChange.displayInMarkdownViews)
-          .onChange((value) => {
-            this.plugin.settingsUnderChange.displayInMarkdownViews = value;
-            this.plugin.triggerSettingsChangedDebounced();
-          });
-      });
-
-    new Setting(containerEl)
-      .setName("Display navigation links in Canvas views")
-      .setDesc("Show navigation links when viewing Canvas.")
-      .addToggle((toggle) => {
-        toggle.setValue(this.plugin.settingsUnderChange.displayInCanvasViews).onChange((value) => {
-          this.plugin.settingsUnderChange.displayInCanvasViews = value;
-          this.plugin.triggerSettingsChangedDebounced();
-        });
-      });
-
-    new Setting(containerEl)
       .setName("Match navigation width to line length")
       .setDesc(
         "If enabled, the width of the navigation will match the line length of the note. " +
@@ -417,6 +379,121 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       .addToggle((toggle) => {
         toggle.setValue(this.plugin.settingsUnderChange.confirmFileCreation).onChange((value) => {
           this.plugin.settingsUnderChange.confirmFileCreation = value;
+          this.plugin.triggerSettingsChangedDebounced();
+        });
+      });
+
+    new Setting(containerEl).setName("Display targets").setHeading();
+
+    new Setting(containerEl)
+      .setName("Display navigation links in panes")
+      .setDesc(
+        "This setting applies to note containers (panes). To show links, also enable " +
+          "view-specific options below."
+      )
+      .addToggle((toggle) => {
+        toggle.setValue(this.plugin.settingsUnderChange.displayInLeaves).onChange((value) => {
+          this.plugin.settingsUnderChange.displayInLeaves = value;
+          this.plugin.triggerSettingsChangedDebounced();
+        });
+      });
+
+    new Setting(containerEl)
+      .setName("Display navigation links in page previews")
+      .setDesc(
+        "This setting applies to note containers (page previews). To show links, also enable " +
+          "view-specific options below."
+      )
+      .addToggle((toggle) => {
+        toggle
+          .setValue(this.plugin.settingsUnderChange.displayInHoverPopovers)
+          .onChange((value) => {
+            this.plugin.settingsUnderChange.displayInHoverPopovers = value;
+            this.plugin.triggerSettingsChangedDebounced();
+          });
+      });
+
+    new Setting(containerEl)
+      .setName("Display navigation links in Markdown views")
+      .setDesc("Show navigation links when viewing Markdown documents.")
+      .addToggle((toggle) => {
+        toggle
+          .setValue(this.plugin.settingsUnderChange.displayInMarkdownViews)
+          .onChange((value) => {
+            this.plugin.settingsUnderChange.displayInMarkdownViews = value;
+            this.plugin.triggerSettingsChangedDebounced();
+          });
+      });
+
+    new Setting(containerEl)
+      .setName("Display navigation links in Image views")
+      .setDesc("Show navigation links when viewing images.")
+      .addToggle((toggle) => {
+        toggle.setValue(this.plugin.settingsUnderChange.displayInImageViews).onChange((value) => {
+          this.plugin.settingsUnderChange.displayInImageViews = value;
+          this.plugin.triggerSettingsChangedDebounced();
+        });
+      });
+
+    new Setting(containerEl)
+      .setName("Display navigation links in Video views")
+      .setDesc("Show navigation links when viewing videos.")
+      .addToggle((toggle) => {
+        toggle.setValue(this.plugin.settingsUnderChange.displayInVideoViews).onChange((value) => {
+          this.plugin.settingsUnderChange.displayInVideoViews = value;
+          this.plugin.triggerSettingsChangedDebounced();
+        });
+      });
+
+    new Setting(containerEl)
+      .setName("Display navigation links in Audio views")
+      .setDesc("Show navigation links when viewing audio.")
+      .addToggle((toggle) => {
+        toggle.setValue(this.plugin.settingsUnderChange.displayInAudioViews).onChange((value) => {
+          this.plugin.settingsUnderChange.displayInAudioViews = value;
+          this.plugin.triggerSettingsChangedDebounced();
+        });
+      });
+
+    new Setting(containerEl)
+      .setName("Display navigation links in PDF views")
+      .setDesc("Show navigation links when viewing PDFs.")
+      .addToggle((toggle) => {
+        toggle.setValue(this.plugin.settingsUnderChange.displayInPdfViews).onChange((value) => {
+          this.plugin.settingsUnderChange.displayInPdfViews = value;
+          this.plugin.triggerSettingsChangedDebounced();
+        });
+      });
+
+    new Setting(containerEl)
+      .setName("Display navigation links in Canvas views")
+      .setDesc("Show navigation links when viewing Canvas.")
+      .addToggle((toggle) => {
+        toggle.setValue(this.plugin.settingsUnderChange.displayInCanvasViews).onChange((value) => {
+          this.plugin.settingsUnderChange.displayInCanvasViews = value;
+          this.plugin.triggerSettingsChangedDebounced();
+        });
+      });
+
+    new Setting(containerEl)
+      .setName("Display navigation links in Bases views")
+      .setDesc("Show navigation links when viewing Bases.")
+      .addToggle((toggle) => {
+        toggle.setValue(this.plugin.settingsUnderChange.displayInBasesViews).onChange((value) => {
+          this.plugin.settingsUnderChange.displayInBasesViews = value;
+          this.plugin.triggerSettingsChangedDebounced();
+        });
+      });
+
+    new Setting(containerEl)
+      .setName("Display navigation links in other views")
+      .setDesc(
+        "Show navigation links in other views (such as views introduced by community plugins). " +
+          "This may not work depending on the view type."
+      )
+      .addToggle((toggle) => {
+        toggle.setValue(this.plugin.settingsUnderChange.displayInOtherViews).onChange((value) => {
+          this.plugin.settingsUnderChange.displayInOtherViews = value;
           this.plugin.triggerSettingsChangedDebounced();
         });
       });

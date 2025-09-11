@@ -52,7 +52,13 @@ export class LeavesUpdater extends Updater {
     } else if (
       current.displayInLeaves &&
       (previous.displayInMarkdownViews !== current.displayInMarkdownViews ||
-        previous.displayInCanvasViews !== current.displayInCanvasViews)
+        previous.displayInImageViews !== current.displayInImageViews ||
+        previous.displayInVideoViews !== current.displayInVideoViews ||
+        previous.displayInAudioViews !== current.displayInAudioViews ||
+        previous.displayInPdfViews !== current.displayInPdfViews ||
+        previous.displayInCanvasViews !== current.displayInCanvasViews ||
+        previous.displayInBasesViews !== current.displayInBasesViews ||
+        previous.displayInOtherViews !== current.displayInOtherViews)
     ) {
       this.cleanup();
     }
@@ -69,10 +75,17 @@ export class LeavesUpdater extends Updater {
   public updateAllLeaves(forced: boolean): void {
     this.plugin.app.workspace.iterateAllLeaves((leaf) => {
       const view = leaf.view;
-
+      const viewType = view.getViewType();
+      const knownViewTypes = ["markdown", "image", "video", "audio", "pdf", "canvas", "bases"];
       if (
-        (this.plugin.settings.displayInMarkdownViews && view.getViewType() === "markdown") ||
-        (this.plugin.settings.displayInCanvasViews && view.getViewType() === "canvas")
+        (this.plugin.settings.displayInMarkdownViews && viewType === "markdown") ||
+        (this.plugin.settings.displayInImageViews && viewType === "image") ||
+        (this.plugin.settings.displayInVideoViews && viewType === "video") ||
+        (this.plugin.settings.displayInAudioViews && viewType === "audio") ||
+        (this.plugin.settings.displayInPdfViews && viewType === "pdf") ||
+        (this.plugin.settings.displayInCanvasViews && viewType === "canvas") ||
+        (this.plugin.settings.displayInBasesViews && viewType === "bases") ||
+        (this.plugin.settings.displayInOtherViews && !knownViewTypes.includes(viewType))
       ) {
         if ("file" in view && view.file instanceof TFile) {
           this.updateNavigation({
@@ -94,17 +107,15 @@ export class LeavesUpdater extends Updater {
     this.plugin.app.workspace.iterateAllLeaves((leaf) => {
       const view = leaf.view;
 
-      if (view.getViewType() === "markdown" || view.getViewType() === "canvas") {
-        // Removes the added html elements.
-        view.containerEl.querySelector(".nav-link-header-navigation")?.remove();
+      // Removes the added html elements.
+      view.containerEl.querySelector(".nav-link-header-navigation")?.remove();
 
-        // Removes the navigation components.
-        if ("_children" in view && view._children instanceof Array) {
-          for (const child of view._children) {
-            if (child instanceof NavigationComponent) {
-              view.removeChild(child);
-              break;
-            }
+      // Removes the navigation components.
+      if ("_children" in view && view._children instanceof Array) {
+        for (const child of view._children) {
+          if (child instanceof NavigationComponent) {
+            view.removeChild(child);
+            break;
           }
         }
       }

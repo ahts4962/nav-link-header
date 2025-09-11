@@ -13,11 +13,56 @@
   }
 }
 
+.popover.hover-popover > .media-embed:has(> .nav-link-header-navigation) {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+
+  > img {
+    flex: 1;
+    overflow: auto;
+  }
+
+  > video {
+    flex: 1;
+    overflow: auto;
+  }
+
+  > audio {
+    overflow: auto;
+  }
+}
+
+.popover.hover-popover > .pdf-embed:has(> .nav-link-header-navigation) {
+  display: flex;
+  flex-direction: column;
+
+  > .pdf-container {
+    flex: 1;
+    overflow: auto;
+  }
+}
+
 .popover.hover-popover > .canvas-embed:has(> .nav-link-header-navigation) {
   display: flex;
   flex-direction: column;
 
   > .canvas-minimap {
+    flex: 1;
+    overflow: auto;
+  }
+}
+
+/* Styles for other view types */
+.popover.hover-popover
+  > :not(.markdown-embed, .media-embed, .pdf-embed, .canvas-embed):has(
+    > .nav-link-header-navigation
+  ) {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+
+  > :last-child {
     flex: 1;
     overflow: auto;
   }
