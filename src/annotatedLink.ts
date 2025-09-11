@@ -119,7 +119,7 @@ export class AnnotatedLinksManager extends PluginComponent {
     const allowSpace = this.plugin.settings.allowSpaceAfterAnnotationString;
     const ignoreVariationSelectors = this.plugin.settings.ignoreVariationSelectors;
 
-    const cache: Map<string, Map<string, string[]>> = this.cache;
+    const cache = this.cache;
 
     for (const backlink of backlinks) {
       const cachedResult = cache.get(backlink)?.get(file.path);
