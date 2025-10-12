@@ -211,23 +211,31 @@ class FolderEntry {
 
     // Filter files based on the regex.
     if (settings.filterRegex) {
-      let filterValue = file.name;
-      if (settings.filterBy === "property" && settings.filterPropertyName) {
-        const propertyValue = getFirstValueFromFileProperty(
-          this.plugin.app,
-          file,
-          settings.filterPropertyName
-        );
-        if (propertyValue === undefined || propertyValue === null) {
-          return;
-        } else {
-          filterValue = String(propertyValue);
-        }
+      let re: RegExp | undefined = undefined;
+      try {
+        re = new RegExp(settings.filterRegex);
+      } catch {
+        re = undefined;
       }
 
-      const re = new RegExp(settings.filterRegex);
-      if (!re.test(filterValue)) {
-        return;
+      if (re) {
+        let filterValue = file.name;
+        if (settings.filterBy === "property" && settings.filterPropertyName) {
+          const propertyValue = getFirstValueFromFileProperty(
+            this.plugin.app,
+            file,
+            settings.filterPropertyName
+          );
+          if (propertyValue === undefined || propertyValue === null) {
+            return;
+          } else {
+            filterValue = String(propertyValue);
+          }
+        }
+
+        if (!re.test(filterValue)) {
+          return;
+        }
       }
     }
 
