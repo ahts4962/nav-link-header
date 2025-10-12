@@ -76,7 +76,16 @@ export class LeavesUpdater extends Updater {
     this.plugin.app.workspace.iterateAllLeaves((leaf) => {
       const view = leaf.view;
       const viewType = view.getViewType();
-      const knownViewTypes = ["markdown", "image", "video", "audio", "pdf", "canvas", "bases"];
+      const knownViewTypes = [
+        "markdown",
+        "image",
+        "video",
+        "audio",
+        "pdf",
+        "canvas",
+        "bases",
+        "localgraph",
+      ];
       if (
         (this.plugin.settings.displayInMarkdownViews && viewType === "markdown") ||
         (this.plugin.settings.displayInImageViews && viewType === "image") ||
