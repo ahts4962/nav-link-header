@@ -84,6 +84,9 @@ export class LeavesUpdater extends Updater {
         "pdf",
         "canvas",
         "bases",
+        "backlink",
+        "outgoing-link",
+        "outline",
         "localgraph",
       ];
       if (
