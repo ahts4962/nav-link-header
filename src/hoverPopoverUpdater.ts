@@ -119,7 +119,24 @@ export class HoverPopoverUpdater extends Updater {
       return;
     }
 
+    // Sometimes, like when the graph view is opened in a separate window,
+    // the child component of hoverPopover takes a bit longer to be added.
+    // Wait here until it shows up.
     const children = hoverPopover._children;
+    for (let i = 0; i < 30; i++) {
+      if (children.length === 0) {
+        await new Promise((resolve) => setTimeout(resolve, 100));
+        if (!this.isActive) {
+          return;
+        }
+      } else {
+        break;
+      }
+    }
+    if (children.length === 0) {
+      return;
+    }
+
     for (const child of children) {
       if (!(child instanceof Component)) {
         continue;
