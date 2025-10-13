@@ -1,8 +1,9 @@
 import { expect, test } from "vitest";
 import emojiRegex from "emoji-regex-xs";
 import { EMOJI_ANNOTATION_PLACEHOLDER, exportedForTesting } from "src/annotatedLink";
+import { sanitizeRegexInput } from "src/utils";
 
-const { convertAnnotationStringToRegex, removeCode } = exportedForTesting;
+const { constructAnnotationRegex, removeCode } = exportedForTesting;
 
 test("remove YAML front matter", () => {
   let content;
@@ -214,42 +215,40 @@ test("remove all codes", () => {
   expect(removeCode(content)).toBe(expected);
 });
 
-test("process annotation string", () => {
+test("construct annotation regex", () => {
   const vs = "[\\uFE0E\\uFE0F]?";
-  expect(convertAnnotationStringToRegex("abc", false)).toBe("abc");
-  expect(convertAnnotationStringToRegex("abc", true)).toBe("abc");
-  expect(convertAnnotationStringToRegex("🔗", false)).toBe("🔗");
-  expect(convertAnnotationStringToRegex("🔗", true)).toBe(`🔗${vs}`);
-  expect(convertAnnotationStringToRegex("a🔗b", false)).toBe("a🔗b");
-  expect(convertAnnotationStringToRegex("a🔗b", true)).toBe(`a🔗${vs}b`);
-  expect(convertAnnotationStringToRegex("🔗\uFE0F", false)).toBe("🔗\uFE0F");
-  expect(convertAnnotationStringToRegex("🔗\uFE0F", true)).toBe(`🔗${vs}`);
-  expect(convertAnnotationStringToRegex("🔗\uFE0E", false)).toBe("🔗\uFE0E");
-  expect(convertAnnotationStringToRegex("🔗\uFE0E", true)).toBe(`🔗${vs}\uFE0E`);
-  expect(convertAnnotationStringToRegex("🏳️‍🌈", false)).toBe("🏳️‍🌈");
-  expect(convertAnnotationStringToRegex("🏳️‍🌈", true)).toBe(
-    `\u{1F3F3}${vs}\u200D${vs}\u{1F308}${vs}`
-  );
-  expect(convertAnnotationStringToRegex("🔗🏳️‍🌈", false)).toBe("🔗🏳️‍🌈");
-  expect(convertAnnotationStringToRegex("🔗🏳️‍🌈", true)).toBe(
+  expect(constructAnnotationRegex("abc", false)).toBe("abc");
+  expect(constructAnnotationRegex("abc", true)).toBe("abc");
+  expect(constructAnnotationRegex("🔗", false)).toBe("🔗");
+  expect(constructAnnotationRegex("🔗", true)).toBe(`🔗${vs}`);
+  expect(constructAnnotationRegex("a🔗b", false)).toBe("a🔗b");
+  expect(constructAnnotationRegex("a🔗b", true)).toBe(`a🔗${vs}b`);
+  expect(constructAnnotationRegex("🔗\uFE0F", false)).toBe("🔗\uFE0F");
+  expect(constructAnnotationRegex("🔗\uFE0F", true)).toBe(`🔗${vs}`);
+  expect(constructAnnotationRegex("🔗\uFE0E", false)).toBe("🔗\uFE0E");
+  expect(constructAnnotationRegex("🔗\uFE0E", true)).toBe(`🔗${vs}\uFE0E`);
+  expect(constructAnnotationRegex("🏳️‍🌈", false)).toBe("🏳️‍🌈");
+  expect(constructAnnotationRegex("🏳️‍🌈", true)).toBe(`\u{1F3F3}${vs}\u200D${vs}\u{1F308}${vs}`);
+  expect(constructAnnotationRegex("🔗🏳️‍🌈", false)).toBe("🔗🏳️‍🌈");
+  expect(constructAnnotationRegex("🔗🏳️‍🌈", true)).toBe(
     `🔗${vs}\u{1F3F3}${vs}\u200D${vs}\u{1F308}${vs}`
   );
 
-  const ep = EMOJI_ANNOTATION_PLACEHOLDER;
+  const ep = sanitizeRegexInput(EMOJI_ANNOTATION_PLACEHOLDER);
   const emojiRegexSource = `(?:${emojiRegex().source})`;
-  expect(convertAnnotationStringToRegex(ep, false)).toBe(emojiRegexSource);
-  expect(convertAnnotationStringToRegex(ep, true)).toBe(emojiRegexSource);
-  expect(convertAnnotationStringToRegex(`a${ep}b`, false)).toBe(`a${emojiRegexSource}b`);
-  expect(convertAnnotationStringToRegex(`a${ep}b`, true)).toBe(`a${emojiRegexSource}b`);
-  expect(convertAnnotationStringToRegex(`a${ep}b${ep}c`, false)).toBe(
+  expect(constructAnnotationRegex(ep, false)).toBe(emojiRegexSource);
+  expect(constructAnnotationRegex(ep, true)).toBe(emojiRegexSource);
+  expect(constructAnnotationRegex(`a${ep}b`, false)).toBe(`a${emojiRegexSource}b`);
+  expect(constructAnnotationRegex(`a${ep}b`, true)).toBe(`a${emojiRegexSource}b`);
+  expect(constructAnnotationRegex(`a${ep}b${ep}c`, false)).toBe(
     `a${emojiRegexSource}b${emojiRegexSource}c`
   );
-  expect(convertAnnotationStringToRegex(`a${ep}b${ep}c`, true)).toBe(
+  expect(constructAnnotationRegex(`a${ep}b${ep}c`, true)).toBe(
     `a${emojiRegexSource}b${emojiRegexSource}c`
   );
 
-  expect(convertAnnotationStringToRegex(`🔗${ep}🏳️‍🌈`, false)).toBe(`🔗${emojiRegexSource}🏳️‍🌈`);
-  expect(convertAnnotationStringToRegex(`🔗${ep}🏳️‍🌈`, true)).toBe(
+  expect(constructAnnotationRegex(`🔗${ep}🏳️‍🌈`, false)).toBe(`🔗${emojiRegexSource}🏳️‍🌈`);
+  expect(constructAnnotationRegex(`🔗${ep}🏳️‍🌈`, true)).toBe(
     `🔗${vs}${emojiRegexSource}\u{1F3F3}${vs}\u200D${vs}\u{1F308}${vs}`
   );
 });

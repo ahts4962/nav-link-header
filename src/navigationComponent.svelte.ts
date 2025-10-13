@@ -31,14 +31,12 @@ export class NavigationComponent extends Component {
     links: (PrefixedLinkState | ThreeWayLinkState)[];
     isLoading: boolean;
     matchWidthToLineLength: boolean;
-    hideAnnotatedLinkPrefix: boolean;
     displayLoadingMessage: boolean;
     displayPlaceholder: boolean;
   } = $state({
     links: [],
     isLoading: false,
     matchWidthToLineLength: false,
-    hideAnnotatedLinkPrefix: false,
     displayLoadingMessage: false,
     displayPlaceholder: false,
   });
@@ -63,7 +61,6 @@ export class NavigationComponent extends Component {
     this.navigationProps.links = [];
     this.navigationProps.isLoading = false;
     this.navigationProps.matchWidthToLineLength = false;
-    this.navigationProps.hideAnnotatedLinkPrefix = false;
     this.navigationProps.displayLoadingMessage = false;
     this.navigationProps.displayPlaceholder = false;
     this.navigation = mount(Navigation, {
@@ -93,7 +90,6 @@ export class NavigationComponent extends Component {
     this.navigationProps.isLoading = true;
     this.navigationProps.matchWidthToLineLength =
       this.plugin.settings.matchNavigationWidthToLineLength;
-    this.navigationProps.hideAnnotatedLinkPrefix = this.plugin.settings.hideAnnotatedLinkPrefix;
     this.navigationProps.displayLoadingMessage = this.plugin.settings.displayLoadingMessage;
     this.navigationProps.displayPlaceholder = this.plugin.settings.displayPlaceholder;
 
@@ -552,7 +548,7 @@ export class NavigationComponent extends Component {
     for await (const link of generator) {
       yield new PrefixedLinkState({
         type: "annotated",
-        prefix: link.annotation,
+        prefix: link.prefix,
         link: new NavigationLinkState({
           destination: link.destinationPath,
           isExternal: false,

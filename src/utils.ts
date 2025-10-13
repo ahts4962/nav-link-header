@@ -107,6 +107,13 @@ export function joinPaths(path1: string, path2: string): string {
 }
 
 /**
+ * Escapes special characters in a string for use in a regular expression.
+ */
+export function sanitizeRegexInput(text: string): string {
+  return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
  * Parses a single Obsidian-style wiki link of the form [[path#header|display]] and
  * extracts the target file path (without the header fragment) and optional display (alias) text.
  * @param text Raw text potentially containing a wiki link

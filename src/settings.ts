@@ -30,9 +30,10 @@ export interface NavLinkHeaderSettings {
   displayInBasesViews: boolean;
   displayInOtherViews: boolean;
   annotationStrings: string[];
+  hideAnnotatedLinkPrefix: boolean;
+  advancedAnnotationStrings: { regex: string; prefix: string }[];
   allowSpaceAfterAnnotationString: boolean;
   ignoreVariationSelectors: boolean;
-  hideAnnotatedLinkPrefix: boolean;
   propertyMappings: { property: string; prefix: string }[];
   prevNextLinksEnabledInDailyNotes: boolean;
   parentLinkGranularityInDailyNotes: IGranularity | undefined;
@@ -82,9 +83,10 @@ export const DEFAULT_SETTINGS: NavLinkHeaderSettings = {
   displayInBasesViews: true,
   displayInOtherViews: false,
   annotationStrings: [],
+  hideAnnotatedLinkPrefix: false,
+  advancedAnnotationStrings: [],
   allowSpaceAfterAnnotationString: false,
   ignoreVariationSelectors: false,
-  hideAnnotatedLinkPrefix: false,
   propertyMappings: [],
   prevNextLinksEnabledInDailyNotes: false,
   parentLinkGranularityInDailyNotes: undefined,
@@ -553,6 +555,43 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
+      .setName("Hide annotation strings in navigation")
+      .setDesc(
+        "If enabled, annotation strings (e.g. emojis) will be hidden in the navigation links."
+      )
+      .addToggle((toggle) => {
+        toggle
+          .setValue(this.plugin.settingsUnderChange.hideAnnotatedLinkPrefix)
+          .onChange((value) => {
+            this.plugin.settingsUnderChange.hideAnnotatedLinkPrefix = value;
+            this.plugin.triggerSettingsChangedDebounced();
+          });
+      });
+
+    new Setting(containerEl)
+      .setName("Advanced annotation strings")
+      .setDesc(
+        "An advanced version of Annotation strings. Here you can use regular expressions as " +
+          "the annotation string and specify any prefix (e.g., an emoji) to display " +
+          'in the navigation header. Enter one mapping per line in the format "regex:prefix". ' +
+          'To include a colon in the prefix, escape it as "\\:". ' +
+          "An empty string is also acceptable as a prefix. "
+      )
+      .addTextArea((text) => {
+        const annotations = this.plugin.settingsUnderChange.advancedAnnotationStrings
+          .map((annotation) => `${annotation.regex}:${annotation.prefix.replace(/:/g, "\\:")}`)
+          .join("\n");
+        text
+          .setValue(annotations)
+          .setPlaceholder("📌:🔗\n(?:^|\\n)-:\n\\[\\[E\\]\\]:🔗")
+          .onChange((value) => {
+            this.plugin.settingsUnderChange.advancedAnnotationStrings =
+              parseAdvancedAnnotationStrings(value, this.plugin.settings.trimStringsInSettings);
+            this.plugin.triggerSettingsChangedDebounced();
+          });
+      });
+
+    new Setting(containerEl)
       .setName("Allow a space between the annotation string and the link")
       .setDesc(
         "If enabled, a link will still be recognized as an annotated link even if there is a " +
@@ -579,20 +618,6 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           });
       });
 
-    new Setting(containerEl)
-      .setName("Hide annotation strings in navigation")
-      .setDesc(
-        "If enabled, annotation strings (e.g. emojis) will be hidden in the navigation links."
-      )
-      .addToggle((toggle) => {
-        toggle
-          .setValue(this.plugin.settingsUnderChange.hideAnnotatedLinkPrefix)
-          .onChange((value) => {
-            this.plugin.settingsUnderChange.hideAnnotatedLinkPrefix = value;
-            this.plugin.triggerSettingsChangedDebounced();
-          });
-      });
-
     new Setting(containerEl).setName("Links specified by file properties").setHeading();
 
     new Setting(containerEl)
@@ -603,8 +628,9 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           "also supported). Each mapping consists of a property name and a string that will " +
           "be placed at the beginning of the link when it appears in the navigation (use " +
           "emojis in this string if you want it to appear like an icon). Each line should be " +
-          'in the format "property name:preceding string" (without double quotes). ' +
-          'To include a colon in the preceding string, escape it as "\\:". ' +
+          'in the format "property name:prefix" (without double quotes). ' +
+          'To include a colon in the prefix, escape it as "\\:". ' +
+          "An empty string is also acceptable as a prefix. " +
           "Leave this field blank if you are not using this feature."
       )
       .addTextArea((text) => {
@@ -1002,16 +1028,46 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
  * If `allowEmpty` is false, empty strings are filtered out.
  */
 function parsePrefixStrings(prefixes: string, trim: boolean, allowEmpty: boolean): Array<string> {
+  if (prefixes === "") {
+    return [];
+  }
   const result = prefixes.split(",").map((prefix) => (trim ? prefix.trim() : prefix));
   return allowEmpty ? result : result.filter((prefix) => prefix.length > 0);
 }
 
 /**
- * Parses the string with multiple lines of "key:value",
+ * Parses the string with multiple lines of "regex:prefix",
+ * and returns an array of advanced annotation mappings.
+ * If `trim` is true, leading and trailing whitespace is removed from prefixes.
+ * `\c` can be used to escape colons in prefixes.
+ * The regex and prefix are split at the last unescaped colon.
+ */
+function parseAdvancedAnnotationStrings(
+  annotations: string,
+  trim: boolean
+): Array<{ regex: string; prefix: string }> {
+  return annotations
+    .split("\n")
+    .map((line) => line.replace(/\\:/g, "__ESC_COLON__"))
+    .filter((line) => line.includes(":"))
+    .map((annotation) => {
+      const i = annotation.lastIndexOf(":");
+      const regex = annotation.slice(0, i).replace(/__ESC_COLON__/g, ":");
+      const prefix = annotation.slice(i + 1).replace(/__ESC_COLON__/g, ":");
+      return {
+        regex,
+        prefix: trim ? prefix.trim() : prefix,
+      };
+    })
+    .filter((mapping) => mapping.regex.length > 0);
+}
+
+/**
+ * Parses the string with multiple lines of "property:prefix",
  * and returns an array of property mappings.
  * If `trim` is true, leading and trailing whitespace is removed from prefixes.
  * `\c` can be used to escape colons in prefixes.
- * The key and value are split at the last unescaped colon.
+ * The property and prefix are split at the last unescaped colon.
  */
 function parsePropertyMappings(
   mappings: string,

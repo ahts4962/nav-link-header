@@ -7,14 +7,12 @@
     links,
     isLoading,
     matchWidthToLineLength,
-    hideAnnotatedLinkPrefix,
     displayLoadingMessage,
     displayPlaceholder,
   }: {
     links: (PrefixedLinkState | ThreeWayLinkState)[];
     isLoading: boolean;
     matchWidthToLineLength: boolean;
-    hideAnnotatedLinkPrefix: boolean;
     displayLoadingMessage: boolean;
     displayPlaceholder: boolean;
   } = $props();
@@ -50,7 +48,7 @@
     >
       {#each links as link}
         {#if link instanceof PrefixedLinkState}
-          <PrefixedLink state={link} {hideAnnotatedLinkPrefix} />
+          <PrefixedLink state={link} />
         {:else if link instanceof ThreeWayLinkState}
           <ThreeWayLink state={link} />
         {/if}
