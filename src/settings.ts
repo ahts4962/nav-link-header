@@ -18,6 +18,7 @@ export interface NavLinkHeaderSettings {
   displayLoadingMessage: boolean;
   displayPlaceholder: boolean;
   confirmFileCreation: boolean;
+  trimStringsInSettings: boolean;
   displayInLeaves: boolean;
   displayInHoverPopovers: boolean;
   displayInMarkdownViews: boolean;
@@ -69,6 +70,7 @@ export const DEFAULT_SETTINGS: NavLinkHeaderSettings = {
   displayLoadingMessage: true,
   displayPlaceholder: false,
   confirmFileCreation: true,
+  trimStringsInSettings: true,
   displayInLeaves: true,
   displayInHoverPopovers: true,
   displayInMarkdownViews: true,
@@ -145,7 +147,7 @@ export async function loadSettings(plugin: NavLinkHeader): Promise<NavLinkHeader
       "annotationStrings" in loadedData &&
       typeof loadedData["annotationStrings"] === "string"
     ) {
-      result[key] = parsePrefixStrings(loadedData["annotationStrings"]);
+      result[key] = parsePrefixStrings(loadedData["annotationStrings"], true, false);
       continue;
     }
 
@@ -166,7 +168,7 @@ export async function loadSettings(plugin: NavLinkHeader): Promise<NavLinkHeader
       key in loadedData &&
       typeof loadedData[key] === "string"
     ) {
-      result[key] = parsePrefixStrings(loadedData[key]);
+      result[key] = parsePrefixStrings(loadedData[key], true, false);
       continue;
     }
 
@@ -301,7 +303,11 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       .addText((text) => {
         const order = this.plugin.settingsUnderChange.displayOrderOfLinks.join(",");
         text.setValue(order).onChange((value) => {
-          this.plugin.settingsUnderChange.displayOrderOfLinks = parsePrefixStrings(value);
+          this.plugin.settingsUnderChange.displayOrderOfLinks = parsePrefixStrings(
+            value,
+            this.plugin.settings.trimStringsInSettings,
+            true
+          );
           this.plugin.triggerSettingsChangedDebounced();
         });
       });
@@ -342,8 +348,11 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       .addText((text) => {
         const priority = this.plugin.settingsUnderChange.duplicateNoteFilteringPriority.join(",");
         text.setValue(priority).onChange((value) => {
-          this.plugin.settingsUnderChange.duplicateNoteFilteringPriority =
-            parsePrefixStrings(value);
+          this.plugin.settingsUnderChange.duplicateNoteFilteringPriority = parsePrefixStrings(
+            value,
+            this.plugin.settings.trimStringsInSettings,
+            true
+          );
           this.plugin.triggerSettingsChangedDebounced();
         });
       });
@@ -379,6 +388,21 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       .addToggle((toggle) => {
         toggle.setValue(this.plugin.settingsUnderChange.confirmFileCreation).onChange((value) => {
           this.plugin.settingsUnderChange.confirmFileCreation = value;
+          this.plugin.triggerSettingsChangedDebounced();
+        });
+      });
+
+    new Setting(containerEl)
+      .setName("Trim whitespace in input fields")
+      .setDesc(
+        "When enabled, leading and trailing whitespace will be trimmed from the strings " +
+          'entered in "Display order of links", "Duplicate link filtering priority", ' +
+          '"Annotation strings", and "Property mappings". ' +
+          "Disable this option if you want to include spaces intentionally."
+      )
+      .addToggle((toggle) => {
+        toggle.setValue(this.plugin.settingsUnderChange.trimStringsInSettings).onChange((value) => {
+          this.plugin.settingsUnderChange.trimStringsInSettings = value;
           this.plugin.triggerSettingsChangedDebounced();
         });
       });
@@ -519,7 +543,11 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       .addText((text) => {
         const annotations = this.plugin.settingsUnderChange.annotationStrings.join(",");
         text.setValue(annotations).onChange((value) => {
-          this.plugin.settingsUnderChange.annotationStrings = parsePrefixStrings(value);
+          this.plugin.settingsUnderChange.annotationStrings = parsePrefixStrings(
+            value,
+            this.plugin.settings.trimStringsInSettings,
+            false
+          );
           this.plugin.triggerSettingsChangedDebounced();
         });
       });
@@ -575,18 +603,22 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           "also supported). Each mapping consists of a property name and a string that will " +
           "be placed at the beginning of the link when it appears in the navigation (use " +
           "emojis in this string if you want it to appear like an icon). Each line should be " +
-          'in the format "property name:preceding string" (without double quotes). Leave this ' +
-          "field blank if you are not using this feature."
+          'in the format "property name:preceding string" (without double quotes). ' +
+          'To include a colon in the preceding string, escape it as "\\:". ' +
+          "Leave this field blank if you are not using this feature."
       )
       .addTextArea((text) => {
         const mappings = this.plugin.settingsUnderChange.propertyMappings
-          .map((mapping) => `${mapping.property}:${mapping.prefix}`)
+          .map((mapping) => `${mapping.property}:${mapping.prefix.replace(/:/g, "\\:")}`)
           .join("\n");
         text
           .setValue(mappings)
           .setPlaceholder("up:⬆️\nhome:🏠")
           .onChange((value) => {
-            this.plugin.settingsUnderChange.propertyMappings = parsePropertyMappings(value);
+            this.plugin.settingsUnderChange.propertyMappings = parsePropertyMappings(
+              value,
+              this.plugin.settings.trimStringsInSettings
+            );
             this.plugin.triggerSettingsChangedDebounced();
           });
       });
@@ -965,30 +997,40 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
 }
 
 /**
- * Parses the comma-separated strings and returns an array of strings.
+ * Parses a comma-separated string into an array of strings.
+ * If `trim` is true, leading and trailing whitespace is removed from each entry.
+ * If `allowEmpty` is false, empty strings are filtered out.
  */
-function parsePrefixStrings(prefixes: string): Array<string> {
-  return prefixes
-    .split(",")
-    .map((prefix) => prefix.trim())
-    .filter((prefix) => prefix.length > 0);
+function parsePrefixStrings(prefixes: string, trim: boolean, allowEmpty: boolean): Array<string> {
+  const result = prefixes.split(",").map((prefix) => (trim ? prefix.trim() : prefix));
+  return allowEmpty ? result : result.filter((prefix) => prefix.length > 0);
 }
 
 /**
  * Parses the string with multiple lines of "key:value",
  * and returns an array of property mappings.
+ * If `trim` is true, leading and trailing whitespace is removed from prefixes.
+ * `\c` can be used to escape colons in prefixes.
+ * The key and value are split at the last unescaped colon.
  */
-function parsePropertyMappings(mappings: string): Array<{ property: string; prefix: string }> {
+function parsePropertyMappings(
+  mappings: string,
+  trim: boolean
+): Array<{ property: string; prefix: string }> {
   return mappings
     .split("\n")
-    .map((line) => line.trim())
-    .filter((line) => line.length > 0)
+    .map((line) => line.replace(/\\:/g, "__ESC_COLON__"))
+    .filter((line) => line.includes(":"))
     .map((mapping) => {
-      const [property, prefix] = mapping.split(":");
+      const i = mapping.lastIndexOf(":");
+      const property = mapping.slice(0, i).replace(/__ESC_COLON__/g, ":");
+      const prefix = mapping.slice(i + 1).replace(/__ESC_COLON__/g, ":");
+
+      // Since Obsidian automatically trims property names, we always trim them here too.
       return {
         property: property.trim(),
-        prefix: prefix?.trim() ?? "",
+        prefix: trim ? prefix.trim() : prefix,
       };
     })
-    .filter((mapping) => mapping.property.length > 0 && mapping.prefix.length > 0);
+    .filter((mapping) => mapping.property.length > 0);
 }

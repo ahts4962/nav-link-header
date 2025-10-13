@@ -27,4 +27,7 @@
     display: flex;
     flex-wrap: wrap;
   }
+  .nav-link-header-link-prefix {
+    white-space: pre-wrap;
+  }
 </style>
