@@ -1,4 +1,4 @@
-import { Vault, TFile, type TAbstractFile } from "obsidian";
+import { type CachedMetadata, Vault, TFile, type TAbstractFile } from "obsidian";
 import type NavLinkHeader from "./main";
 import { PluginComponent } from "./pluginComponent";
 import type { NavLinkHeaderSettings } from "./settings";
@@ -50,12 +50,12 @@ export class FolderLinksManager extends PluginComponent {
     }
   }
 
-  public override onFileModified(file: TAbstractFile): void {
-    if (!this.isActive || !(file instanceof TFile)) {
+  public override onMetadataChanged(file: TFile, data: string, cache: CachedMetadata): void {
+    if (!this.isActive) {
       return;
     }
     for (const entry of this.folderEntries) {
-      entry.onFileModified(file);
+      entry.onMetadataChanged(file);
     }
   }
 
@@ -179,11 +179,7 @@ class FolderEntry {
     this.addFileToList(file);
   }
 
-  /**
-   * Called when a file is modified.
-   * This event handler is necessary to detect changes in the file properties.
-   */
-  public onFileModified(file: TFile): void {
+  public onMetadataChanged(file: TFile): void {
     this.removeFileFromList(file.path);
     this.addFileToList(file);
   }

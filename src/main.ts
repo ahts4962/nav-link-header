@@ -107,6 +107,15 @@ export default class NavLinkHeader extends Plugin {
     );
 
     this.registerEvent(
+      this.app.metadataCache.on("changed", (file, data, cache) => {
+        for (const component of this.components) {
+          component.onMetadataChanged(file, data, cache);
+        }
+        this.triggerForcedNavigationUpdateRequiredDebounced();
+      })
+    );
+
+    this.registerEvent(
       this.app.workspace.on("window-open", (window) => {
         for (const component of this.components) {
           component.onWindowOpen(window);

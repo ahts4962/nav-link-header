@@ -1,4 +1,4 @@
-import type { HoverParent, TAbstractFile, WorkspaceWindow } from "obsidian";
+import type { CachedMetadata, HoverParent, TAbstractFile, TFile, WorkspaceWindow } from "obsidian";
 import type { NavLinkHeaderSettings } from "./settings";
 
 /**
@@ -30,6 +30,14 @@ export abstract class PluginComponent {
    * @param file The modified file.
    */
   public onFileModified(file: TAbstractFile): void {}
+
+  /**
+   * Called when the metadata of a file has changed and metadata cache has been updated.
+   * @param file The file whose metadata has changed.
+   * @param data The new metadata.
+   * @param cache The cached metadata.
+   */
+  public onMetadataChanged(file: TFile, data: string, cache: CachedMetadata): void {}
 
   /**
    * Called when a new workspace window is opened.
