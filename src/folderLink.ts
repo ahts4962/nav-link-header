@@ -23,15 +23,6 @@ export class FolderLinksManager extends PluginComponent {
     }
   }
 
-  public override onFileCreated(file: TAbstractFile): void {
-    if (!this.isActive || !(file instanceof TFile)) {
-      return;
-    }
-    for (const entry of this.folderEntries) {
-      entry.onFileCreated(file);
-    }
-  }
-
   public override onFileDeleted(file: TAbstractFile): void {
     if (!this.isActive || !(file instanceof TFile)) {
       return;
@@ -166,10 +157,6 @@ class FolderEntry {
     this.sortList();
   }
 
-  public onFileCreated(file: TFile): void {
-    this.addFileToList(file);
-  }
-
   public onFileDeleted(file: TFile): void {
     this.removeFileFromList(file.path);
   }
@@ -180,6 +167,7 @@ class FolderEntry {
   }
 
   public onMetadataChanged(file: TFile): void {
+    // onFileCreated is not needed because onMetadataChanged is called after file creation.
     this.removeFileFromList(file.path);
     this.addFileToList(file);
   }
