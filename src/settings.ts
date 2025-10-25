@@ -35,6 +35,9 @@ export interface NavLinkHeaderSettings {
   allowSpaceAfterAnnotationString: boolean;
   ignoreVariationSelectors: boolean;
   propertyMappings: { property: string; prefix: string }[];
+  previousLinkPropertyMappings: { property: string; prefix: string }[];
+  nextLinkPropertyMappings: { property: string; prefix: string }[];
+  parentLinkPropertyMappings: { property: string; prefix: string }[];
   prevNextLinksEnabledInDailyNotes: boolean;
   parentLinkGranularityInDailyNotes: IGranularity | undefined;
   prevNextLinksEnabledInWeeklyNotes: boolean;
@@ -44,9 +47,6 @@ export interface NavLinkHeaderSettings {
   prevNextLinksEnabledInQuarterlyNotes: boolean;
   parentLinkGranularityInQuarterlyNotes: IGranularity | undefined;
   prevNextLinksEnabledInYearlyNotes: boolean;
-  previousLinkProperty: string;
-  nextLinkProperty: string;
-  parentLinkProperty: string;
   folderLinksSettingsArray: FolderLinksSettings[];
 }
 
@@ -88,6 +88,9 @@ export const DEFAULT_SETTINGS: NavLinkHeaderSettings = {
   allowSpaceAfterAnnotationString: false,
   ignoreVariationSelectors: false,
   propertyMappings: [],
+  previousLinkPropertyMappings: [],
+  nextLinkPropertyMappings: [],
+  parentLinkPropertyMappings: [],
   prevNextLinksEnabledInDailyNotes: false,
   parentLinkGranularityInDailyNotes: undefined,
   prevNextLinksEnabledInWeeklyNotes: false,
@@ -97,9 +100,6 @@ export const DEFAULT_SETTINGS: NavLinkHeaderSettings = {
   prevNextLinksEnabledInQuarterlyNotes: false,
   parentLinkGranularityInQuarterlyNotes: undefined,
   prevNextLinksEnabledInYearlyNotes: false,
-  previousLinkProperty: "",
-  nextLinkProperty: "",
-  parentLinkProperty: "",
   folderLinksSettingsArray: [],
 };
 
@@ -130,6 +130,37 @@ export async function loadSettings(plugin: NavLinkHeader): Promise<NavLinkHeader
 
   for (const key of Object.keys(DEFAULT_SETTINGS) as (keyof NavLinkHeaderSettings)[]) {
     // Migration from old settings.
+
+    // Introduced in 2.5.0
+    if (
+      key === "previousLinkPropertyMappings" &&
+      "previousLinkProperty" in loadedData &&
+      typeof loadedData["previousLinkProperty"] === "string" &&
+      loadedData["previousLinkProperty"].length > 0
+    ) {
+      result[key] = [{ property: loadedData["previousLinkProperty"], prefix: "" }];
+      continue;
+    }
+
+    if (
+      key === "nextLinkPropertyMappings" &&
+      "nextLinkProperty" in loadedData &&
+      typeof loadedData["nextLinkProperty"] === "string" &&
+      loadedData["nextLinkProperty"].length > 0
+    ) {
+      result[key] = [{ property: loadedData["nextLinkProperty"], prefix: "" }];
+      continue;
+    }
+
+    if (
+      key === "parentLinkPropertyMappings" &&
+      "parentLinkProperty" in loadedData &&
+      typeof loadedData["parentLinkProperty"] === "string" &&
+      loadedData["parentLinkProperty"].length > 0
+    ) {
+      result[key] = [{ property: loadedData["parentLinkProperty"], prefix: "" }];
+      continue;
+    }
 
     // Introduced in 2.2.0
     if (
@@ -274,9 +305,9 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
     containerEl.empty();
 
     new Setting(containerEl)
-      .setName("Match navigation width to line length")
+      .setName("Match navigation header width to line length")
       .setDesc(
-        "If enabled, the width of the navigation will match the line length of the note. " +
+        "If enabled, the width of the navigation header will match the line length of the note. " +
           'Here, "line length" refers to the width defined when ' +
           'Obsidian\'s "Readable line length" option is enabled.'
       )
@@ -300,7 +331,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           `"${DISPLAY_ORDER_PLACEHOLDER_PERIODIC}", "${DISPLAY_ORDER_PLACEHOLDER_PROPERTY}", ` +
           `and "${DISPLAY_ORDER_PLACEHOLDER_FOLDER}" are special strings that correspond to ` +
           "periodic notes, previous/next/parent notes specified by properties, " +
-          "and notes in a folder, respectively (see also the descriptions below)."
+          "and notes in a specified folder, respectively."
       )
       .addText((text) => {
         const order = this.plugin.settingsUnderChange.displayOrderOfLinks.join(",");
@@ -399,7 +430,9 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       .setDesc(
         "When enabled, leading and trailing whitespace will be trimmed from the strings " +
           'entered in "Display order of links", "Duplicate link filtering priority", ' +
-          '"Annotation strings", and "Property mappings". ' +
+          '"Annotation strings", "Advanced annotation strings", "Property mappings", ' +
+          '"Previous note property mappings", "Next note property mappings", ' +
+          'and "Parent note property mappings". ' +
           "Disable this option if you want to include spaces intentionally."
       )
       .addToggle((toggle) => {
@@ -412,10 +445,10 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
     new Setting(containerEl).setName("Display targets").setHeading();
 
     new Setting(containerEl)
-      .setName("Display navigation links in panes")
+      .setName("Display navigation header in panes")
       .setDesc(
-        "This setting applies to note containers (panes). To show links, also enable " +
-          "view-specific options below."
+        "This setting applies to note containers (panes). To show the navigation header, " +
+          "also enable view-specific options below."
       )
       .addToggle((toggle) => {
         toggle.setValue(this.plugin.settingsUnderChange.displayInLeaves).onChange((value) => {
@@ -425,10 +458,10 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
-      .setName("Display navigation links in page previews")
+      .setName("Display navigation header in page previews")
       .setDesc(
-        "This setting applies to note containers (page previews). To show links, also enable " +
-          "view-specific options below."
+        "This setting applies to note containers (page previews). To show the navigation header, " +
+          "also enable view-specific options below."
       )
       .addToggle((toggle) => {
         toggle
@@ -440,8 +473,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
-      .setName("Display navigation links in Markdown views")
-      .setDesc("Show navigation links when viewing Markdown documents.")
+      .setName("Display navigation header in Markdown views")
+      .setDesc("Show navigation header when viewing Markdown documents.")
       .addToggle((toggle) => {
         toggle
           .setValue(this.plugin.settingsUnderChange.displayInMarkdownViews)
@@ -452,8 +485,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
-      .setName("Display navigation links in Image views")
-      .setDesc("Show navigation links when viewing images.")
+      .setName("Display navigation header in Image views")
+      .setDesc("Show navigation header when viewing images.")
       .addToggle((toggle) => {
         toggle.setValue(this.plugin.settingsUnderChange.displayInImageViews).onChange((value) => {
           this.plugin.settingsUnderChange.displayInImageViews = value;
@@ -462,8 +495,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
-      .setName("Display navigation links in Video views")
-      .setDesc("Show navigation links when viewing videos.")
+      .setName("Display navigation header in Video views")
+      .setDesc("Show navigation header when viewing videos.")
       .addToggle((toggle) => {
         toggle.setValue(this.plugin.settingsUnderChange.displayInVideoViews).onChange((value) => {
           this.plugin.settingsUnderChange.displayInVideoViews = value;
@@ -472,8 +505,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
-      .setName("Display navigation links in Audio views")
-      .setDesc("Show navigation links when viewing audio.")
+      .setName("Display navigation header in Audio views")
+      .setDesc("Show navigation header when viewing audio.")
       .addToggle((toggle) => {
         toggle.setValue(this.plugin.settingsUnderChange.displayInAudioViews).onChange((value) => {
           this.plugin.settingsUnderChange.displayInAudioViews = value;
@@ -482,8 +515,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
-      .setName("Display navigation links in PDF views")
-      .setDesc("Show navigation links when viewing PDFs.")
+      .setName("Display navigation header in PDF views")
+      .setDesc("Show navigation header when viewing PDFs.")
       .addToggle((toggle) => {
         toggle.setValue(this.plugin.settingsUnderChange.displayInPdfViews).onChange((value) => {
           this.plugin.settingsUnderChange.displayInPdfViews = value;
@@ -492,8 +525,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
-      .setName("Display navigation links in Canvas views")
-      .setDesc("Show navigation links when viewing Canvas.")
+      .setName("Display navigation header in Canvas views")
+      .setDesc("Show navigation header when viewing Canvas.")
       .addToggle((toggle) => {
         toggle.setValue(this.plugin.settingsUnderChange.displayInCanvasViews).onChange((value) => {
           this.plugin.settingsUnderChange.displayInCanvasViews = value;
@@ -502,8 +535,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
-      .setName("Display navigation links in Bases views")
-      .setDesc("Show navigation links when viewing Bases.")
+      .setName("Display navigation header in Bases views")
+      .setDesc("Show navigation header when viewing Bases.")
       .addToggle((toggle) => {
         toggle.setValue(this.plugin.settingsUnderChange.displayInBasesViews).onChange((value) => {
           this.plugin.settingsUnderChange.displayInBasesViews = value;
@@ -512,9 +545,9 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
-      .setName("Display navigation links in other views")
+      .setName("Display navigation header in other views")
       .setDesc(
-        "Show navigation links in other views (such as views introduced by community plugins). " +
+        "Show navigation header in other views (such as views introduced by community plugins). " +
           "This may not work depending on the view type."
       )
       .addToggle((toggle) => {
@@ -532,10 +565,10 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
         "Define the annotation strings. " +
           "If one of the annotation strings (typically emojis) is placed immediately before " +
           "a link in a note content, the link is recognized as an annotated link. " +
-          "Notes with annotated links appear as backlinks at the top of the destination note. " +
-          "Any string, including emoji, is acceptable as long as the following link is " +
-          "recognized as a backlink. To specify multiple annotations, separate them with commas. " +
-          'e.g. "📌,🔗" (without double quotes). ' +
+          "Notes with annotated links appear as backlinks in the navigation header of the " +
+          "destination note. Any string, including emoji, is acceptable as long as the following " +
+          "link is recognized as a backlink. To specify multiple annotations, " +
+          'separate them with commas. e.g. "📌,🔗" (without double quotes). ' +
           `"${EMOJI_ANNOTATION_PLACEHOLDER}" can be used as a special placeholder ` +
           "that represents any single emoji. For example, if you specify only " +
           `"${EMOJI_ANNOTATION_PLACEHOLDER}", all links preceded by an emoji will be matched. ` +
@@ -555,10 +588,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
-      .setName("Hide annotation strings in navigation")
-      .setDesc(
-        "If enabled, annotation strings (e.g. emojis) will be hidden in the navigation links."
-      )
+      .setName("Hide prefixes in the navigation header")
+      .setDesc("If enabled, prefixes (e.g. emojis) will be hidden in the navigation header.")
       .addToggle((toggle) => {
         toggle
           .setValue(this.plugin.settingsUnderChange.hideAnnotatedLinkPrefix)
@@ -624,11 +655,12 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       .setName("Property mappings")
       .setDesc(
         "Define the property mappings. If the file property specified here points to a " +
-          "specific note, that note will be displayed in navigation (URLs to the website are " +
-          "also supported). Each mapping consists of a property name and a string that will " +
-          "be placed at the beginning of the link when it appears in the navigation (use " +
-          "emojis in this string if you want it to appear like an icon). Each line should be " +
-          'in the format "property name:prefix" (without double quotes). ' +
+          "specific note, that note will be displayed in the navigation header " +
+          "(URLs to the website are also supported). " +
+          "Each mapping consists of a property name and a string that will " +
+          "be placed at the beginning of the link when it appears in the navigation header " +
+          "(use emojis in this string if you want it to appear like an icon). " +
+          'Each line should be in the format "property name:prefix" (without double quotes). ' +
           'To include a colon in the prefix, escape it as "\\:". ' +
           "An empty string is also acceptable as a prefix. " +
           "Leave this field blank if you are not using this feature."
@@ -642,6 +674,75 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           .setPlaceholder("up:⬆️\nhome:🏠")
           .onChange((value) => {
             this.plugin.settingsUnderChange.propertyMappings = parsePropertyMappings(
+              value,
+              this.plugin.settings.trimStringsInSettings
+            );
+            this.plugin.triggerSettingsChangedDebounced();
+          });
+      });
+
+    new Setting(containerEl)
+      .setName("Previous note property mappings")
+      .setDesc(
+        "Enter the mapping that specifies the previous note. The note specified here will appear " +
+          "in the navigation header as < previous | parent | next >. " +
+          'The syntax is the same as "Property mappings".'
+      )
+      .addTextArea((text) => {
+        const mappings = this.plugin.settingsUnderChange.previousLinkPropertyMappings
+          .map((mapping) => `${mapping.property}:${mapping.prefix.replace(/:/g, "\\:")}`)
+          .join("\n");
+        text
+          .setValue(mappings)
+          .setPlaceholder("previous:")
+          .onChange((value) => {
+            this.plugin.settingsUnderChange.previousLinkPropertyMappings = parsePropertyMappings(
+              value,
+              this.plugin.settings.trimStringsInSettings
+            );
+            this.plugin.triggerSettingsChangedDebounced();
+          });
+      });
+
+    new Setting(containerEl)
+      .setName("Next note property mappings")
+      .setDesc(
+        "Enter the mapping that specifies the next note. The note specified here will appear " +
+          "in the navigation header as < previous | parent | next >. " +
+          'The syntax is the same as "Property mappings".'
+      )
+      .addTextArea((text) => {
+        const mappings = this.plugin.settingsUnderChange.nextLinkPropertyMappings
+          .map((mapping) => `${mapping.property}:${mapping.prefix.replace(/:/g, "\\:")}`)
+          .join("\n");
+        text
+          .setValue(mappings)
+          .setPlaceholder("next:")
+          .onChange((value) => {
+            this.plugin.settingsUnderChange.nextLinkPropertyMappings = parsePropertyMappings(
+              value,
+              this.plugin.settings.trimStringsInSettings
+            );
+            this.plugin.triggerSettingsChangedDebounced();
+          });
+      });
+
+    new Setting(containerEl)
+      .setName("Parent note property mappings")
+      .setDesc(
+        "Enter the mapping that specifies the parent note. The note specified here will appear " +
+          "in the navigation header as < previous | parent | next >. " +
+          'The syntax is the same as "Property mappings".'
+      )
+      .addTextArea((text) => {
+        const mappings = this.plugin.settingsUnderChange.parentLinkPropertyMappings
+          .map((mapping) => `${mapping.property}:${mapping.prefix.replace(/:/g, "\\:")}`)
+          .join("\n");
+        text
+          .setValue(mappings)
+          .setPlaceholder("parent:\nup:")
+          .onChange((value) => {
+            this.plugin.settingsUnderChange.parentLinkPropertyMappings = parsePropertyMappings(
               value,
               this.plugin.settings.trimStringsInSettings
             );
@@ -777,59 +878,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
-      .setName("Previous, next, and parent links specified by file properties")
-      .setHeading();
-
-    new Setting(containerEl)
-      .setName("Property name for the previous note")
-      .setDesc(
-        "If the file property specified here points to a specific note, " +
-          "that note will be displayed in navigation as a previous note."
-      )
-      .addText((text) => {
-        text
-          .setValue(this.plugin.settingsUnderChange.previousLinkProperty)
-          .setPlaceholder("previous")
-          .onChange((value) => {
-            this.plugin.settingsUnderChange.previousLinkProperty = value;
-            this.plugin.triggerSettingsChangedDebounced();
-          });
-      });
-
-    new Setting(containerEl)
-      .setName("Property name for the next note")
-      .setDesc(
-        "If the file property specified here points to a specific note, " +
-          "that note will be displayed in navigation as a next note."
-      )
-      .addText((text) => {
-        text
-          .setValue(this.plugin.settingsUnderChange.nextLinkProperty)
-          .setPlaceholder("next")
-          .onChange((value) => {
-            this.plugin.settingsUnderChange.nextLinkProperty = value;
-            this.plugin.triggerSettingsChangedDebounced();
-          });
-      });
-
-    new Setting(containerEl)
-      .setName("Property name for the parent note")
-      .setDesc(
-        "If the file property specified here points to a specific note, " +
-          "that note will be displayed in navigation as a parent note."
-      )
-      .addText((text) => {
-        text
-          .setValue(this.plugin.settingsUnderChange.parentLinkProperty)
-          .setPlaceholder("parent")
-          .onChange((value) => {
-            this.plugin.settingsUnderChange.parentLinkProperty = value;
-            this.plugin.triggerSettingsChangedDebounced();
-          });
-      });
-
-    new Setting(containerEl)
-      .setName("Previous, next, and parent links for ordered notes in specified folders")
+      .setName("Previous/next/parent links for ordered notes in specified folders")
       .setHeading();
 
     const folderLinksSettingsArray = this.plugin.settingsUnderChange.folderLinksSettingsArray;

@@ -48,25 +48,14 @@ export class NavigationLinkState {
  * The state of a PrefixedLink.
  */
 export class PrefixedLinkState {
-  public type: "annotated" | "property";
   public prefix: string;
   public link: NavigationLinkState;
 
   /**
-   * @param type The type of the link.
    * @param prefix The string (typically emoji) placed before the link.
    * @param link The link.
    */
-  constructor({
-    type,
-    prefix,
-    link,
-  }: {
-    type: "annotated" | "property";
-    prefix: string;
-    link: NavigationLinkState;
-  }) {
-    this.type = type;
+  constructor({ prefix, link }: { prefix: string; link: NavigationLinkState }) {
     this.prefix = prefix;
     this.link = link;
   }
@@ -78,9 +67,9 @@ export class PrefixedLinkState {
 export class ThreeWayLinkState {
   public type: "periodic" | "property" | "folder";
   public index: number;
-  public previous: { link?: NavigationLinkState; hidden: boolean };
-  public next: { link?: NavigationLinkState; hidden: boolean };
-  public parent: { link?: NavigationLinkState; hidden: boolean };
+  public previous: { link?: PrefixedLinkState; hidden: boolean };
+  public next: { link?: PrefixedLinkState; hidden: boolean };
+  public parent: { link?: PrefixedLinkState; hidden: boolean };
 
   /**
    * @param type The type of the link.
@@ -100,9 +89,9 @@ export class ThreeWayLinkState {
   }: {
     type: "periodic" | "property" | "folder";
     index?: number;
-    previous: { link?: NavigationLinkState; hidden: boolean };
-    next: { link?: NavigationLinkState; hidden: boolean };
-    parent: { link?: NavigationLinkState; hidden: boolean };
+    previous: { link?: PrefixedLinkState; hidden: boolean };
+    next: { link?: PrefixedLinkState; hidden: boolean };
+    parent: { link?: PrefixedLinkState; hidden: boolean };
   }) {
     this.type = type;
     this.index = index;

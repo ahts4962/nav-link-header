@@ -48,38 +48,48 @@ export function getThreeWayPropertyLink(
   plugin: NavLinkHeader,
   file: TFile
 ): {
-  previous?: { destination: string; isExternal: boolean; displayText?: string };
-  next?: { destination: string; isExternal: boolean; displayText?: string };
-  parent?: { destination: string; isExternal: boolean; displayText?: string };
+  previous?: { destination: string; isExternal: boolean; prefix: string; displayText?: string };
+  next?: { destination: string; isExternal: boolean; prefix: string; displayText?: string };
+  parent?: { destination: string; isExternal: boolean; prefix: string; displayText?: string };
 } {
-  const result: ReturnType<typeof getThreeWayPropertyLink> = {
-    previous: undefined,
-    next: undefined,
-    parent: undefined,
+  return {
+    previous: getFirstPropertyLink(plugin, file, plugin.settings.previousLinkPropertyMappings),
+    next: getFirstPropertyLink(plugin, file, plugin.settings.nextLinkPropertyMappings),
+    parent: getFirstPropertyLink(plugin, file, plugin.settings.parentLinkPropertyMappings),
   };
+}
 
-  if (plugin.settings.previousLinkProperty) {
-    const links = getLinksFromFileProperty(plugin.app, file, plugin.settings.previousLinkProperty);
+/**
+ * Gets the first link found from the specified property mappings.
+ * @param plugin The NavLinkHeader plugin instance.
+ * @param file The file to search in.
+ * @param mappings The property mappings to search for links.
+ * @returns The link found, or undefined if no link is found.
+ */
+function getFirstPropertyLink(
+  plugin: NavLinkHeader,
+  file: TFile,
+  mappings: { property: string; prefix: string }[]
+):
+  | {
+      destination: string;
+      isExternal: boolean;
+      prefix: string;
+      displayText?: string;
+    }
+  | undefined {
+  for (const { property, prefix } of mappings) {
+    const links = getLinksFromFileProperty(plugin.app, file, property);
     if (links.length > 0) {
-      result.previous = links[0];
+      return {
+        destination: links[0].destination,
+        isExternal: links[0].isExternal,
+        prefix: prefix,
+        displayText: links[0].displayText,
+      };
     }
   }
-
-  if (plugin.settings.nextLinkProperty) {
-    const links = getLinksFromFileProperty(plugin.app, file, plugin.settings.nextLinkProperty);
-    if (links.length > 0) {
-      result.next = links[0];
-    }
-  }
-
-  if (plugin.settings.parentLinkProperty) {
-    const links = getLinksFromFileProperty(plugin.app, file, plugin.settings.parentLinkProperty);
-    if (links.length > 0) {
-      result.parent = links[0];
-    }
-  }
-
-  return result;
+  return undefined;
 }
 
 /**

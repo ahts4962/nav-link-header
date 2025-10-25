@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { ThreeWayLinkState } from "../navigationLinkState";
-  import NavigationLink from "./NavigationLink.svelte";
+  import PrefixedLink from "./PrefixedLink.svelte";
   import Icon from "./Icon.svelte";
 
   const { state }: { state: ThreeWayLinkState } = $props();
@@ -17,7 +17,7 @@
   <Icon iconId="chevrons-left" />
   {#if !state.previous.hidden}
     {#if state.previous.link}
-      <NavigationLink state={state.previous.link} />
+      <PrefixedLink state={state.previous.link} />
     {:else}
       <Icon iconId="minus" muted />
     {/if}
@@ -27,7 +27,7 @@
   {/if}
   {#if !state.parent.hidden}
     {#if state.parent.link}
-      <NavigationLink state={state.parent.link} />
+      <PrefixedLink state={state.parent.link} />
     {:else}
       <Icon iconId="minus" muted />
     {/if}
@@ -37,7 +37,7 @@
   {/if}
   {#if !state.next.hidden}
     {#if state.next.link}
-      <NavigationLink state={state.next.link} />
+      <PrefixedLink state={state.next.link} />
     {:else}
       <Icon iconId="minus" muted />
     {/if}

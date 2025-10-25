@@ -11,42 +11,6 @@ import { openExternalLink } from "./utils";
  */
 export function addCommands(plugin: NavLinkHeader): void {
   plugin.addCommand({
-    id: "open-previous-periodic-note",
-    name: "Open previous periodic note",
-    checkCallback: (checking: boolean) => {
-      const file = plugin.app.workspace.getActiveFile();
-      if (!file) {
-        return false;
-      }
-      return openPeriodicNote(plugin, file, "previous", checking);
-    },
-  });
-
-  plugin.addCommand({
-    id: "open-next-periodic-note",
-    name: "Open next periodic note",
-    checkCallback: (checking: boolean) => {
-      const file = plugin.app.workspace.getActiveFile();
-      if (!file) {
-        return false;
-      }
-      return openPeriodicNote(plugin, file, "next", checking);
-    },
-  });
-
-  plugin.addCommand({
-    id: "open-parent-periodic-note",
-    name: "Open parent periodic note",
-    checkCallback: (checking: boolean) => {
-      const file = plugin.app.workspace.getActiveFile();
-      if (!file) {
-        return false;
-      }
-      return openPeriodicNote(plugin, file, "parent", checking);
-    },
-  });
-
-  plugin.addCommand({
     id: "open-previous-property-link",
     name: "Open previous note specified by file property",
     checkCallback: (checking: boolean) => {
@@ -79,6 +43,42 @@ export function addCommands(plugin: NavLinkHeader): void {
         return false;
       }
       return openThreeWayPropertyLink(plugin, file, "parent", checking);
+    },
+  });
+
+  plugin.addCommand({
+    id: "open-previous-periodic-note",
+    name: "Open previous periodic note",
+    checkCallback: (checking: boolean) => {
+      const file = plugin.app.workspace.getActiveFile();
+      if (!file) {
+        return false;
+      }
+      return openPeriodicNote(plugin, file, "previous", checking);
+    },
+  });
+
+  plugin.addCommand({
+    id: "open-next-periodic-note",
+    name: "Open next periodic note",
+    checkCallback: (checking: boolean) => {
+      const file = plugin.app.workspace.getActiveFile();
+      if (!file) {
+        return false;
+      }
+      return openPeriodicNote(plugin, file, "next", checking);
+    },
+  });
+
+  plugin.addCommand({
+    id: "open-parent-periodic-note",
+    name: "Open parent periodic note",
+    checkCallback: (checking: boolean) => {
+      const file = plugin.app.workspace.getActiveFile();
+      if (!file) {
+        return false;
+      }
+      return openPeriodicNote(plugin, file, "parent", checking);
     },
   });
 
@@ -127,11 +127,11 @@ export function addCommands(plugin: NavLinkHeader): void {
         return false;
       }
 
-      if (openPeriodicNote(plugin, file, "previous", checking)) {
+      if (openThreeWayPropertyLink(plugin, file, "previous", checking)) {
         return true;
       }
 
-      if (openThreeWayPropertyLink(plugin, file, "previous", checking)) {
+      if (openPeriodicNote(plugin, file, "previous", checking)) {
         return true;
       }
 
@@ -152,11 +152,11 @@ export function addCommands(plugin: NavLinkHeader): void {
         return false;
       }
 
-      if (openPeriodicNote(plugin, file, "next", checking)) {
+      if (openThreeWayPropertyLink(plugin, file, "next", checking)) {
         return true;
       }
 
-      if (openThreeWayPropertyLink(plugin, file, "next", checking)) {
+      if (openPeriodicNote(plugin, file, "next", checking)) {
         return true;
       }
 
@@ -177,11 +177,11 @@ export function addCommands(plugin: NavLinkHeader): void {
         return false;
       }
 
-      if (openPeriodicNote(plugin, file, "parent", checking)) {
+      if (openThreeWayPropertyLink(plugin, file, "parent", checking)) {
         return true;
       }
 
-      if (openThreeWayPropertyLink(plugin, file, "parent", checking)) {
+      if (openPeriodicNote(plugin, file, "parent", checking)) {
         return true;
       }
 
@@ -205,6 +205,69 @@ export function addCommands(plugin: NavLinkHeader): void {
       return true;
     },
   });
+}
+
+/**
+ * Opens the previous, next, or parent note specified by file property
+ * (helper function for `addCommands`).
+ * @param plugin The plugin instance.
+ * @param file The active file.
+ * @param direction The direction to open.
+ * @param checking Whether it is checking availability or executing.
+ * @returns Whether the command is available.
+ */
+function openThreeWayPropertyLink(
+  plugin: NavLinkHeader,
+  file: TFile,
+  direction: "previous" | "next" | "parent",
+  checking: boolean
+): boolean {
+  if (
+    plugin.settings.previousLinkPropertyMappings.length == 0 &&
+    plugin.settings.nextLinkPropertyMappings.length == 0 &&
+    plugin.settings.parentLinkPropertyMappings.length == 0
+  ) {
+    return false;
+  }
+
+  const links = getThreeWayPropertyLink(plugin, file);
+
+  if (direction === "previous") {
+    if (!links.previous) {
+      return false;
+    }
+    if (!checking) {
+      if (links.previous.isExternal) {
+        void openExternalLink(plugin.app, links.previous.destination, true);
+      } else {
+        void plugin.app.workspace.openLinkText(links.previous.destination, file.path);
+      }
+    }
+  } else if (direction === "next") {
+    if (!links.next) {
+      return false;
+    }
+    if (!checking) {
+      if (links.next.isExternal) {
+        void openExternalLink(plugin.app, links.next.destination, true);
+      } else {
+        void plugin.app.workspace.openLinkText(links.next.destination, file.path);
+      }
+    }
+  } else if (direction === "parent") {
+    if (!links.parent) {
+      return false;
+    }
+    if (!checking) {
+      if (links.parent.isExternal) {
+        void openExternalLink(plugin.app, links.parent.destination, true);
+      } else {
+        void plugin.app.workspace.openLinkText(links.parent.destination, file.path);
+      }
+    }
+  }
+
+  return true;
 }
 
 /**
@@ -252,69 +315,6 @@ function openPeriodicNote(
     }
     if (!checking) {
       void plugin.app.workspace.openLinkText(adjacentNotes.parentPath, file.path);
-    }
-  }
-
-  return true;
-}
-
-/**
- * Opens the previous, next, or parent note specified by file property
- * (helper function for `addCommands`).
- * @param plugin The plugin instance.
- * @param file The active file.
- * @param direction The direction to open.
- * @param checking Whether it is checking availability or executing.
- * @returns Whether the command is available.
- */
-function openThreeWayPropertyLink(
-  plugin: NavLinkHeader,
-  file: TFile,
-  direction: "previous" | "next" | "parent",
-  checking: boolean
-): boolean {
-  if (
-    !plugin.settings.previousLinkProperty &&
-    !plugin.settings.nextLinkProperty &&
-    !plugin.settings.parentLinkProperty
-  ) {
-    return false;
-  }
-
-  const links = getThreeWayPropertyLink(plugin, file);
-
-  if (direction === "previous") {
-    if (!links.previous) {
-      return false;
-    }
-    if (!checking) {
-      if (links.previous.isExternal) {
-        void openExternalLink(plugin.app, links.previous.destination, true);
-      } else {
-        void plugin.app.workspace.openLinkText(links.previous.destination, file.path);
-      }
-    }
-  } else if (direction === "next") {
-    if (!links.next) {
-      return false;
-    }
-    if (!checking) {
-      if (links.next.isExternal) {
-        void openExternalLink(plugin.app, links.next.destination, true);
-      } else {
-        void plugin.app.workspace.openLinkText(links.next.destination, file.path);
-      }
-    }
-  } else if (direction === "parent") {
-    if (!links.parent) {
-      return false;
-    }
-    if (!checking) {
-      if (links.parent.isExternal) {
-        void openExternalLink(plugin.app, links.parent.destination, true);
-      } else {
-        void plugin.app.workspace.openLinkText(links.parent.destination, file.path);
-      }
     }
   }
 

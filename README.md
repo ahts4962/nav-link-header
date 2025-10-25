@@ -27,9 +27,8 @@ This feature allows you to create links that navigate to the MOC by simply addin
 ## Links specified by file properties
 
 By setting a link, path, or URL to a website in the file properties, the link can be displayed
-in the navigation. Markdown style links (e.g. `[obsidian](https://obsidian.md)`) are also supported.
-**Remember to set the "Property mappings" field or the "Property name for the
-previous/next/parent note" field on the settings page to use this feature**.
+in the navigation header. Markdown style links (e.g. `[obsidian](https://obsidian.md)`) are also supported.
+**Remember to set the "Property mappings" field on the settings page to use this feature**.
 
 ![property link](https://github.com/user-attachments/assets/670580d0-1099-4308-aadc-6bc8450a9713)
 
@@ -51,7 +50,9 @@ Notes can be flexibly filtered and sorted.
 
 ## Other features
 
-- Links can also be displayed in page previews.
+- Navigation header can also be displayed in page previews.
+- Multiple view types (e.g., PDF) are supported.
+- You can use regular expressions as annotation strings.
 - The file property can be used to set the display text of the link.
 - Wikilinks and markdown format links are supported for annotated links.
 - You can create a new periodic note by clicking the link if it doesn't exist.
