@@ -3,6 +3,7 @@ import type { PluginComponent } from "./pluginComponent";
 import { LeavesUpdater } from "./leavesUpdater";
 import { HoverPopoverUpdater } from "./hoverPopoverUpdater";
 import { AnnotatedLinksManager } from "./annotatedLink";
+import { ImplicitPropertyManager } from "./implicitPropertyManager";
 import { PeriodicNotesManager } from "./periodicNotes";
 import { FolderLinksManager } from "./folderLink";
 import { addCommands } from "./commands";
@@ -53,6 +54,7 @@ export default class NavLinkHeader extends Plugin {
       this.components.push(new LeavesUpdater(this));
       this.components.push(new HoverPopoverUpdater(this));
       this.components.push(new AnnotatedLinksManager(this));
+      this.components.push(new ImplicitPropertyManager(this));
       this.components.push(new PeriodicNotesManager(this));
       this.components.push(new FolderLinksManager(this));
 

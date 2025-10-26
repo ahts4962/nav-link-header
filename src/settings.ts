@@ -38,6 +38,7 @@ export interface NavLinkHeaderSettings {
   previousLinkPropertyMappings: { property: string; prefix: string }[];
   nextLinkPropertyMappings: { property: string; prefix: string }[];
   parentLinkPropertyMappings: { property: string; prefix: string }[];
+  implicitReciprocalPropertyPairs: { propertyA: string; propertyB: string }[];
   prevNextLinksEnabledInDailyNotes: boolean;
   parentLinkGranularityInDailyNotes: IGranularity | undefined;
   prevNextLinksEnabledInWeeklyNotes: boolean;
@@ -91,6 +92,7 @@ export const DEFAULT_SETTINGS: NavLinkHeaderSettings = {
   previousLinkPropertyMappings: [],
   nextLinkPropertyMappings: [],
   parentLinkPropertyMappings: [],
+  implicitReciprocalPropertyPairs: [],
   prevNextLinksEnabledInDailyNotes: false,
   parentLinkGranularityInDailyNotes: undefined,
   prevNextLinksEnabledInWeeklyNotes: false,
@@ -750,6 +752,29 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           });
       });
 
+    new Setting(containerEl)
+      .setName("Implicit reciprocal property pairs")
+      .setDesc(
+        "Specify pairs of property names here to implicitly create reciprocal links " +
+          'in the navigation header. For example, if you enter "prev:next" here, ' +
+          'when Note A has a property "next: [[Note B]]", Note B will be treated as if ' +
+          'it also had "prev: [[Note A]]" even if it isn\'t explicitly set. ' +
+          "Enter one pair per line."
+      )
+      .addTextArea((text) => {
+        const pairs = this.plugin.settingsUnderChange.implicitReciprocalPropertyPairs
+          .map((pair) => `${pair.propertyA}:${pair.propertyB}`)
+          .join("\n");
+        text
+          .setValue(pairs)
+          .setPlaceholder("prev:next\nparent:child")
+          .onChange((value) => {
+            this.plugin.settingsUnderChange.implicitReciprocalPropertyPairs =
+              parsePropertyPairs(value);
+            this.plugin.triggerSettingsChangedDebounced();
+          });
+      });
+
     new Setting(containerEl).setName("Periodic note links").setHeading();
 
     new Setting(containerEl)
@@ -1076,7 +1101,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
  * If `trim` is true, leading and trailing whitespace is removed from each entry.
  * If `allowEmpty` is false, empty strings are filtered out.
  */
-function parsePrefixStrings(prefixes: string, trim: boolean, allowEmpty: boolean): Array<string> {
+function parsePrefixStrings(prefixes: string, trim: boolean, allowEmpty: boolean): string[] {
   if (prefixes === "") {
     return [];
   }
@@ -1094,7 +1119,7 @@ function parsePrefixStrings(prefixes: string, trim: boolean, allowEmpty: boolean
 function parseAdvancedAnnotationStrings(
   annotations: string,
   trim: boolean
-): Array<{ regex: string; prefix: string }> {
+): { regex: string; prefix: string }[] {
   return annotations
     .split("\n")
     .map((line) => line.replace(/\\:/g, "__ESC_COLON__"))
@@ -1121,7 +1146,7 @@ function parseAdvancedAnnotationStrings(
 function parsePropertyMappings(
   mappings: string,
   trim: boolean
-): Array<{ property: string; prefix: string }> {
+): { property: string; prefix: string }[] {
   return mappings
     .split("\n")
     .map((line) => line.replace(/\\:/g, "__ESC_COLON__"))
@@ -1138,4 +1163,26 @@ function parsePropertyMappings(
       };
     })
     .filter((mapping) => mapping.property.length > 0);
+}
+
+/**
+ * Parses the string with multiple lines of "propertyA:propertyB",
+ * and returns an array of property pairs.
+ */
+function parsePropertyPairs(pairs: string): { propertyA: string; propertyB: string }[] {
+  return pairs
+    .split("\n")
+    .filter((line) => line.includes(":"))
+    .map((pair) => {
+      const i = pair.lastIndexOf(":");
+      const propertyA = pair.slice(0, i);
+      const propertyB = pair.slice(i + 1);
+
+      // Since Obsidian automatically trims property names, we always trim them here too.
+      return {
+        propertyA: propertyA.trim(),
+        propertyB: propertyB.trim(),
+      };
+    })
+    .filter((mapping) => mapping.propertyA.length > 0 && mapping.propertyB.length > 0);
 }
