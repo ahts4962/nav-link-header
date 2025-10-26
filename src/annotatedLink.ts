@@ -67,12 +67,6 @@ export class AnnotatedLinksManager extends PluginComponent {
     this.removeFileFromCache(file.path);
   }
 
-  private removeFileFromCache(filePath: string): void {
-    if (this.cache.has(filePath)) {
-      this.cache.delete(filePath);
-    }
-  }
-
   public override onSettingsChanged(
     previous: NavLinkHeaderSettings,
     current: NavLinkHeaderSettings
@@ -104,6 +98,12 @@ export class AnnotatedLinksManager extends PluginComponent {
 
   public override dispose(): void {
     this.isActive = false;
+  }
+
+  private removeFileFromCache(filePath: string): void {
+    if (this.cache.has(filePath)) {
+      this.cache.delete(filePath);
+    }
   }
 
   /**

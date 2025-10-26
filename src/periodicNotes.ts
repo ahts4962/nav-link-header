@@ -59,35 +59,6 @@ export class PeriodicNotesManager extends PluginComponent {
     this.syncActiveState();
   }
 
-  /**
-   * Synchronizes the active state.
-   * Whether this manager is active or not is determined by the plugin settings and
-   * the state of the Periodic Notes plugin.
-   * This is almost always synchronized by handling events, but there is one situation
-   * where they cannot be synchronized: when the Periodic Notes plugin itself is enabled
-   * or disabled. There is currently no good way to subscribe to that lifecycle event,
-   * so any place that uses this manager should call this method first.
-   */
-  public syncActiveState(): void {
-    this.isActive = this.getActiveGranularities(false).length > 0;
-  }
-
-  /**
-   * Initializes the note cache for each active granularity.
-   * This method retrieves all active granularities and, for each one,
-   * fetches all associated periodic notes. It then updates the internal
-   * caches: `noteCache` is populated with the notes for each granularity,
-   * and `noteUIDCache` is populated with the sorted list of note UIDs.
-   */
-  private initializeNoteCache(): void {
-    const granularities = this.getActiveGranularities(true);
-    for (const granularity of granularities) {
-      const allNotes = getAllPeriodicNotes(granularity);
-      this.noteCache.set(granularity, allNotes);
-      this.noteUIDCache.set(granularity, Object.keys(allNotes).sort());
-    }
-  }
-
   public override onFileCreated(file: TAbstractFile): void {
     if (!this.isActive || !(file instanceof TFile)) {
       return;
@@ -108,44 +79,6 @@ export class PeriodicNotesManager extends PluginComponent {
     }
     this.removeNoteFromCache(oldPath);
     this.addNoteToCache(file);
-  }
-
-  /**
-   * Adds the note to the cache if it is a periodic note.
-   */
-  private addNoteToCache(file: TFile): void {
-    const { date, granularity } = this.getDateFromPath(file.path);
-    if (!date || !granularity) {
-      return;
-    }
-    const notes = this.noteCache.get(granularity);
-    const uids = this.noteUIDCache.get(granularity);
-    if (notes && uids) {
-      const dateUID = getDateUID(date, granularity);
-      notes[dateUID] = file;
-      uids.push(dateUID);
-      uids.sort();
-    }
-  }
-
-  /**
-   * Removes the note from the cache if it is a periodic note.
-   */
-  private removeNoteFromCache(path: string): void {
-    const { date, granularity } = this.getDateFromPath(path);
-    if (!date || !granularity) {
-      return;
-    }
-    const notes = this.noteCache.get(granularity);
-    const uids = this.noteUIDCache.get(granularity);
-    if (notes && uids) {
-      const dateUID = getDateUID(date, granularity);
-      delete notes[dateUID];
-      const index = uids.indexOf(dateUID);
-      if (index !== -1) {
-        uids.splice(index, 1);
-      }
-    }
   }
 
   public override onSettingsChanged(
@@ -189,6 +122,73 @@ export class PeriodicNotesManager extends PluginComponent {
   public override dispose(): void {
     this.noteCache.clear();
     this.noteUIDCache.clear();
+  }
+
+  /**
+   * Synchronizes the active state.
+   * Whether this manager is active or not is determined by the plugin settings and
+   * the state of the Periodic Notes plugin.
+   * This is almost always synchronized by handling events, but there is one situation
+   * where they cannot be synchronized: when the Periodic Notes plugin itself is enabled
+   * or disabled. There is currently no good way to subscribe to that lifecycle event,
+   * so any place that uses this manager should call this method first.
+   */
+  public syncActiveState(): void {
+    this.isActive = this.getActiveGranularities(false).length > 0;
+  }
+
+  /**
+   * Initializes the note cache for each active granularity.
+   * This method retrieves all active granularities and, for each one,
+   * fetches all associated periodic notes. It then updates the internal
+   * caches: `noteCache` is populated with the notes for each granularity,
+   * and `noteUIDCache` is populated with the sorted list of note UIDs.
+   */
+  private initializeNoteCache(): void {
+    const granularities = this.getActiveGranularities(true);
+    for (const granularity of granularities) {
+      const allNotes = getAllPeriodicNotes(granularity);
+      this.noteCache.set(granularity, allNotes);
+      this.noteUIDCache.set(granularity, Object.keys(allNotes).sort());
+    }
+  }
+
+  /**
+   * Adds the note to the cache if it is a periodic note.
+   */
+  private addNoteToCache(file: TFile): void {
+    const { date, granularity } = this.getDateFromPath(file.path);
+    if (!date || !granularity) {
+      return;
+    }
+    const notes = this.noteCache.get(granularity);
+    const uids = this.noteUIDCache.get(granularity);
+    if (notes && uids) {
+      const dateUID = getDateUID(date, granularity);
+      notes[dateUID] = file;
+      uids.push(dateUID);
+      uids.sort();
+    }
+  }
+
+  /**
+   * Removes the note from the cache if it is a periodic note.
+   */
+  private removeNoteFromCache(path: string): void {
+    const { date, granularity } = this.getDateFromPath(path);
+    if (!date || !granularity) {
+      return;
+    }
+    const notes = this.noteCache.get(granularity);
+    const uids = this.noteUIDCache.get(granularity);
+    if (notes && uids) {
+      const dateUID = getDateUID(date, granularity);
+      delete notes[dateUID];
+      const index = uids.indexOf(dateUID);
+      if (index !== -1) {
+        uids.splice(index, 1);
+      }
+    }
   }
 
   /**
