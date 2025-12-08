@@ -246,78 +246,84 @@ export class NavigationComponent extends Component {
     }
 
     const previous: {
-      link?: PrefixedLinkState;
+      links: PrefixedLinkState[];
       hidden: boolean;
-    } = { link: undefined, hidden: true };
+    } = { links: [], hidden: true };
     const next: {
-      link?: PrefixedLinkState;
+      links: PrefixedLinkState[];
       hidden: boolean;
-    } = { link: undefined, hidden: true };
+    } = { links: [], hidden: true };
     const parent: {
-      link?: PrefixedLinkState;
+      links: PrefixedLinkState[];
       hidden: boolean;
-    } = { link: undefined, hidden: true };
+    } = { links: [], hidden: true };
 
     if (this.plugin.settings.previousLinkPropertyMappings.length > 0) {
       previous.hidden = false;
       if (threeWayPropertyLink.previous) {
-        previous.link = new PrefixedLinkState({
-          prefix: threeWayPropertyLink.previous.prefix,
-          link: new NavigationLinkState({
-            destination: threeWayPropertyLink.previous.destination,
-            isExternal: threeWayPropertyLink.previous.isExternal,
-            displayText: this.getDisplayText(
-              threeWayPropertyLink.previous.destination,
-              threeWayPropertyLink.previous.isExternal,
-              threeWayPropertyLink.previous.displayText
-            ),
-            resolved: true,
-            clickHandler,
-            mouseOverHandler,
-          }),
-        });
+        previous.links.push(
+          new PrefixedLinkState({
+            prefix: threeWayPropertyLink.previous.prefix,
+            link: new NavigationLinkState({
+              destination: threeWayPropertyLink.previous.destination,
+              isExternal: threeWayPropertyLink.previous.isExternal,
+              displayText: this.getDisplayText(
+                threeWayPropertyLink.previous.destination,
+                threeWayPropertyLink.previous.isExternal,
+                threeWayPropertyLink.previous.displayText
+              ),
+              resolved: true,
+              clickHandler,
+              mouseOverHandler,
+            }),
+          })
+        );
       }
     }
 
     if (this.plugin.settings.nextLinkPropertyMappings.length > 0) {
       next.hidden = false;
       if (threeWayPropertyLink.next) {
-        next.link = new PrefixedLinkState({
-          prefix: threeWayPropertyLink.next.prefix,
-          link: new NavigationLinkState({
-            destination: threeWayPropertyLink.next.destination,
-            isExternal: threeWayPropertyLink.next.isExternal,
-            displayText: this.getDisplayText(
-              threeWayPropertyLink.next.destination,
-              threeWayPropertyLink.next.isExternal,
-              threeWayPropertyLink.next.displayText
-            ),
-            resolved: true,
-            clickHandler,
-            mouseOverHandler,
-          }),
-        });
+        next.links.push(
+          new PrefixedLinkState({
+            prefix: threeWayPropertyLink.next.prefix,
+            link: new NavigationLinkState({
+              destination: threeWayPropertyLink.next.destination,
+              isExternal: threeWayPropertyLink.next.isExternal,
+              displayText: this.getDisplayText(
+                threeWayPropertyLink.next.destination,
+                threeWayPropertyLink.next.isExternal,
+                threeWayPropertyLink.next.displayText
+              ),
+              resolved: true,
+              clickHandler,
+              mouseOverHandler,
+            }),
+          })
+        );
       }
     }
 
     if (this.plugin.settings.parentLinkPropertyMappings.length > 0) {
       parent.hidden = false;
       if (threeWayPropertyLink.parent) {
-        parent.link = new PrefixedLinkState({
-          prefix: threeWayPropertyLink.parent.prefix,
-          link: new NavigationLinkState({
-            destination: threeWayPropertyLink.parent.destination,
-            isExternal: threeWayPropertyLink.parent.isExternal,
-            displayText: this.getDisplayText(
-              threeWayPropertyLink.parent.destination,
-              threeWayPropertyLink.parent.isExternal,
-              threeWayPropertyLink.parent.displayText
-            ),
-            resolved: true,
-            clickHandler,
-            mouseOverHandler,
-          }),
-        });
+        parent.links.push(
+          new PrefixedLinkState({
+            prefix: threeWayPropertyLink.parent.prefix,
+            link: new NavigationLinkState({
+              destination: threeWayPropertyLink.parent.destination,
+              isExternal: threeWayPropertyLink.parent.isExternal,
+              displayText: this.getDisplayText(
+                threeWayPropertyLink.parent.destination,
+                threeWayPropertyLink.parent.isExternal,
+                threeWayPropertyLink.parent.displayText
+              ),
+              resolved: true,
+              clickHandler,
+              mouseOverHandler,
+            }),
+          })
+        );
       }
     }
 
@@ -353,17 +359,17 @@ export class NavigationComponent extends Component {
     }
 
     const previous: {
-      link?: PrefixedLinkState;
+      links: PrefixedLinkState[];
       hidden: boolean;
-    } = { link: undefined, hidden: true };
+    } = { links: [], hidden: true };
     const next: {
-      link?: PrefixedLinkState;
+      links: PrefixedLinkState[];
       hidden: boolean;
-    } = { link: undefined, hidden: true };
+    } = { links: [], hidden: true };
     const parent: {
-      link?: PrefixedLinkState;
+      links: PrefixedLinkState[];
       hidden: boolean;
-    } = { link: undefined, hidden: true };
+    } = { links: [], hidden: true };
 
     // Previous and next links
     if (periodicNotesManager.isPrevNextLinkEnabled(periodicNoteLinks.currentGranularity)) {
@@ -371,30 +377,34 @@ export class NavigationComponent extends Component {
       next.hidden = false;
 
       if (periodicNoteLinks.previousPath) {
-        previous.link = new PrefixedLinkState({
-          prefix: "",
-          link: new NavigationLinkState({
-            destination: periodicNoteLinks.previousPath,
-            isExternal: false,
-            displayText: this.getDisplayText(periodicNoteLinks.previousPath, false),
-            resolved: true,
-            clickHandler,
-            mouseOverHandler,
-          }),
-        });
+        previous.links.push(
+          new PrefixedLinkState({
+            prefix: "",
+            link: new NavigationLinkState({
+              destination: periodicNoteLinks.previousPath,
+              isExternal: false,
+              displayText: this.getDisplayText(periodicNoteLinks.previousPath, false),
+              resolved: true,
+              clickHandler,
+              mouseOverHandler,
+            }),
+          })
+        );
       }
       if (periodicNoteLinks.nextPath) {
-        next.link = new PrefixedLinkState({
-          prefix: "",
-          link: new NavigationLinkState({
-            destination: periodicNoteLinks.nextPath,
-            isExternal: false,
-            displayText: this.getDisplayText(periodicNoteLinks.nextPath, false),
-            resolved: true,
-            clickHandler,
-            mouseOverHandler,
-          }),
-        });
+        next.links.push(
+          new PrefixedLinkState({
+            prefix: "",
+            link: new NavigationLinkState({
+              destination: periodicNoteLinks.nextPath,
+              isExternal: false,
+              displayText: this.getDisplayText(periodicNoteLinks.nextPath, false),
+              resolved: true,
+              clickHandler,
+              mouseOverHandler,
+            }),
+          })
+        );
       }
     }
 
@@ -407,17 +417,19 @@ export class NavigationComponent extends Component {
 
       if (periodicNoteLinks.parentPath) {
         if (!periodicNoteLinks.parentDate) {
-          parent.link = new PrefixedLinkState({
-            prefix: "",
-            link: new NavigationLinkState({
-              destination: periodicNoteLinks.parentPath,
-              isExternal: false,
-              displayText: this.getDisplayText(periodicNoteLinks.parentPath, false),
-              resolved: true,
-              clickHandler,
-              mouseOverHandler,
-            }),
-          });
+          parent.links.push(
+            new PrefixedLinkState({
+              prefix: "",
+              link: new NavigationLinkState({
+                destination: periodicNoteLinks.parentPath,
+                isExternal: false,
+                displayText: this.getDisplayText(periodicNoteLinks.parentPath, false),
+                resolved: true,
+                clickHandler,
+                mouseOverHandler,
+              }),
+            })
+          );
         } else {
           // Make unresolved link.
           const clickHandlerForUnresolvedLinks: LinkEventHandler = (target, e) => {
@@ -435,17 +447,19 @@ export class NavigationComponent extends Component {
               );
             }
           };
-          parent.link = new PrefixedLinkState({
-            prefix: "",
-            link: new NavigationLinkState({
-              destination: periodicNoteLinks.parentPath,
-              isExternal: false,
-              displayText: getFileStemFromPath(periodicNoteLinks.parentPath),
-              resolved: false,
-              clickHandler: clickHandlerForUnresolvedLinks,
-              mouseOverHandler: () => {},
-            }),
-          });
+          parent.links.push(
+            new PrefixedLinkState({
+              prefix: "",
+              link: new NavigationLinkState({
+                destination: periodicNoteLinks.parentPath,
+                isExternal: false,
+                displayText: getFileStemFromPath(periodicNoteLinks.parentPath),
+                resolved: false,
+                clickHandler: clickHandlerForUnresolvedLinks,
+                mouseOverHandler: () => {},
+              }),
+            })
+          );
         }
       }
     }
@@ -483,60 +497,66 @@ export class NavigationComponent extends Component {
 
     for (const adjacentFiles of folderLinksManager.getAdjacentFiles(file)) {
       const previous: {
-        link?: PrefixedLinkState;
+        links: PrefixedLinkState[];
         hidden: boolean;
-      } = { link: undefined, hidden: false };
+      } = { links: [], hidden: false };
       const next: {
-        link?: PrefixedLinkState;
+        links: PrefixedLinkState[];
         hidden: boolean;
-      } = { link: undefined, hidden: false };
+      } = { links: [], hidden: false };
       const parent: {
-        link?: PrefixedLinkState;
+        links: PrefixedLinkState[];
         hidden: boolean;
-      } = { link: undefined, hidden: true };
+      } = { links: [], hidden: true };
 
       if (adjacentFiles.previous) {
-        previous.link = new PrefixedLinkState({
-          prefix: "",
-          link: new NavigationLinkState({
-            destination: adjacentFiles.previous,
-            isExternal: false,
-            displayText: this.getDisplayText(adjacentFiles.previous, false),
-            resolved: true,
-            clickHandler,
-            mouseOverHandler,
-          }),
-        });
+        previous.links.push(
+          new PrefixedLinkState({
+            prefix: "",
+            link: new NavigationLinkState({
+              destination: adjacentFiles.previous,
+              isExternal: false,
+              displayText: this.getDisplayText(adjacentFiles.previous, false),
+              resolved: true,
+              clickHandler,
+              mouseOverHandler,
+            }),
+          })
+        );
       }
 
       if (adjacentFiles.next) {
-        next.link = new PrefixedLinkState({
-          prefix: "",
-          link: new NavigationLinkState({
-            destination: adjacentFiles.next,
-            isExternal: false,
-            displayText: this.getDisplayText(adjacentFiles.next, false),
-            resolved: true,
-            clickHandler,
-            mouseOverHandler,
-          }),
-        });
+        next.links.push(
+          new PrefixedLinkState({
+            prefix: "",
+            link: new NavigationLinkState({
+              destination: adjacentFiles.next,
+              isExternal: false,
+              displayText: this.getDisplayText(adjacentFiles.next, false),
+              resolved: true,
+              clickHandler,
+              mouseOverHandler,
+            }),
+          })
+        );
       }
 
       if (this.plugin.settings.folderLinksSettingsArray[adjacentFiles.index].parentPath) {
         parent.hidden = false;
         if (adjacentFiles.parent) {
-          parent.link = new PrefixedLinkState({
-            prefix: "",
-            link: new NavigationLinkState({
-              destination: adjacentFiles.parent,
-              isExternal: false,
-              displayText: this.getDisplayText(adjacentFiles.parent, false),
-              resolved: true,
-              clickHandler,
-              mouseOverHandler,
-            }),
-          });
+          parent.links.push(
+            new PrefixedLinkState({
+              prefix: "",
+              link: new NavigationLinkState({
+                destination: adjacentFiles.parent,
+                isExternal: false,
+                displayText: this.getDisplayText(adjacentFiles.parent, false),
+                resolved: true,
+                clickHandler,
+                mouseOverHandler,
+              }),
+            })
+          );
         }
       }
 

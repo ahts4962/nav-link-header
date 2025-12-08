@@ -67,18 +67,23 @@ export class PrefixedLinkState {
 export class ThreeWayLinkState {
   public type: "periodic" | "property" | "folder";
   public index: number;
-  public previous: { link?: PrefixedLinkState; hidden: boolean };
-  public next: { link?: PrefixedLinkState; hidden: boolean };
-  public parent: { link?: PrefixedLinkState; hidden: boolean };
+  public previous: { links: PrefixedLinkState[]; hidden: boolean };
+  public next: { links: PrefixedLinkState[]; hidden: boolean };
+  public parent: { links: PrefixedLinkState[]; hidden: boolean };
+  public delimiters: "full" | "separator" | "none";
 
   /**
    * @param type The type of the link.
    * @param index The index of the link (e.g. the index of the folder links).
-   * @param previous The previous link. If `hidden` is `true`, the link is not displayed.
-   *     It is possible that `link` is `undefined` and `hidden` is `false`
+   * @param previous The previous links. If `hidden` is `true`, the link is not displayed.
+   *     It is possible that `links` is empty and `hidden` is `false`
    *     (e.g., displaying a placeholder).
-   * @param next The next link.
-   * @param parent The parent link.
+   * @param next The next links.
+   * @param parent The parent links.
+   * @param delimiters The style of delimiters to use.
+   *     - "full": < previous | parent | next >
+   *     - "separator": previous | parent | next
+   *     - "none": previous parent next
    */
   constructor({
     type,
@@ -86,17 +91,20 @@ export class ThreeWayLinkState {
     previous,
     next,
     parent,
+    delimiters = "full",
   }: {
     type: "periodic" | "property" | "folder";
     index?: number;
-    previous: { link?: PrefixedLinkState; hidden: boolean };
-    next: { link?: PrefixedLinkState; hidden: boolean };
-    parent: { link?: PrefixedLinkState; hidden: boolean };
+    previous: { links: PrefixedLinkState[]; hidden: boolean };
+    next: { links: PrefixedLinkState[]; hidden: boolean };
+    parent: { links: PrefixedLinkState[]; hidden: boolean };
+    delimiters?: "full" | "separator" | "none";
   }) {
     this.type = type;
     this.index = index;
     this.previous = previous;
     this.next = next;
     this.parent = parent;
+    this.delimiters = delimiters;
   }
 }
