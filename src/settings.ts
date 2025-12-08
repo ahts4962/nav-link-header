@@ -1,5 +1,6 @@
 import { normalizePath, PluginSettingTab, Setting } from "obsidian";
 import type { IGranularity } from "obsidian-daily-notes-interface";
+import { lt } from "semver";
 import type NavLinkHeader from "./main";
 import {
   DISPLAY_ORDER_PLACEHOLDER_FOLDER,
@@ -10,6 +11,7 @@ import { EMOJI_ANNOTATION_PLACEHOLDER } from "./annotatedLink";
 import { deepCopy } from "./utils";
 
 export interface NavLinkHeaderSettings {
+  version: string;
   matchNavigationWidthToLineLength: boolean;
   displayOrderOfLinks: string[];
   propertyNameForDisplayText: string;
@@ -40,13 +42,13 @@ export interface NavLinkHeaderSettings {
   parentLinkPropertyMappings: { property: string; prefix: string }[];
   implicitReciprocalPropertyPairs: { propertyA: string; propertyB: string }[];
   prevNextLinksEnabledInDailyNotes: boolean;
-  parentLinkGranularityInDailyNotes: IGranularity | undefined;
+  parentLinkGranularityInDailyNotes: IGranularity | "none";
   prevNextLinksEnabledInWeeklyNotes: boolean;
-  parentLinkGranularityInWeeklyNotes: IGranularity | undefined;
+  parentLinkGranularityInWeeklyNotes: IGranularity | "none";
   prevNextLinksEnabledInMonthlyNotes: boolean;
-  parentLinkGranularityInMonthlyNotes: IGranularity | undefined;
+  parentLinkGranularityInMonthlyNotes: IGranularity | "none";
   prevNextLinksEnabledInQuarterlyNotes: boolean;
-  parentLinkGranularityInQuarterlyNotes: IGranularity | undefined;
+  parentLinkGranularityInQuarterlyNotes: IGranularity | "none";
   prevNextLinksEnabledInYearlyNotes: boolean;
   folderLinksSettingsArray: FolderLinksSettings[];
 }
@@ -64,6 +66,7 @@ export interface FolderLinksSettings {
 }
 
 export const DEFAULT_SETTINGS: NavLinkHeaderSettings = {
+  version: "2.6.0",
   matchNavigationWidthToLineLength: false,
   displayOrderOfLinks: [],
   propertyNameForDisplayText: "",
@@ -94,13 +97,13 @@ export const DEFAULT_SETTINGS: NavLinkHeaderSettings = {
   parentLinkPropertyMappings: [],
   implicitReciprocalPropertyPairs: [],
   prevNextLinksEnabledInDailyNotes: false,
-  parentLinkGranularityInDailyNotes: undefined,
+  parentLinkGranularityInDailyNotes: "none",
   prevNextLinksEnabledInWeeklyNotes: false,
-  parentLinkGranularityInWeeklyNotes: undefined,
+  parentLinkGranularityInWeeklyNotes: "none",
   prevNextLinksEnabledInMonthlyNotes: false,
-  parentLinkGranularityInMonthlyNotes: undefined,
+  parentLinkGranularityInMonthlyNotes: "none",
   prevNextLinksEnabledInQuarterlyNotes: false,
-  parentLinkGranularityInQuarterlyNotes: undefined,
+  parentLinkGranularityInQuarterlyNotes: "none",
   prevNextLinksEnabledInYearlyNotes: false,
   folderLinksSettingsArray: [],
 };
@@ -128,93 +131,97 @@ const DEFAULT_FOLDER_LINKS_SETTINGS: FolderLinksSettings = {
  */
 export async function loadSettings(plugin: NavLinkHeader): Promise<NavLinkHeaderSettings> {
   const result = {} as Record<keyof NavLinkHeaderSettings, unknown>;
-  const loadedData = ((await plugin.loadData()) ?? {}) as Record<string, unknown>;
+  let loadedData = ((await plugin.loadData()) ?? deepCopy(DEFAULT_SETTINGS)) as Record<
+    string,
+    unknown
+  >;
+  loadedData = convertOldSettings(loadedData);
 
+  // Apply default values if not found in loaded data.
   for (const key of Object.keys(DEFAULT_SETTINGS) as (keyof NavLinkHeaderSettings)[]) {
-    // Migration from old settings.
-
-    // Introduced in 2.5.0
-    if (
-      key === "previousLinkPropertyMappings" &&
-      "previousLinkProperty" in loadedData &&
-      typeof loadedData["previousLinkProperty"] === "string" &&
-      loadedData["previousLinkProperty"].length > 0
-    ) {
-      result[key] = [{ property: loadedData["previousLinkProperty"], prefix: "" }];
-      continue;
+    if (!(key in loadedData)) {
+      result[key] = deepCopy(DEFAULT_SETTINGS[key]);
+    } else {
+      if (key === "folderLinksSettingsArray") {
+        if (!Array.isArray(loadedData[key])) {
+          result[key] = deepCopy(DEFAULT_SETTINGS[key]);
+        } else {
+          const resultArray: FolderLinksSettings[] = [];
+          for (let i = 0; i < loadedData[key].length; i++) {
+            const subResult = {} as Record<keyof FolderLinksSettings, unknown>;
+            const loadedFolderLinksSettings = loadedData[key][i] as Record<string, unknown>;
+            for (const subKey of Object.keys(
+              DEFAULT_FOLDER_LINKS_SETTINGS
+            ) as (keyof FolderLinksSettings)[]) {
+              if (!(subKey in loadedFolderLinksSettings)) {
+                subResult[subKey] = deepCopy(DEFAULT_FOLDER_LINKS_SETTINGS[subKey]);
+              } else {
+                subResult[subKey] = loadedFolderLinksSettings[subKey];
+              }
+            }
+            resultArray.push(subResult as FolderLinksSettings);
+          }
+          result[key] = resultArray;
+        }
+      } else {
+        result[key] = loadedData[key];
+      }
     }
+  }
 
-    if (
-      key === "nextLinkPropertyMappings" &&
-      "nextLinkProperty" in loadedData &&
-      typeof loadedData["nextLinkProperty"] === "string" &&
-      loadedData["nextLinkProperty"].length > 0
-    ) {
-      result[key] = [{ property: loadedData["nextLinkProperty"], prefix: "" }];
-      continue;
-    }
+  return result as NavLinkHeaderSettings;
+}
 
-    if (
-      key === "parentLinkPropertyMappings" &&
-      "parentLinkProperty" in loadedData &&
-      typeof loadedData["parentLinkProperty"] === "string" &&
-      loadedData["parentLinkProperty"].length > 0
-    ) {
-      result[key] = [{ property: loadedData["parentLinkProperty"], prefix: "" }];
-      continue;
-    }
+/**
+ * Converts old settings data to the latest format.
+ * This function checks the version of the loaded settings data and applies
+ * necessary transformations to migrate old settings to the latest format.
+ * @param loadedData The loaded settings data to be converted.
+ * @returns The converted settings data in the latest format.
+ */
+function convertOldSettings(loadedData: Record<string, unknown>): Record<string, unknown> {
+  if (!("version" in loadedData) || typeof loadedData["version"] !== "string") {
+    loadedData["version"] = "1.0.0";
+  }
+  const version = loadedData["version"] as string;
 
-    // Introduced in 2.2.0
+  if (lt(version, "2.0.0")) {
     if (
-      key === "displayInLeaves" &&
-      !("displayInLeaves" in loadedData) &&
-      "displayInMarkdownViews" in loadedData
-    ) {
-      result[key] = loadedData["displayInMarkdownViews"];
-      continue;
-    }
-
-    // Introduced in 2.0.0
-    if (
-      key === "displayOrderOfLinks" &&
       "annotatedLinksEnabled" in loadedData &&
+      typeof loadedData["annotatedLinksEnabled"] === "boolean" &&
       loadedData["annotatedLinksEnabled"] &&
       "annotationStrings" in loadedData &&
       typeof loadedData["annotationStrings"] === "string"
     ) {
-      result[key] = parsePrefixStrings(loadedData["annotationStrings"], true, false);
-      continue;
+      loadedData["displayOrderOfLinks"] = parsePrefixStrings(
+        loadedData["annotationStrings"],
+        true,
+        false
+      );
+      loadedData["annotationStrings"] = parsePrefixStrings(
+        loadedData["annotationStrings"],
+        true,
+        false
+      );
     }
 
     if (
-      key === "propertyNameForDisplayText" &&
       "usePropertyAsDisplayName" in loadedData &&
+      typeof loadedData["usePropertyAsDisplayName"] === "boolean" &&
       loadedData["usePropertyAsDisplayName"] &&
-      "displayPropertyName" in loadedData
+      "displayPropertyName" in loadedData &&
+      typeof loadedData["displayPropertyName"] === "string"
     ) {
-      result[key] = loadedData["displayPropertyName"];
-      continue;
+      loadedData["propertyNameForDisplayText"] = loadedData["displayPropertyName"];
     }
 
     if (
-      key === "annotationStrings" &&
-      "annotatedLinksEnabled" in loadedData &&
-      loadedData["annotatedLinksEnabled"] &&
-      key in loadedData &&
-      typeof loadedData[key] === "string"
+      "propertyMappings" in loadedData &&
+      loadedData["propertyMappings"] instanceof Array &&
+      loadedData["propertyMappings"].length > 0 &&
+      "emoji" in loadedData["propertyMappings"][0]
     ) {
-      result[key] = parsePrefixStrings(loadedData[key], true, false);
-      continue;
-    }
-
-    if (
-      key === "propertyMappings" &&
-      key in loadedData &&
-      loadedData[key] instanceof Array &&
-      loadedData[key].length > 0 &&
-      "emoji" in loadedData[key][0]
-    ) {
-      result[key] = loadedData[key]
+      loadedData["propertyMappings"] = loadedData["propertyMappings"]
         .map((item: object) => {
           if ("property" in item && "emoji" in item) {
             return {
@@ -229,69 +236,83 @@ export async function loadSettings(plugin: NavLinkHeader): Promise<NavLinkHeader
           }
         })
         .filter((item) => item.property.length > 0 && item.prefix.length > 0);
-      continue;
     }
 
-    if (key === "prevNextLinksEnabledInDailyNotes" && "dailyNoteLinksEnabled" in loadedData) {
-      result[key] = loadedData["dailyNoteLinksEnabled"];
-      continue;
+    if ("dailyNoteLinksEnabled" in loadedData) {
+      loadedData["prevNextLinksEnabledInDailyNotes"] = loadedData["dailyNoteLinksEnabled"];
     }
 
-    if (key === "prevNextLinksEnabledInWeeklyNotes" && "weeklyNoteLinksEnabled" in loadedData) {
-      result[key] = loadedData["weeklyNoteLinksEnabled"];
-      continue;
+    if ("weeklyNoteLinksEnabled" in loadedData) {
+      loadedData["prevNextLinksEnabledInWeeklyNotes"] = loadedData["weeklyNoteLinksEnabled"];
     }
 
-    if (key === "prevNextLinksEnabledInMonthlyNotes" && "monthlyNoteLinksEnabled" in loadedData) {
-      result[key] = loadedData["monthlyNoteLinksEnabled"];
-      continue;
+    if ("monthlyNoteLinksEnabled" in loadedData) {
+      loadedData["prevNextLinksEnabledInMonthlyNotes"] = loadedData["monthlyNoteLinksEnabled"];
     }
 
-    if (
-      key === "prevNextLinksEnabledInQuarterlyNotes" &&
-      "quarterlyNoteLinksEnabled" in loadedData
-    ) {
-      result[key] = loadedData["quarterlyNoteLinksEnabled"];
-      continue;
+    if ("quarterlyNoteLinksEnabled" in loadedData) {
+      loadedData["prevNextLinksEnabledInQuarterlyNotes"] = loadedData["quarterlyNoteLinksEnabled"];
     }
 
-    if (key === "prevNextLinksEnabledInYearlyNotes" && "yearlyNoteLinksEnabled" in loadedData) {
-      result[key] = loadedData["yearlyNoteLinksEnabled"];
-      continue;
+    if ("yearlyNoteLinksEnabled" in loadedData) {
+      loadedData["prevNextLinksEnabledInYearlyNotes"] = loadedData["yearlyNoteLinksEnabled"];
     }
 
-    // Apply default values if not found in loaded data.
-    if (key in loadedData) {
-      if (key === "folderLinksSettingsArray") {
-        if (Array.isArray(loadedData[key])) {
-          const resultArray: FolderLinksSettings[] = [];
-          for (let i = 0; i < loadedData[key].length; i++) {
-            const subResult = {} as Record<keyof FolderLinksSettings, unknown>;
-            const loadedFolderLinksSettings = loadedData[key][i] as Record<string, unknown>;
-            for (const subKey of Object.keys(
-              DEFAULT_FOLDER_LINKS_SETTINGS
-            ) as (keyof FolderLinksSettings)[]) {
-              if (subKey in loadedFolderLinksSettings) {
-                subResult[subKey] = loadedFolderLinksSettings[subKey];
-              } else {
-                subResult[subKey] = DEFAULT_FOLDER_LINKS_SETTINGS[subKey];
-              }
-            }
-            resultArray.push(subResult as FolderLinksSettings);
-          }
-          result[key] = resultArray;
-        } else {
-          result[key] = DEFAULT_SETTINGS[key];
-        }
-      } else {
-        result[key] = loadedData[key];
-      }
-    } else {
-      result[key] = DEFAULT_SETTINGS[key];
+    delete loadedData["annotatedLinksEnabled"];
+    delete loadedData["usePropertyAsDisplayName"];
+    delete loadedData["displayPropertyName"];
+    delete loadedData["dailyNoteLinksEnabled"];
+    delete loadedData["weeklyNoteLinksEnabled"];
+    delete loadedData["monthlyNoteLinksEnabled"];
+    delete loadedData["quarterlyNoteLinksEnabled"];
+    delete loadedData["yearlyNoteLinksEnabled"];
+  }
+
+  if (lt(version, "2.2.0")) {
+    if (!("displayInLeaves" in loadedData) && "displayInMarkdownViews" in loadedData) {
+      loadedData["displayInLeaves"] = loadedData["displayInMarkdownViews"];
+      loadedData["displayInMarkdownViews"] = DEFAULT_SETTINGS.displayInMarkdownViews;
     }
   }
 
-  return result as NavLinkHeaderSettings;
+  if (lt(version, "2.5.0")) {
+    if (
+      "previousLinkProperty" in loadedData &&
+      typeof loadedData["previousLinkProperty"] === "string" &&
+      loadedData["previousLinkProperty"].length > 0
+    ) {
+      loadedData["previousLinkPropertyMappings"] = [
+        { property: loadedData["previousLinkProperty"], prefix: "" },
+      ];
+    }
+
+    if (
+      "nextLinkProperty" in loadedData &&
+      typeof loadedData["nextLinkProperty"] === "string" &&
+      loadedData["nextLinkProperty"].length > 0
+    ) {
+      loadedData["nextLinkPropertyMappings"] = [
+        { property: loadedData["nextLinkProperty"], prefix: "" },
+      ];
+    }
+
+    if (
+      "parentLinkProperty" in loadedData &&
+      typeof loadedData["parentLinkProperty"] === "string" &&
+      loadedData["parentLinkProperty"].length > 0
+    ) {
+      loadedData["parentLinkPropertyMappings"] = [
+        { property: loadedData["parentLinkProperty"], prefix: "" },
+      ];
+    }
+
+    delete loadedData["previousLinkProperty"];
+    delete loadedData["nextLinkProperty"];
+    delete loadedData["parentLinkProperty"];
+  }
+
+  loadedData["version"] = DEFAULT_SETTINGS.version;
+  return loadedData;
 }
 
 /**
@@ -804,7 +825,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
         .setValue(this.plugin.settingsUnderChange.parentLinkGranularityInDailyNotes ?? "none")
         .onChange((value) => {
           this.plugin.settingsUnderChange.parentLinkGranularityInDailyNotes =
-            value !== "none" ? (value as IGranularity) : undefined;
+            value !== "none" ? (value as IGranularity) : "none";
           this.plugin.triggerSettingsChangedDebounced();
         });
     });
@@ -832,7 +853,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
         .setValue(this.plugin.settingsUnderChange.parentLinkGranularityInWeeklyNotes ?? "none")
         .onChange((value) => {
           this.plugin.settingsUnderChange.parentLinkGranularityInWeeklyNotes =
-            value !== "none" ? (value as IGranularity) : undefined;
+            value !== "none" ? (value as IGranularity) : "none";
           this.plugin.triggerSettingsChangedDebounced();
         });
     });
@@ -859,7 +880,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
         .setValue(this.plugin.settingsUnderChange.parentLinkGranularityInMonthlyNotes ?? "none")
         .onChange((value) => {
           this.plugin.settingsUnderChange.parentLinkGranularityInMonthlyNotes =
-            value !== "none" ? (value as IGranularity) : undefined;
+            value !== "none" ? (value as IGranularity) : "none";
           this.plugin.triggerSettingsChangedDebounced();
         });
     });
@@ -885,7 +906,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
         .setValue(this.plugin.settingsUnderChange.parentLinkGranularityInQuarterlyNotes ?? "none")
         .onChange((value) => {
           this.plugin.settingsUnderChange.parentLinkGranularityInQuarterlyNotes =
-            value !== "none" ? (value as IGranularity) : undefined;
+            value !== "none" ? (value as IGranularity) : "none";
           this.plugin.triggerSettingsChangedDebounced();
         });
     });

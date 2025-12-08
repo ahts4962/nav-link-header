@@ -318,7 +318,7 @@ export class PeriodicNotesManager extends PluginComponent {
         settings.parentLinkGranularityInWeeklyNotes,
         settings.parentLinkGranularityInMonthlyNotes,
         settings.parentLinkGranularityInQuarterlyNotes,
-      ].filter((value) => value != undefined)
+      ].filter((value) => value !== "none")
     );
 
     if (cacheRequiredOnly) {
@@ -359,13 +359,18 @@ export class PeriodicNotesManager extends PluginComponent {
    */
   public getParentLinkGranularity(granularity: IGranularity): IGranularity | undefined {
     const settings = this.plugin.settings;
-    return {
+    const result = {
       day: settings.parentLinkGranularityInDailyNotes,
       week: settings.parentLinkGranularityInWeeklyNotes,
       month: settings.parentLinkGranularityInMonthlyNotes,
       quarter: settings.parentLinkGranularityInQuarterlyNotes,
-      year: undefined,
+      year: "none" as const,
     }[granularity];
+    if (result === "none") {
+      return undefined;
+    } else {
+      return result;
+    }
   }
 }
 
