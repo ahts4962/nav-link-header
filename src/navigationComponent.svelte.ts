@@ -567,6 +567,8 @@ export class NavigationComponent extends Component {
           previous: previous,
           next: next,
           parent: parent,
+          delimiters:
+            this.plugin.settings.folderLinksSettingsArray[adjacentFiles.index].displayStyle,
         })
       );
     }
