@@ -496,6 +496,8 @@ export class NavigationComponent extends Component {
     }
 
     for (const adjacentFiles of folderLinksManager.getAdjacentFiles(file)) {
+      const settings = this.plugin.settings.folderLinksSettingsArray[adjacentFiles.index];
+
       const previous: {
         links: PrefixedLinkState[];
         hidden: boolean;
@@ -512,7 +514,7 @@ export class NavigationComponent extends Component {
       if (adjacentFiles.previous.length > 0) {
         previous.links.push(
           new PrefixedLinkState({
-            prefix: "",
+            prefix: settings.linkPrefix,
             link: new NavigationLinkState({
               destination: adjacentFiles.previous[0],
               isExternal: false,
@@ -528,7 +530,7 @@ export class NavigationComponent extends Component {
       if (adjacentFiles.next.length > 0) {
         next.links.push(
           new PrefixedLinkState({
-            prefix: "",
+            prefix: settings.linkPrefix,
             link: new NavigationLinkState({
               destination: adjacentFiles.next[0],
               isExternal: false,
@@ -546,7 +548,7 @@ export class NavigationComponent extends Component {
         if (adjacentFiles.parent.length > 0) {
           parent.links.push(
             new PrefixedLinkState({
-              prefix: "",
+              prefix: settings.linkPrefix,
               link: new NavigationLinkState({
                 destination: adjacentFiles.parent[0],
                 isExternal: false,
@@ -567,8 +569,7 @@ export class NavigationComponent extends Component {
           previous: previous,
           next: next,
           parent: parent,
-          delimiters:
-            this.plugin.settings.folderLinksSettingsArray[adjacentFiles.index].displayStyle,
+          delimiters: settings.displayStyle,
         })
       );
     }
