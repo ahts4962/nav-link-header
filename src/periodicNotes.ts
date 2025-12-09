@@ -70,14 +70,16 @@ export class PeriodicNotesManager extends PluginComponent {
     if (!this.isActive || !(file instanceof TFile)) {
       return;
     }
-    this.removeNoteFromCache(file.path);
+    this.removeNoteFromCache(file);
   }
 
   public override onFileRenamed(file: TAbstractFile, oldPath: string): void {
     if (!this.isActive || !(file instanceof TFile)) {
       return;
     }
-    this.removeNoteFromCache(oldPath);
+    // `this.noteCache` contains `TFile`, so to remove the renamed note,
+    // the path after renaming is required (`TFile.path` is updated).
+    this.removeNoteFromCache(file);
     this.addNoteToCache(file);
   }
 
@@ -165,28 +167,31 @@ export class PeriodicNotesManager extends PluginComponent {
     const uids = this.noteUIDCache.get(granularity);
     if (notes && uids) {
       const dateUID = getDateUID(date, granularity);
-      notes[dateUID] = file;
-      uids.push(dateUID);
-      uids.sort();
+      if (!uids.includes(dateUID)) {
+        notes[dateUID] = file;
+        uids.push(dateUID);
+        uids.sort();
+      }
     }
   }
 
   /**
-   * Removes the note from the cache if it is a periodic note.
+   * Removes the note from the cache if it is included.
    */
-  private removeNoteFromCache(path: string): void {
-    const { date, granularity } = this.getDateFromPath(path);
-    if (!date || !granularity) {
-      return;
-    }
-    const notes = this.noteCache.get(granularity);
-    const uids = this.noteUIDCache.get(granularity);
-    if (notes && uids) {
-      const dateUID = getDateUID(date, granularity);
-      delete notes[dateUID];
-      const index = uids.indexOf(dateUID);
-      if (index !== -1) {
-        uids.splice(index, 1);
+  private removeNoteFromCache(file: TFile): void {
+    const granularities = this.getActiveGranularities(true);
+    for (const granularity of granularities) {
+      const notes = this.noteCache.get(granularity);
+      const uids = this.noteUIDCache.get(granularity);
+      if (notes && uids) {
+        const dateUID = Object.keys(notes).find((key) => notes[key].path === file.path);
+        if (dateUID) {
+          delete notes[dateUID];
+          const index = uids.indexOf(dateUID);
+          if (index !== -1) {
+            uids.splice(index, 1);
+          }
+        }
       }
     }
   }
