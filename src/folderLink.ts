@@ -281,14 +281,16 @@ class FolderEntry {
       if (stringComparison) {
         const aSortValue = String(a.sortValue);
         const bSortValue = String(b.sortValue);
-        result = aSortValue.localeCompare(bSortValue) || a.fileName.localeCompare(b.fileName);
+        result =
+          aSortValue.localeCompare(bSortValue, undefined, { numeric: true }) ||
+          a.fileName.localeCompare(b.fileName, undefined, { numeric: true });
       } else {
         if (a.sortValue < b.sortValue) {
           result = -1;
         } else if (a.sortValue > b.sortValue) {
           result = 1;
         } else {
-          result = a.fileName.localeCompare(b.fileName);
+          result = a.fileName.localeCompare(b.fileName, undefined, { numeric: true });
         }
       }
       return revert ? -result : result;

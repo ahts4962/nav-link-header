@@ -40,7 +40,7 @@ export class LinkContainer {
         const existingIndex = priority.indexOf(existingPrefix);
         const newIndex = priority.indexOf(newPrefix);
         if (existingIndex === -1 && newIndex === -1) {
-          if (existingPrefix.localeCompare(newPrefix) > 0) {
+          if (existingPrefix.localeCompare(newPrefix, undefined, { numeric: true }) > 0) {
             this.links[i] = link;
           } else {
             return;
@@ -82,10 +82,12 @@ export class LinkContainer {
       if (aIndex === -1 && bIndex === -1) {
         if (aSortTag === bSortTag) {
           return (a as PrefixedLinkState).link.displayText.localeCompare(
-            (b as PrefixedLinkState).link.displayText
+            (b as PrefixedLinkState).link.displayText,
+            undefined,
+            { numeric: true }
           );
         } else {
-          return aSortTag.localeCompare(bSortTag);
+          return aSortTag.localeCompare(bSortTag, undefined, { numeric: true });
         }
       } else if (aIndex === -1) {
         return 1;
@@ -97,7 +99,9 @@ export class LinkContainer {
             return (a as ThreeWayLinkState).index - (b as ThreeWayLinkState).index;
           } else {
             return (a as PrefixedLinkState).link.displayText.localeCompare(
-              (b as PrefixedLinkState).link.displayText
+              (b as PrefixedLinkState).link.displayText,
+              undefined,
+              { numeric: true }
             );
           }
         } else {
