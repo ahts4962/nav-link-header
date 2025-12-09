@@ -981,7 +981,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           "For each folder specified here, files in the same folder as the currently opened file " +
             "will be shown in the navigation header. You can specify multiple folders " +
             "(enter one path per line). Glob patterns are supported " +
-            '(e.g., /**: all folders; folder/*: all folders directly under "folder").'
+            "(e.g., **: all folders; *: all folders directly under root; " +
+            'folder/*: all folders directly under "folder").'
         )
         .addTextArea((text) => {
           text
@@ -1022,13 +1023,13 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       new Setting(containerEl)
         .setName("Include patterns")
         .setDesc(
-          "Include files matching these patterns. Enter one per line. " +
+          "Include files that match these patterns partially. Enter one per line. " +
             "Leave empty for all files."
         )
         .addTextArea((text) => {
           text
             .setValue(folderLinkSettings.includePatterns.join("\n"))
-            .setPlaceholder("Chapter\n^\\d{3}_.+\\.md$")
+            .setPlaceholder("Chapter")
             .onChange((value) => {
               folderLinkSettings.includePatterns = parseMultiLineInput(
                 value,
@@ -1040,7 +1041,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
 
       new Setting(containerEl)
         .setName("Exclude patterns")
-        .setDesc("Exclude files matching these patterns. Enter one per line.")
+        .setDesc("Exclude files that match these patterns partially. Enter one per line.")
         .addTextArea((text) => {
           text
             .setValue(folderLinkSettings.excludePatterns.join("\n"))

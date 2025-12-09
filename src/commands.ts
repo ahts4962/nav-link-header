@@ -343,27 +343,30 @@ function openFolderLink(
 
   for (const adjacentFiles of folderLinksManager.getAdjacentFiles(file)) {
     if (direction === "previous") {
-      if (!adjacentFiles.previous) {
+      if (adjacentFiles.previous.length === 0) {
         continue;
       }
       if (!checking) {
-        void plugin.app.workspace.openLinkText(adjacentFiles.previous, file.path);
+        void plugin.app.workspace.openLinkText(
+          adjacentFiles.previous[adjacentFiles.previous.length - 1],
+          file.path
+        );
       }
       return true;
     } else if (direction === "next") {
-      if (!adjacentFiles.next) {
+      if (adjacentFiles.next.length === 0) {
         continue;
       }
       if (!checking) {
-        void plugin.app.workspace.openLinkText(adjacentFiles.next, file.path);
+        void plugin.app.workspace.openLinkText(adjacentFiles.next[0], file.path);
       }
       return true;
     } else if (direction === "parent") {
-      if (!adjacentFiles.parent) {
+      if (adjacentFiles.parent.length === 0) {
         continue;
       }
       if (!checking) {
-        void plugin.app.workspace.openLinkText(adjacentFiles.parent, file.path);
+        void plugin.app.workspace.openLinkText(adjacentFiles.parent[0], file.path);
       }
       return true;
     }

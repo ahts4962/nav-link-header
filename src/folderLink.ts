@@ -1,4 +1,5 @@
-import { type CachedMetadata, Vault, TFile, type TAbstractFile } from "obsidian";
+import { type CachedMetadata, Vault, TFile, TFolder, type TAbstractFile } from "obsidian";
+import { minimatch } from "minimatch";
 import type NavLinkHeader from "./main";
 import { PluginComponent } from "./pluginComponent";
 import type { NavLinkHeaderSettings } from "./settings";
@@ -9,34 +10,43 @@ import { deepEqual, isFileInFolder, getFirstValueFromFileProperty } from "./util
  * The lists also include files with extensions other than ".md".
  */
 export class FolderLinksManager extends PluginComponent {
-  private folderEntries: FolderEntry[] = [];
+  private folderGroupEntries: FolderGroupEntry[] = [];
 
   public get isActive(): boolean {
-    return this.folderEntries.length > 0;
+    return this.folderGroupEntries.length > 0;
   }
 
   constructor(private plugin: NavLinkHeader) {
     super();
 
     for (let i = 0; i < this.plugin.settings.folderLinksSettingsArray.length; i++) {
-      this.folderEntries.push(new FolderEntry(plugin, i));
+      this.folderGroupEntries.push(new FolderGroupEntry(plugin, i));
+    }
+  }
+
+  public override onFileCreated(file: TAbstractFile): void {
+    if (!this.isActive) {
+      return;
+    }
+    for (const entry of this.folderGroupEntries) {
+      entry.onFileCreated(file);
     }
   }
 
   public override onFileDeleted(file: TAbstractFile): void {
-    if (!this.isActive || !(file instanceof TFile)) {
+    if (!this.isActive) {
       return;
     }
-    for (const entry of this.folderEntries) {
+    for (const entry of this.folderGroupEntries) {
       entry.onFileDeleted(file);
     }
   }
 
   public override onFileRenamed(file: TAbstractFile, oldPath: string): void {
-    if (!this.isActive || !(file instanceof TFile)) {
+    if (!this.isActive) {
       return;
     }
-    for (const entry of this.folderEntries) {
+    for (const entry of this.folderGroupEntries) {
       entry.onFileRenamed(file, oldPath);
     }
   }
@@ -45,7 +55,7 @@ export class FolderLinksManager extends PluginComponent {
     if (!this.isActive) {
       return;
     }
-    for (const entry of this.folderEntries) {
+    for (const entry of this.folderGroupEntries) {
       entry.onMetadataChanged(file);
     }
   }
@@ -57,12 +67,12 @@ export class FolderLinksManager extends PluginComponent {
     const previousLength = previous.folderLinksSettingsArray.length;
     const currentLength = current.folderLinksSettingsArray.length;
     if (previousLength > currentLength) {
-      this.folderEntries = this.folderEntries.slice(0, currentLength);
+      this.folderGroupEntries = this.folderGroupEntries.slice(0, currentLength);
     } else if (previousLength < currentLength) {
       const lengthDiff = currentLength - previousLength;
       const startIndex = previousLength;
       for (let i = 0; i < lengthDiff; i++) {
-        this.folderEntries.push(new FolderEntry(this.plugin, startIndex + i));
+        this.folderGroupEntries.push(new FolderGroupEntry(this.plugin, startIndex + i));
       }
     }
 
@@ -73,33 +83,159 @@ export class FolderLinksManager extends PluginComponent {
       const previousFolderSettings = previous.folderLinksSettingsArray[i];
       const currentFolderSettings = current.folderLinksSettingsArray[i];
       if (!deepEqual(previousFolderSettings, currentFolderSettings)) {
-        this.folderEntries[i] = new FolderEntry(this.plugin, i);
+        this.folderGroupEntries[i] = new FolderGroupEntry(this.plugin, i);
       }
     }
   }
 
   public override dispose(): void {
-    this.folderEntries = [];
+    this.folderGroupEntries = [];
   }
 
   /**
-   * Retrieves information about files adjacent to the specified file within the folder entries.
-   * For each folder entry, this method checks if the given file is included and, if so, collects
-   * the adjacent file information (previous, next, parent, and index) into the results array.
+   * Retrieves files adjacent to the specified file within the folder entries.
    * @param file The file for which to find adjacent files.
    * @returns An array of objects, each containing the previous, next, and parent file paths
-   *     (if available), as well as the index of the folder entry.
+   *     (if available), as well as the index of the folder group entry.
    */
   public getAdjacentFiles(file: TFile): {
-    previous?: string;
-    next?: string;
-    parent?: string;
+    previous: string[];
+    next: string[];
+    parent: string[];
     index: number;
   }[] {
     if (!this.isActive) {
       return [];
     }
 
+    const results: ReturnType<typeof this.getAdjacentFiles> = [];
+    for (let i = 0; i < this.folderGroupEntries.length; i++) {
+      const groupResult = this.folderGroupEntries[i].getAdjacentFiles(file);
+      for (const result of groupResult) {
+        results.push({
+          previous: result.previous,
+          next: result.next,
+          parent: result.parent,
+          index: i,
+        });
+      }
+    }
+    return results;
+  }
+}
+
+/**
+ * Represents a group of folders defined in the settings.
+ * Each folder group corresponds to one entry in the `folderLinksSettingsArray` setting.
+ * Each folder in the group is managed by a `FolderEntry` instance.
+ * If the settings for this folder group change, a new instance of this class should be created.
+ */
+class FolderGroupEntry {
+  private folderEntries: FolderEntry[] = [];
+
+  constructor(private plugin: NavLinkHeader, private folderGroupIndex: number) {
+    const settings = this.plugin.settings.folderLinksSettingsArray[this.folderGroupIndex];
+    if (settings.folderPaths.length === 0) {
+      return;
+    }
+
+    this.plugin.app.vault
+      .getAllLoadedFiles()
+      .filter((file) => file instanceof TFolder)
+      .map((folder) => folder.path)
+      .forEach((folderPath) => this.addFolderEntry(folderPath));
+  }
+
+  public onFileCreated(file: TAbstractFile): void {
+    if (file instanceof TFile) {
+      // Creation of `TFile` is handled in `onMetadataChanged`.
+      return;
+    }
+    this.addFolderEntry(file.path);
+  }
+
+  public onFileDeleted(file: TAbstractFile): void {
+    if (file instanceof TFile) {
+      for (const entry of this.folderEntries) {
+        entry.onFileDeleted(file);
+      }
+    } else {
+      this.removeFolderEntry(file.path);
+    }
+  }
+
+  public onFileRenamed(file: TAbstractFile, oldPath: string): void {
+    if (file instanceof TFile) {
+      for (const entry of this.folderEntries) {
+        entry.onFileRenamed(file, oldPath);
+      }
+    } else {
+      this.removeFolderEntry(oldPath);
+      this.addFolderEntry(file.path);
+    }
+  }
+
+  public onMetadataChanged(file: TFile): void {
+    for (const entry of this.folderEntries) {
+      entry.onMetadataChanged(file);
+    }
+  }
+
+  /**
+   * Adds a folder entry for the specified folder path if it matches the settings.
+   * @param folderPath The path of the folder to add.
+   */
+  private addFolderEntry(folderPath: string): void {
+    const index = this.folderEntries.findIndex((entry) => entry.folderPath === folderPath);
+    if (index !== -1) {
+      return;
+    }
+
+    const settings = this.plugin.settings.folderLinksSettingsArray[this.folderGroupIndex];
+
+    for (const settingPath of settings.folderPaths) {
+      if (!minimatch(folderPath, settingPath)) {
+        continue;
+      }
+
+      let excluded = false;
+      for (const excludedPath of settings.excludedFolderPaths) {
+        if (minimatch(folderPath, excludedPath)) {
+          excluded = true;
+          break;
+        }
+      }
+      if (!excluded) {
+        this.folderEntries.push(new FolderEntry(this.plugin, this.folderGroupIndex, folderPath));
+      }
+      break;
+    }
+  }
+
+  /**
+   * Removes the folder entry for the specified folder path if it exists.
+   * @param folderPath The path of the folder to remove.
+   */
+  private removeFolderEntry(folderPath: string): void {
+    const index = this.folderEntries.findIndex((entry) => entry.folderPath === folderPath);
+    if (index !== -1) {
+      this.folderEntries.splice(index, 1);
+    }
+  }
+
+  /**
+   * Retrieves information about files adjacent to the specified file within the folder entries.
+   * For each folder entry, this method checks if the given file is included and, if so, collects
+   * the adjacent file information (previous, next, and parent) into the results array.
+   * @param file The file for which to find adjacent files.
+   * @returns An array of objects, each containing the previous, next, and parent file paths
+   *     (if available).
+   */
+  public getAdjacentFiles(file: TFile): {
+    previous: string[];
+    next: string[];
+    parent: string[];
+  }[] {
     const results: ReturnType<typeof this.getAdjacentFiles> = [];
     for (let i = 0; i < this.folderEntries.length; i++) {
       const result = this.folderEntries[i].getAdjacentFiles(file);
@@ -108,7 +244,6 @@ export class FolderLinksManager extends PluginComponent {
           previous: result.previous,
           next: result.next,
           parent: result.parent,
-          index: i,
         });
       }
     }
@@ -136,14 +271,15 @@ class FolderEntry {
   /**
    * Initializes a new instance of the `FolderEntry` class.
    * @param plugin The plugin instance.
-   * @param folderIndex The index of the folder settings in the settings array.
+   * @param folderGroupIndex The index of the folder settings in the settings array.
+   * @param folderPath The path of the folder.
    */
-  constructor(private plugin: NavLinkHeader, private folderIndex: number) {
-    const settings = this.plugin.settings.folderLinksSettingsArray[this.folderIndex];
-    if (!settings.folderPath) {
-      return;
-    }
-    const folder = this.plugin.app.vault.getFolderByPath(settings.folderPath);
+  constructor(
+    private plugin: NavLinkHeader,
+    private folderGroupIndex: number,
+    public folderPath: string
+  ) {
+    const folder = this.plugin.app.vault.getFolderByPath(this.folderPath)!;
     if (!folder) {
       return;
     }
@@ -152,7 +288,7 @@ class FolderEntry {
       if (!(file instanceof TFile)) {
         return;
       }
-      this.addFileToList(file, false);
+      this.addFileToList(file, folder, false);
     });
     this.sortList();
   }
@@ -163,41 +299,41 @@ class FolderEntry {
 
   public onFileRenamed(file: TFile, oldPath: string): void {
     this.removeFileFromList(oldPath);
-    this.addFileToList(file);
+    const folder = this.plugin.app.vault.getFolderByPath(this.folderPath)!;
+    if (folder) {
+      this.addFileToList(file, folder);
+    }
   }
 
   public onMetadataChanged(file: TFile): void {
     // onFileCreated is not needed because onMetadataChanged is called after file creation.
     this.removeFileFromList(file.path);
-    this.addFileToList(file);
+    const folder = this.plugin.app.vault.getFolderByPath(this.folderPath)!;
+    if (folder) {
+      this.addFileToList(file, folder);
+    }
   }
 
   /**
    * Adds the file to the list if it is included in the folder.
    * The file is filtered based on the settings.
    * @param file The file to add to the list.
+   * @param folder The folder to check if the file is included in.
    * @param sort Whether to sort the list after adding the file.
    */
-  private addFileToList(file: TFile, sort: boolean = true): void {
-    const settings = this.plugin.settings.folderLinksSettingsArray[this.folderIndex];
+  private addFileToList(file: TFile, folder: TFolder, sort: boolean = true): void {
+    const settings = this.plugin.settings.folderLinksSettingsArray[this.folderGroupIndex];
 
     // Check if the file is included in the folder.
-    if (!settings.folderPath) {
-      return;
-    }
-    const folder = this.plugin.app.vault.getFolderByPath(settings.folderPath);
-    if (!folder) {
-      return;
-    }
     if (!isFileInFolder(file.path, folder.path, settings.recursive)) {
       return;
     }
 
     // Filter files based on the regex.
-    if (settings.filterRegex) {
+    if (settings.includePatterns.length > 0) {
       let re: RegExp | undefined = undefined;
       try {
-        re = new RegExp(settings.filterRegex);
+        re = new RegExp(settings.includePatterns[0]);
       } catch {
         re = undefined;
       }
@@ -246,6 +382,10 @@ class FolderEntry {
       }
     }
 
+    if (this.files.findIndex((f) => f.path === file.path) !== -1) {
+      return;
+    }
+
     this.files.push({
       path: file.path,
       fileName: file.name,
@@ -272,7 +412,7 @@ class FolderEntry {
    * previously stored with the file paths.
    */
   private sortList(): void {
-    const settings = this.plugin.settings.folderLinksSettingsArray[this.folderIndex];
+    const settings = this.plugin.settings.folderLinksSettingsArray[this.folderGroupIndex];
 
     const revert = settings.sortOrder === "desc";
     const stringComparison = this.files.some((f) => typeof f.sortValue === "string");
@@ -307,15 +447,15 @@ class FolderEntry {
    */
   public getAdjacentFiles(file: TFile): {
     currentFileIncluded: boolean;
-    previous?: string;
-    next?: string;
-    parent?: string;
+    previous: string[];
+    next: string[];
+    parent: string[];
   } {
     const result: ReturnType<typeof this.getAdjacentFiles> = {
       currentFileIncluded: false,
-      previous: undefined,
-      next: undefined,
-      parent: undefined,
+      previous: [],
+      next: [],
+      parent: [],
     };
 
     const index = this.files.findIndex((f) => f.path === file.path);
@@ -324,18 +464,18 @@ class FolderEntry {
     }
     result.currentFileIncluded = true;
 
-    const settings = this.plugin.settings.folderLinksSettingsArray[this.folderIndex];
+    const settings = this.plugin.settings.folderLinksSettingsArray[this.folderGroupIndex];
 
     if (index > 0) {
-      result.previous = this.files[index - 1].path;
+      result.previous = [this.files[index - 1].path];
     }
     if (index < this.files.length - 1) {
-      result.next = this.files[index + 1].path;
+      result.next = [this.files[index + 1].path];
     }
     if (settings.parentPath) {
       const parentFile = this.plugin.app.vault.getFileByPath(settings.parentPath);
       if (parentFile) {
-        result.parent = parentFile.path;
+        result.parent = [parentFile.path];
       }
     }
 

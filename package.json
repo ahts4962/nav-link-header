@@ -33,6 +33,7 @@
   },
   "dependencies": {
     "emoji-regex-xs": "^2.0.1",
+    "minimatch": "^10.1.1",
     "obsidian-daily-notes-interface": "^0.9.4",
     "semver": "^7.7.3"
   }

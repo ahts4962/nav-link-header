@@ -509,14 +509,14 @@ export class NavigationComponent extends Component {
         hidden: boolean;
       } = { links: [], hidden: true };
 
-      if (adjacentFiles.previous) {
+      if (adjacentFiles.previous.length > 0) {
         previous.links.push(
           new PrefixedLinkState({
             prefix: "",
             link: new NavigationLinkState({
-              destination: adjacentFiles.previous,
+              destination: adjacentFiles.previous[0],
               isExternal: false,
-              displayText: this.getDisplayText(adjacentFiles.previous, false),
+              displayText: this.getDisplayText(adjacentFiles.previous[0], false),
               resolved: true,
               clickHandler,
               mouseOverHandler,
@@ -525,14 +525,14 @@ export class NavigationComponent extends Component {
         );
       }
 
-      if (adjacentFiles.next) {
+      if (adjacentFiles.next.length > 0) {
         next.links.push(
           new PrefixedLinkState({
             prefix: "",
             link: new NavigationLinkState({
-              destination: adjacentFiles.next,
+              destination: adjacentFiles.next[0],
               isExternal: false,
-              displayText: this.getDisplayText(adjacentFiles.next, false),
+              displayText: this.getDisplayText(adjacentFiles.next[0], false),
               resolved: true,
               clickHandler,
               mouseOverHandler,
@@ -543,14 +543,14 @@ export class NavigationComponent extends Component {
 
       if (this.plugin.settings.folderLinksSettingsArray[adjacentFiles.index].parentPath) {
         parent.hidden = false;
-        if (adjacentFiles.parent) {
+        if (adjacentFiles.parent.length > 0) {
           parent.links.push(
             new PrefixedLinkState({
               prefix: "",
               link: new NavigationLinkState({
-                destination: adjacentFiles.parent,
+                destination: adjacentFiles.parent[0],
                 isExternal: false,
-                displayText: this.getDisplayText(adjacentFiles.parent, false),
+                displayText: this.getDisplayText(adjacentFiles.parent[0], false),
                 resolved: true,
                 clickHandler,
                 mouseOverHandler,
