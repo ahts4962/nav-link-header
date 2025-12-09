@@ -54,15 +54,21 @@ export interface NavLinkHeaderSettings {
 }
 
 export interface FolderLinksSettings {
-  folderPath: string;
+  folderPaths: string[];
+  excludedFolderPaths: string[];
   recursive: boolean;
-  filterRegex: string;
+  includePatterns: string[];
+  excludePatterns: string[];
+  enableRegex: boolean;
   filterBy: "filename" | "property";
   filterPropertyName: string;
   sortOrder: "asc" | "desc";
   sortBy: "filename" | "created" | "modified" | "property";
   sortPropertyName: string;
+  maxLinks: number;
   parentPath: string;
+  displayStyle: "full" | "separator" | "none";
+  linkPrefix: string;
 }
 
 export const DEFAULT_SETTINGS: NavLinkHeaderSettings = {
@@ -109,15 +115,21 @@ export const DEFAULT_SETTINGS: NavLinkHeaderSettings = {
 };
 
 const DEFAULT_FOLDER_LINKS_SETTINGS: FolderLinksSettings = {
-  folderPath: "",
+  folderPaths: [],
+  excludedFolderPaths: [],
   recursive: false,
-  filterRegex: "",
+  includePatterns: [],
+  excludePatterns: [],
+  enableRegex: false,
   filterBy: "filename",
   filterPropertyName: "",
   sortOrder: "asc",
   sortBy: "filename",
   sortPropertyName: "",
+  maxLinks: 1,
   parentPath: "",
+  displayStyle: "full",
+  linkPrefix: "",
 };
 
 /**
@@ -311,6 +323,36 @@ function convertOldSettings(loadedData: Record<string, unknown>): Record<string,
     delete loadedData["parentLinkProperty"];
   }
 
+  if (lt(version, "2.6.0")) {
+    if (
+      "folderLinksSettingsArray" in loadedData &&
+      loadedData["folderLinksSettingsArray"] instanceof Array
+    ) {
+      for (let i = 0; i < loadedData["folderLinksSettingsArray"].length; i++) {
+        const loadedSubData = loadedData["folderLinksSettingsArray"][i] as Record<string, unknown>;
+        if (
+          "folderPath" in loadedSubData &&
+          typeof loadedSubData["folderPath"] === "string" &&
+          loadedSubData["folderPath"].length > 0
+        ) {
+          loadedSubData["folderPaths"] = [loadedSubData["folderPath"]];
+        }
+
+        if (
+          "filterRegex" in loadedSubData &&
+          typeof loadedSubData["filterRegex"] === "string" &&
+          loadedSubData["filterRegex"].length > 0
+        ) {
+          loadedSubData["includePatterns"] = [loadedSubData["filterRegex"]];
+          loadedSubData["enableRegex"] = true;
+        }
+
+        delete loadedSubData["folderPath"];
+        delete loadedSubData["filterRegex"];
+      }
+    }
+  }
+
   loadedData["version"] = DEFAULT_SETTINGS.version;
   return loadedData;
 }
@@ -353,8 +395,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           "(see also the descriptions in Annotation strings and Property mappings below). " +
           `"${DISPLAY_ORDER_PLACEHOLDER_PERIODIC}", "${DISPLAY_ORDER_PLACEHOLDER_PROPERTY}", ` +
           `and "${DISPLAY_ORDER_PLACEHOLDER_FOLDER}" are special strings that correspond to ` +
-          "periodic notes, previous/next/parent notes specified by properties, " +
-          "and notes in a specified folder, respectively."
+          "periodic note links, previous/next/parent property links, " +
+          "and folder links, respectively."
       )
       .addText((text) => {
         const order = this.plugin.settingsUnderChange.displayOrderOfLinks.join(",");
@@ -379,7 +421,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           .setValue(this.plugin.settingsUnderChange.propertyNameForDisplayText)
           .setPlaceholder("title")
           .onChange((value) => {
-            this.plugin.settingsUnderChange.propertyNameForDisplayText = value;
+            this.plugin.settingsUnderChange.propertyNameForDisplayText = value.trim();
             this.plugin.triggerSettingsChangedDebounced();
           });
       });
@@ -455,7 +497,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           'entered in "Display order of links", "Duplicate link filtering priority", ' +
           '"Annotation strings", "Advanced annotation strings", "Property mappings", ' +
           '"Previous note property mappings", "Next note property mappings", ' +
-          'and "Parent note property mappings". ' +
+          '"Parent note property mappings", "Include patterns", "Exclude patterns", ' +
+          'and "Link prefix". ' +
           "Disable this option if you want to include spaces intentionally."
       )
       .addToggle((toggle) => {
@@ -672,7 +715,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           });
       });
 
-    new Setting(containerEl).setName("Links specified by file properties").setHeading();
+    new Setting(containerEl).setName("Property links").setHeading();
 
     new Setting(containerEl)
       .setName("Property mappings")
@@ -923,37 +966,52 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           });
       });
 
-    new Setting(containerEl)
-      .setName("Previous/next/parent links for ordered notes in specified folders")
-      .setHeading();
+    new Setting(containerEl).setName("Folder links").setHeading();
 
     const folderLinksSettingsArray = this.plugin.settingsUnderChange.folderLinksSettingsArray;
     for (let i = 0; i < folderLinksSettingsArray.length; i++) {
       const folderLinkSettings = folderLinksSettingsArray[i];
 
       // The actual index will be the number shown here - 1.
-      new Setting(containerEl).setName(`Folder #${i + 1}`).setHeading();
+      new Setting(containerEl).setName(`Folder setting #${i + 1}`).setHeading();
 
       new Setting(containerEl)
-        .setName("Folder path")
+        .setName("Folder paths")
         .setDesc(
-          "The notes in this folder are recognized as ordered notes " +
-            "and can be navigated back and forth."
+          "For each folder specified here, files in the same folder as the currently opened file " +
+            "will be shown in the navigation header. You can specify multiple folders " +
+            "(enter one path per line). Glob patterns are supported " +
+            '(e.g., /**: all folders; folder/*: all folders directly under "folder").'
         )
-        .addText((text) => {
+        .addTextArea((text) => {
           text
-            .setValue(folderLinkSettings.folderPath)
-            .setPlaceholder("path/to/the/folder")
+            .setValue(folderLinkSettings.folderPaths.join("\n"))
+            .setPlaceholder("path/to/the/folder\nanother/folder/*")
             .onChange((value) => {
-              const trimmed = value.trim();
-              folderLinkSettings.folderPath = trimmed === "" ? "" : normalizePath(trimmed);
+              folderLinkSettings.folderPaths = parseMultiLineInput(value, true);
+              this.plugin.triggerSettingsChangedDebounced();
+            });
+        });
+
+      new Setting(containerEl)
+        .setName("Excluded folder paths")
+        .setDesc(
+          "Specify the folder paths to exclude. You can specify multiple folders " +
+            "(enter one path per line). Glob patterns are supported."
+        )
+        .addTextArea((text) => {
+          text
+            .setValue(folderLinkSettings.excludedFolderPaths.join("\n"))
+            .setPlaceholder("path/to/the/folder\nanother/folder/*")
+            .onChange((value) => {
+              folderLinkSettings.excludedFolderPaths = parseMultiLineInput(value, true);
               this.plugin.triggerSettingsChangedDebounced();
             });
         });
 
       new Setting(containerEl)
         .setName("Recursive")
-        .setDesc("Whether to include notes in subfolders.")
+        .setDesc("Whether to include files in subfolders.")
         .addToggle((toggle) => {
           toggle.setValue(folderLinkSettings.recursive).onChange((value) => {
             folderLinkSettings.recursive = value;
@@ -962,33 +1020,67 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
         });
 
       new Setting(containerEl)
-        .setName("Regular expression")
+        .setName("Include patterns")
         .setDesc(
-          "The regular expression to filter notes in the folder. " +
-            "If you want to include all files, leave this field blank."
+          "Include files matching these patterns. Enter one per line. " +
+            "Leave empty for all files."
         )
-        .addText((text) => {
+        .addTextArea((text) => {
           text
-            .setValue(folderLinkSettings.filterRegex)
-            .setPlaceholder("^\\d{3}_.+\\.md$")
+            .setValue(folderLinkSettings.includePatterns.join("\n"))
+            .setPlaceholder("Chapter\n^\\d{3}_.+\\.md$")
             .onChange((value) => {
-              folderLinkSettings.filterRegex = value;
+              folderLinkSettings.includePatterns = parseMultiLineInput(
+                value,
+                this.plugin.settings.trimStringsInSettings
+              );
               this.plugin.triggerSettingsChangedDebounced();
             });
         });
 
-      new Setting(containerEl).setName("Filter by").addDropdown((dropdown) => {
-        dropdown
-          .addOptions({
-            filename: "File name",
-            property: "Property",
-          })
-          .setValue(folderLinkSettings.filterBy)
-          .onChange((value) => {
-            folderLinkSettings.filterBy = value as "filename" | "property";
+      new Setting(containerEl)
+        .setName("Exclude patterns")
+        .setDesc("Exclude files matching these patterns. Enter one per line.")
+        .addTextArea((text) => {
+          text
+            .setValue(folderLinkSettings.excludePatterns.join("\n"))
+            .setPlaceholder(".canvas")
+            .onChange((value) => {
+              folderLinkSettings.excludePatterns = parseMultiLineInput(
+                value,
+                this.plugin.settings.trimStringsInSettings
+              );
+              this.plugin.triggerSettingsChangedDebounced();
+            });
+        });
+
+      new Setting(containerEl)
+        .setName("Enable regular expressions")
+        .setDesc("Whether to enable regular expressions for include/exclude patterns.")
+        .addToggle((toggle) => {
+          toggle.setValue(folderLinkSettings.enableRegex).onChange((value) => {
+            folderLinkSettings.enableRegex = value;
             this.plugin.triggerSettingsChangedDebounced();
           });
-      });
+        });
+
+      new Setting(containerEl)
+        .setName("Filter by")
+        .setDesc(
+          "Specify whether to use file names or property values for include/exclude patterns."
+        )
+        .addDropdown((dropdown) => {
+          dropdown
+            .addOptions({
+              filename: "File name",
+              property: "Property",
+            })
+            .setValue(folderLinkSettings.filterBy)
+            .onChange((value) => {
+              folderLinkSettings.filterBy = value as "filename" | "property";
+              this.plugin.triggerSettingsChangedDebounced();
+            });
+        });
 
       new Setting(containerEl)
         .setName("Property name to filter by")
@@ -998,7 +1090,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
         )
         .addText((text) => {
           text.setValue(folderLinkSettings.filterPropertyName).onChange((value) => {
-            folderLinkSettings.filterPropertyName = value;
+            folderLinkSettings.filterPropertyName = value.trim();
             this.plugin.triggerSettingsChangedDebounced();
           });
         });
@@ -1039,7 +1131,26 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
         )
         .addText((text) => {
           text.setValue(folderLinkSettings.sortPropertyName).onChange((value) => {
-            folderLinkSettings.sortPropertyName = value;
+            folderLinkSettings.sortPropertyName = value.trim();
+            this.plugin.triggerSettingsChangedDebounced();
+          });
+        });
+
+      new Setting(containerEl)
+        .setName("Max links")
+        .setDesc(
+          "The maximum number of folder links to display. " +
+            "For example, if set to 3, the display would look like " +
+            "<prev3 prev2 prev1 | parent | next1 next2 next3>."
+        )
+        .addText((text) => {
+          text.inputEl.type = "number";
+          text.setValue(String(folderLinkSettings.maxLinks)).onChange((value) => {
+            let n = Number(value);
+            n = Number.isFinite(n) ? n : DEFAULT_FOLDER_LINKS_SETTINGS.maxLinks;
+            n = Math.floor(n);
+            n = n < 1 ? 1 : n;
+            folderLinkSettings.maxLinks = n;
             this.plugin.triggerSettingsChangedDebounced();
           });
         });
@@ -1054,6 +1165,39 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
             this.plugin.triggerSettingsChangedDebounced();
           });
       });
+
+      new Setting(containerEl)
+        .setName("Link display style")
+        .setDesc(
+          "Specify the display style of prev/next/parent links in the navigation header. " +
+            "Full: < previous | parent | next >, Separator: previous | parent | next, " +
+            "None: previous parent next."
+        )
+        .addDropdown((dropdown) => {
+          dropdown
+            .addOptions({
+              full: "Full",
+              separator: "Separator",
+              none: "None",
+            })
+            .setValue(folderLinkSettings.displayStyle)
+            .onChange((value) => {
+              folderLinkSettings.displayStyle = value as "full" | "separator" | "none";
+              this.plugin.triggerSettingsChangedDebounced();
+            });
+        });
+
+      new Setting(containerEl)
+        .setName("Link prefix")
+        .setDesc("The string to display before each link (e.g., an emoji).")
+        .addText((text) => {
+          text.setValue(folderLinkSettings.linkPrefix).onChange((value) => {
+            folderLinkSettings.linkPrefix = this.plugin.settings.trimStringsInSettings
+              ? value.trim()
+              : value;
+            this.plugin.triggerSettingsChangedDebounced();
+          });
+        });
 
       new Setting(containerEl)
         .setName("")
@@ -1073,7 +1217,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
         })
         .addButton((button) => {
           button
-            .setButtonText(`Remove settings for folder #${i + 1}`)
+            .setButtonText("Remove")
             .setWarning()
             .onClick(() => {
               folderLinksSettingsArray.splice(i, 1);
@@ -1085,7 +1229,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
 
     new Setting(containerEl).setName("").addButton((button) => {
       button
-        .setButtonText("Add a new folder")
+        .setButtonText("Add folder setting")
         .setCta()
         .onClick(() => {
           this.plugin.settingsUnderChange.folderLinksSettingsArray.push(
@@ -1206,4 +1350,16 @@ function parsePropertyPairs(pairs: string): { propertyA: string; propertyB: stri
       };
     })
     .filter((mapping) => mapping.propertyA.length > 0 && mapping.propertyB.length > 0);
+}
+
+/**
+ * Parses a multi-line input into an array of strings.
+ * If `trim` is true, leading and trailing whitespace from each line is removed.
+ * Empty lines are filtered out.
+ */
+function parseMultiLineInput(input: string, trim: boolean): string[] {
+  return input
+    .split("\n")
+    .map((line) => (trim ? line.trim() : line))
+    .filter((line) => line.length > 0);
 }
