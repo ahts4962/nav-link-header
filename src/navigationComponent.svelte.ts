@@ -229,9 +229,9 @@ export class NavigationComponent extends Component {
     mouseOverHandler: LinkEventHandler
   ): ThreeWayLinkState | undefined {
     if (
-      this.plugin.settings.previousLinkPropertyMappings.length == 0 &&
-      this.plugin.settings.nextLinkPropertyMappings.length == 0 &&
-      this.plugin.settings.parentLinkPropertyMappings.length == 0
+      this.plugin.settings.previousLinkPropertyMappings.length === 0 &&
+      this.plugin.settings.nextLinkPropertyMappings.length === 0 &&
+      this.plugin.settings.parentLinkPropertyMappings.length === 0
     ) {
       return undefined;
     }

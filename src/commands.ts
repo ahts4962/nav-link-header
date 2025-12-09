@@ -223,9 +223,9 @@ function openThreeWayPropertyLink(
   checking: boolean
 ): boolean {
   if (
-    plugin.settings.previousLinkPropertyMappings.length == 0 &&
-    plugin.settings.nextLinkPropertyMappings.length == 0 &&
-    plugin.settings.parentLinkPropertyMappings.length == 0
+    plugin.settings.previousLinkPropertyMappings.length === 0 &&
+    plugin.settings.nextLinkPropertyMappings.length === 0 &&
+    plugin.settings.parentLinkPropertyMappings.length === 0
   ) {
     return false;
   }
