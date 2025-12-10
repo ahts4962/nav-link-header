@@ -475,8 +475,9 @@ class FolderEntry {
    * @param file The file to retrieve the adjacent files of.
    * @returns The paths of the previous, next, and parent files.
    *     If `file` is not included in the folder, `currentFileIncluded` is `false` and
-   *     the other values are `undefined`.
-   *     If previous, next, or parent files are not found, the corresponding value is `undefined`.
+   *     the other values are empty arrays.
+   *     If previous, next, or parent files are not found,
+   *     the corresponding value is an empty array.
    */
   public getAdjacentFiles(file: TFile): {
     currentFileIncluded: boolean;
@@ -499,12 +500,22 @@ class FolderEntry {
 
     const settings = this.plugin.settings.folderLinksSettingsArray[this.folderGroupIndex];
 
-    if (index > 0) {
-      result.previous = [this.files[index - 1].path];
+    for (
+      let i = index - 1, remaining = settings.maxLinks;
+      i >= 0 && remaining > 0;
+      i--, remaining--
+    ) {
+      result.previous.unshift(this.files[i].path);
     }
-    if (index < this.files.length - 1) {
-      result.next = [this.files[index + 1].path];
+
+    for (
+      let i = index + 1, remaining = settings.maxLinks;
+      i < this.files.length && remaining > 0;
+      i++, remaining--
+    ) {
+      result.next.push(this.files[i].path);
     }
+
     if (settings.parentPath) {
       const parentFile = this.plugin.app.vault.getFileByPath(settings.parentPath);
       if (parentFile) {

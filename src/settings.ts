@@ -1032,7 +1032,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
         .addTextArea((text) => {
           text
             .setValue(folderLinkSettings.includePatterns.join("\n"))
-            .setPlaceholder("Chapter")
+            .setPlaceholder("Chapter\n.pdf")
             .onChange((value) => {
               folderLinkSettings.includePatterns = parseMultiLineInput(
                 value,

@@ -511,54 +511,50 @@ export class NavigationComponent extends Component {
         hidden: boolean;
       } = { links: [], hidden: true };
 
-      if (adjacentFiles.previous.length > 0) {
-        previous.links.push(
-          new PrefixedLinkState({
-            prefix: settings.linkPrefix,
-            link: new NavigationLinkState({
-              destination: adjacentFiles.previous[0],
-              isExternal: false,
-              displayText: this.getDisplayText(adjacentFiles.previous[0], false),
-              resolved: true,
-              clickHandler,
-              mouseOverHandler,
-            }),
-          })
-        );
-      }
+      previous.links = adjacentFiles.previous.map((path) => {
+        return new PrefixedLinkState({
+          prefix: settings.linkPrefix,
+          link: new NavigationLinkState({
+            destination: path,
+            isExternal: false,
+            displayText: this.getDisplayText(path, false),
+            resolved: true,
+            clickHandler,
+            mouseOverHandler,
+          }),
+        });
+      });
 
-      if (adjacentFiles.next.length > 0) {
-        next.links.push(
-          new PrefixedLinkState({
-            prefix: settings.linkPrefix,
-            link: new NavigationLinkState({
-              destination: adjacentFiles.next[0],
-              isExternal: false,
-              displayText: this.getDisplayText(adjacentFiles.next[0], false),
-              resolved: true,
-              clickHandler,
-              mouseOverHandler,
-            }),
-          })
-        );
-      }
+      next.links = adjacentFiles.next.map((path) => {
+        return new PrefixedLinkState({
+          prefix: settings.linkPrefix,
+          link: new NavigationLinkState({
+            destination: path,
+            isExternal: false,
+            displayText: this.getDisplayText(path, false),
+            resolved: true,
+            clickHandler,
+            mouseOverHandler,
+          }),
+        });
+      });
 
       if (this.plugin.settings.folderLinksSettingsArray[adjacentFiles.index].parentPath) {
         parent.hidden = false;
         if (adjacentFiles.parent.length > 0) {
-          parent.links.push(
-            new PrefixedLinkState({
+          parent.links = adjacentFiles.parent.map((path) => {
+            return new PrefixedLinkState({
               prefix: settings.linkPrefix,
               link: new NavigationLinkState({
-                destination: adjacentFiles.parent[0],
+                destination: path,
                 isExternal: false,
-                displayText: this.getDisplayText(adjacentFiles.parent[0], false),
+                displayText: this.getDisplayText(path, false),
                 resolved: true,
                 clickHandler,
                 mouseOverHandler,
               }),
-            })
-          );
+            });
+          });
         }
       }
 
