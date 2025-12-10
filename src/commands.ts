@@ -12,7 +12,7 @@ import { openExternalLink } from "./utils";
 export function addCommands(plugin: NavLinkHeader): void {
   plugin.addCommand({
     id: "open-previous-property-link",
-    name: "Open previous note specified by file property",
+    name: "Open previous property link",
     checkCallback: (checking: boolean) => {
       const file = plugin.app.workspace.getActiveFile();
       if (!file) {
@@ -24,7 +24,7 @@ export function addCommands(plugin: NavLinkHeader): void {
 
   plugin.addCommand({
     id: "open-next-property-link",
-    name: "Open next note specified by file property",
+    name: "Open next property link",
     checkCallback: (checking: boolean) => {
       const file = plugin.app.workspace.getActiveFile();
       if (!file) {
@@ -36,7 +36,7 @@ export function addCommands(plugin: NavLinkHeader): void {
 
   plugin.addCommand({
     id: "open-parent-property-link",
-    name: "Open parent note specified by file property",
+    name: "Open parent property link",
     checkCallback: (checking: boolean) => {
       const file = plugin.app.workspace.getActiveFile();
       if (!file) {
@@ -84,7 +84,7 @@ export function addCommands(plugin: NavLinkHeader): void {
 
   plugin.addCommand({
     id: "open-previous-folder-link",
-    name: "Open previous note specified by folder settings",
+    name: "Open previous folder link",
     checkCallback: (checking: boolean) => {
       const file = plugin.app.workspace.getActiveFile();
       if (!file) {
@@ -96,7 +96,7 @@ export function addCommands(plugin: NavLinkHeader): void {
 
   plugin.addCommand({
     id: "open-next-folder-link",
-    name: "Open next note specified by folder settings",
+    name: "Open next folder link",
     checkCallback: (checking: boolean) => {
       const file = plugin.app.workspace.getActiveFile();
       if (!file) {
@@ -108,7 +108,7 @@ export function addCommands(plugin: NavLinkHeader): void {
 
   plugin.addCommand({
     id: "open-parent-folder-link",
-    name: "Open parent note specified by folder settings",
+    name: "Open parent folder link",
     checkCallback: (checking: boolean) => {
       const file = plugin.app.workspace.getActiveFile();
       if (!file) {
@@ -120,7 +120,7 @@ export function addCommands(plugin: NavLinkHeader): void {
 
   plugin.addCommand({
     id: "open-previous-note",
-    name: "Open previous note (for any type)",
+    name: "Open previous link (for any type)",
     checkCallback: (checking: boolean) => {
       const file = plugin.app.workspace.getActiveFile();
       if (!file) {
@@ -145,7 +145,7 @@ export function addCommands(plugin: NavLinkHeader): void {
 
   plugin.addCommand({
     id: "open-next-note",
-    name: "Open next note (for any type)",
+    name: "Open next link (for any type)",
     checkCallback: (checking: boolean) => {
       const file = plugin.app.workspace.getActiveFile();
       if (!file) {
@@ -170,7 +170,7 @@ export function addCommands(plugin: NavLinkHeader): void {
 
   plugin.addCommand({
     id: "open-parent-note",
-    name: "Open parent note (for any type)",
+    name: "Open parent link (for any type)",
     checkCallback: (checking: boolean) => {
       const file = plugin.app.workspace.getActiveFile();
       if (!file) {
@@ -233,36 +233,36 @@ function openThreeWayPropertyLink(
   const links = getThreeWayPropertyLink(plugin, file);
 
   if (direction === "previous") {
-    if (!links.previous) {
+    if (links.previous.length === 0) {
       return false;
     }
     if (!checking) {
-      if (links.previous.isExternal) {
-        void openExternalLink(plugin.app, links.previous.destination, true);
+      if (links.previous[0].isExternal) {
+        void openExternalLink(plugin.app, links.previous[0].destination, true);
       } else {
-        void plugin.app.workspace.openLinkText(links.previous.destination, file.path);
+        void plugin.app.workspace.openLinkText(links.previous[0].destination, file.path);
       }
     }
   } else if (direction === "next") {
-    if (!links.next) {
+    if (links.next.length === 0) {
       return false;
     }
     if (!checking) {
-      if (links.next.isExternal) {
-        void openExternalLink(plugin.app, links.next.destination, true);
+      if (links.next[0].isExternal) {
+        void openExternalLink(plugin.app, links.next[0].destination, true);
       } else {
-        void plugin.app.workspace.openLinkText(links.next.destination, file.path);
+        void plugin.app.workspace.openLinkText(links.next[0].destination, file.path);
       }
     }
   } else if (direction === "parent") {
-    if (!links.parent) {
+    if (links.parent.length === 0) {
       return false;
     }
     if (!checking) {
-      if (links.parent.isExternal) {
-        void openExternalLink(plugin.app, links.parent.destination, true);
+      if (links.parent[0].isExternal) {
+        void openExternalLink(plugin.app, links.parent[0].destination, true);
       } else {
-        void plugin.app.workspace.openLinkText(links.parent.destination, file.path);
+        void plugin.app.workspace.openLinkText(links.parent[0].destination, file.path);
       }
     }
   }

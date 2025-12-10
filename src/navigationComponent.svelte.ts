@@ -238,9 +238,9 @@ export class NavigationComponent extends Component {
 
     const threeWayPropertyLink = getThreeWayPropertyLink(this.plugin, file);
     if (
-      !threeWayPropertyLink.previous &&
-      !threeWayPropertyLink.next &&
-      !threeWayPropertyLink.parent
+      threeWayPropertyLink.previous.length === 0 &&
+      threeWayPropertyLink.next.length === 0 &&
+      threeWayPropertyLink.parent.length === 0
     ) {
       return undefined;
     }
@@ -260,71 +260,53 @@ export class NavigationComponent extends Component {
 
     if (this.plugin.settings.previousLinkPropertyMappings.length > 0) {
       previous.hidden = false;
-      if (threeWayPropertyLink.previous) {
-        previous.links.push(
-          new PrefixedLinkState({
-            prefix: threeWayPropertyLink.previous.prefix,
-            link: new NavigationLinkState({
-              destination: threeWayPropertyLink.previous.destination,
-              isExternal: threeWayPropertyLink.previous.isExternal,
-              displayText: this.getDisplayText(
-                threeWayPropertyLink.previous.destination,
-                threeWayPropertyLink.previous.isExternal,
-                threeWayPropertyLink.previous.displayText
-              ),
-              resolved: true,
-              clickHandler,
-              mouseOverHandler,
-            }),
-          })
-        );
-      }
+      previous.links = threeWayPropertyLink.previous.map((link) => {
+        return new PrefixedLinkState({
+          prefix: link.prefix,
+          link: new NavigationLinkState({
+            destination: link.destination,
+            isExternal: link.isExternal,
+            displayText: this.getDisplayText(link.destination, link.isExternal, link.displayText),
+            resolved: true,
+            clickHandler,
+            mouseOverHandler,
+          }),
+        });
+      });
     }
 
     if (this.plugin.settings.nextLinkPropertyMappings.length > 0) {
       next.hidden = false;
-      if (threeWayPropertyLink.next) {
-        next.links.push(
-          new PrefixedLinkState({
-            prefix: threeWayPropertyLink.next.prefix,
-            link: new NavigationLinkState({
-              destination: threeWayPropertyLink.next.destination,
-              isExternal: threeWayPropertyLink.next.isExternal,
-              displayText: this.getDisplayText(
-                threeWayPropertyLink.next.destination,
-                threeWayPropertyLink.next.isExternal,
-                threeWayPropertyLink.next.displayText
-              ),
-              resolved: true,
-              clickHandler,
-              mouseOverHandler,
-            }),
-          })
-        );
-      }
+      next.links = threeWayPropertyLink.next.map((link) => {
+        return new PrefixedLinkState({
+          prefix: link.prefix,
+          link: new NavigationLinkState({
+            destination: link.destination,
+            isExternal: link.isExternal,
+            displayText: this.getDisplayText(link.destination, link.isExternal, link.displayText),
+            resolved: true,
+            clickHandler,
+            mouseOverHandler,
+          }),
+        });
+      });
     }
 
     if (this.plugin.settings.parentLinkPropertyMappings.length > 0) {
       parent.hidden = false;
-      if (threeWayPropertyLink.parent) {
-        parent.links.push(
-          new PrefixedLinkState({
-            prefix: threeWayPropertyLink.parent.prefix,
-            link: new NavigationLinkState({
-              destination: threeWayPropertyLink.parent.destination,
-              isExternal: threeWayPropertyLink.parent.isExternal,
-              displayText: this.getDisplayText(
-                threeWayPropertyLink.parent.destination,
-                threeWayPropertyLink.parent.isExternal,
-                threeWayPropertyLink.parent.displayText
-              ),
-              resolved: true,
-              clickHandler,
-              mouseOverHandler,
-            }),
-          })
-        );
-      }
+      parent.links = threeWayPropertyLink.parent.map((link) => {
+        return new PrefixedLinkState({
+          prefix: link.prefix,
+          link: new NavigationLinkState({
+            destination: link.destination,
+            isExternal: link.isExternal,
+            displayText: this.getDisplayText(link.destination, link.isExternal, link.displayText),
+            resolved: true,
+            clickHandler,
+            mouseOverHandler,
+          }),
+        });
+      });
     }
 
     return new ThreeWayLinkState({
