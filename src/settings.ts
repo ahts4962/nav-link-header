@@ -388,11 +388,11 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
     new Setting(containerEl)
       .setName("Display order of links")
       .setDesc(
-        "Specify the order in which the links are displayed. For example, if you specify " +
-          `"${DISPLAY_ORDER_PLACEHOLDER_PERIODIC},${DISPLAY_ORDER_PLACEHOLDER_PROPERTY},` +
-          `${DISPLAY_ORDER_PLACEHOLDER_FOLDER},🏠,⬆️,📌,🔗" ` +
-          "(without double quotes), links will be displayed in that order " +
-          "(see also the descriptions in Annotation strings and Property mappings below). " +
+        "Specify the display order of the links by providing prefix strings (e.g., emojis). " +
+          "You can specify it, for example, as follows: " +
+          `${DISPLAY_ORDER_PLACEHOLDER_PERIODIC},${DISPLAY_ORDER_PLACEHOLDER_PROPERTY},` +
+          `${DISPLAY_ORDER_PLACEHOLDER_FOLDER},🏠,⬆️,📌,🔗. ` +
+          "Links will be sorted based on the prefix strings in the order shown. " +
           `"${DISPLAY_ORDER_PLACEHOLDER_PERIODIC}", "${DISPLAY_ORDER_PLACEHOLDER_PROPERTY}", ` +
           `and "${DISPLAY_ORDER_PLACEHOLDER_FOLDER}" are special strings that correspond to ` +
           "periodic note links, previous/next/parent property links, " +
@@ -428,7 +428,10 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("Filter duplicate links")
-      .setDesc("Filter out duplicates when multiple links with the same destination are detected.")
+      .setDesc(
+        "Filter out duplicates when multiple links with the same destination are detected. " +
+          "This setting does not apply to prev/next/parent-type links"
+      )
       .addToggle((toggle) => {
         toggle.setValue(this.plugin.settingsUnderChange.filterDuplicateNotes).onChange((value) => {
           this.plugin.settingsUnderChange.filterDuplicateNotes = value;
@@ -629,16 +632,16 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       .setName("Annotation strings")
       .setDesc(
         "Define the annotation strings. " +
-          "If one of the annotation strings (typically emojis) is placed immediately before " +
+          "If one of the annotation strings (e.g., emojis) is placed immediately before " +
           "a link in a note content, the link is recognized as an annotated link. " +
           "Notes with annotated links appear as backlinks in the navigation header of the " +
           "destination note. Any string, including emoji, is acceptable as long as the following " +
           "link is recognized as a backlink. To specify multiple annotations, " +
-          'separate them with commas. e.g. "📌,🔗" (without double quotes). ' +
+          'separate them with commas. e.g., "📌,🔗" (without double quotes). ' +
           `"${EMOJI_ANNOTATION_PLACEHOLDER}" can be used as a special placeholder ` +
           "that represents any single emoji. For example, if you specify only " +
           `"${EMOJI_ANNOTATION_PLACEHOLDER}", all links preceded by an emoji will be matched. ` +
-          `You can also mix it with other entries, e.g. "${EMOJI_ANNOTATION_PLACEHOLDER}📌,🔗". ` +
+          `You can also mix it with other entries, e.g., "${EMOJI_ANNOTATION_PLACEHOLDER}📌,🔗". ` +
           "Leave this field blank if you are not using this feature."
       )
       .addText((text) => {
@@ -655,7 +658,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
 
     new Setting(containerEl)
       .setName("Hide prefixes in the navigation header")
-      .setDesc("If enabled, prefixes (e.g. emojis) will be hidden in the navigation header.")
+      .setDesc("If enabled, prefixes (e.g., emojis) will be hidden in the navigation header.")
       .addToggle((toggle) => {
         toggle
           .setValue(this.plugin.settingsUnderChange.hideAnnotatedLinkPrefix)
