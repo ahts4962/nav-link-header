@@ -2,8 +2,13 @@ import { type CachedMetadata, Vault, TFile, TFolder, type TAbstractFile } from "
 import { minimatch } from "minimatch";
 import type NavLinkHeader from "./main";
 import { PluginComponent } from "./pluginComponent";
-import type { NavLinkHeaderSettings } from "./settings";
-import { deepEqual, isFileInFolder, getFirstValueFromFileProperty } from "./utils";
+import type { FolderLinksSettings, NavLinkHeaderSettings } from "./settings";
+import {
+  deepEqual,
+  isFileInFolder,
+  getFirstValueFromFileProperty,
+  sanitizeRegexInput,
+} from "./utils";
 
 /**
  * Manages the lists of files in folders specified by the settings.
@@ -148,7 +153,7 @@ class FolderGroupEntry {
 
   public onFileCreated(file: TAbstractFile): void {
     if (file instanceof TFile) {
-      // Creation of `TFile` is handled in `onMetadataChanged`.
+      // Creation of TFile is handled in onMetadataChanged.
       return;
     }
     this.addFolderEntry(file.path);
@@ -329,33 +334,17 @@ class FolderEntry {
       return;
     }
 
-    // Filter files based on the regex.
+    // Filter files based on the include patterns.
     if (settings.includePatterns.length > 0) {
-      let re: RegExp | undefined = undefined;
-      try {
-        re = new RegExp(settings.includePatterns[0]);
-      } catch {
-        re = undefined;
+      if (!this.isFileMatchingPatterns(file, settings.includePatterns, settings)) {
+        return;
       }
+    }
 
-      if (re) {
-        let filterValue = file.name;
-        if (settings.filterBy === "property" && settings.filterPropertyName) {
-          const propertyValue = getFirstValueFromFileProperty(
-            this.plugin.app,
-            file,
-            settings.filterPropertyName
-          );
-          if (propertyValue === undefined || propertyValue === null) {
-            return;
-          } else {
-            filterValue = String(propertyValue);
-          }
-        }
-
-        if (!re.test(filterValue)) {
-          return;
-        }
+    // Filter files based on the exclude patterns.
+    if (settings.excludePatterns.length > 0) {
+      if (this.isFileMatchingPatterns(file, settings.excludePatterns, settings)) {
+        return;
       }
     }
 
@@ -405,6 +394,50 @@ class FolderEntry {
     if (index !== -1) {
       this.files.splice(index, 1);
     }
+  }
+
+  /**
+   * Checks if the specified file matches the include/exclude patterns in the settings.
+   * @param file The file to check.
+   * @param patterns The patterns to match against.
+   * @param settings The folder links settings.
+   * @returns `true` if the file matches any of the patterns; otherwise, `false`.
+   */
+  private isFileMatchingPatterns(
+    file: TFile,
+    patterns: string[],
+    settings: FolderLinksSettings
+  ): boolean {
+    let valueToTest = file.name;
+    if (settings.filterBy === "property" && settings.filterPropertyName.length > 0) {
+      const propertyValue = getFirstValueFromFileProperty(
+        this.plugin.app,
+        file,
+        settings.filterPropertyName
+      );
+      if (propertyValue === undefined || propertyValue === null) {
+        return false;
+      } else {
+        valueToTest = String(propertyValue);
+      }
+    }
+
+    for (let pattern of patterns) {
+      if (!settings.enableRegex) {
+        pattern = sanitizeRegexInput(pattern);
+      }
+      let re: RegExp;
+      try {
+        re = new RegExp(pattern);
+      } catch {
+        continue;
+      }
+
+      if (re.test(valueToTest)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   /**
