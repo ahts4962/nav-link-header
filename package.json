@@ -1,6 +1,6 @@
 {
   "name": "nav-link-header",
-  "version": "2.5.0",
+  "version": "2.6.0",
   "description": "Display navigation links at the top of the notes.",
   "main": "main.js",
   "scripts": {
@@ -14,22 +14,22 @@
   "license": "MIT",
   "devDependencies": {
     "@tsconfig/svelte": "^5.0.4",
-    "@types/node": "^22.13.1",
+    "@types/node": "^24.10.2",
     "@types/semver": "^7.7.1",
-    "@typescript-eslint/eslint-plugin": "8.23.0",
-    "@typescript-eslint/parser": "8.23.0",
-    "builtin-modules": "4.0.0",
-    "esbuild": "0.25.0",
+    "@typescript-eslint/eslint-plugin": "^8.49.0",
+    "@typescript-eslint/parser": "^8.49.0",
+    "builtin-modules": "^5.0.0",
+    "esbuild": "^0.27.1",
     "esbuild-svelte": "^0.9.0",
     "eslint": "^9.20.0",
-    "eslint-plugin-svelte": "^2.46.1",
+    "eslint-plugin-svelte": "^3.13.1",
     "obsidian": "latest",
     "svelte": "^5.19.9",
     "svelte-preprocess": "^6.0.3",
     "tslib": "2.8.1",
     "typescript": "^5.7.3",
     "typescript-eslint": "^8.23.0",
-    "vitest": "^3.2.4"
+    "vitest": "^4.0.15"
   },
   "dependencies": {
     "emoji-regex-xs": "^2.0.1",
