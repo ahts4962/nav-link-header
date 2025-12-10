@@ -46,7 +46,7 @@
         matchWidthToLineLength && "nav-link-header-width-matched",
       ]}
     >
-      {#each links as link}
+      {#each links as link (link)}
         {#if link instanceof PrefixedLinkState}
           <PrefixedLink state={link} />
         {:else if link instanceof ThreeWayLinkState}

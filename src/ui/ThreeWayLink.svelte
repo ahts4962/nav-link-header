@@ -19,7 +19,7 @@
   {/if}
   {#if !state.previous.hidden}
     {#if state.previous.links.length > 0}
-      {#each state.previous.links as link}
+      {#each state.previous.links as link (link)}
         <PrefixedLink state={link} />
       {/each}
     {:else}
@@ -33,7 +33,7 @@
   {/if}
   {#if !state.parent.hidden}
     {#if state.parent.links.length > 0}
-      {#each state.parent.links as link}
+      {#each state.parent.links as link (link)}
         <PrefixedLink state={link} />
       {/each}
     {:else}
@@ -47,7 +47,7 @@
   {/if}
   {#if !state.next.hidden}
     {#if state.next.links.length > 0}
-      {#each state.next.links as link}
+      {#each state.next.links as link (link)}
         <PrefixedLink state={link} />
       {/each}
     {:else}
