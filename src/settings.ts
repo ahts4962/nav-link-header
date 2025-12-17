@@ -50,6 +50,9 @@ export interface NavLinkHeaderSettings {
   prevNextLinksEnabledInQuarterlyNotes: boolean;
   parentLinkGranularityInQuarterlyNotes: IGranularity | "none";
   prevNextLinksEnabledInYearlyNotes: boolean;
+  annotationStringsForPinning: string[];
+  startMarkerForPinning: string;
+  endMarkerForPinning: string;
   folderLinksSettingsArray: FolderLinksSettings[];
 }
 
@@ -111,6 +114,9 @@ export const DEFAULT_SETTINGS: NavLinkHeaderSettings = {
   prevNextLinksEnabledInQuarterlyNotes: false,
   parentLinkGranularityInQuarterlyNotes: "none",
   prevNextLinksEnabledInYearlyNotes: false,
+  annotationStringsForPinning: [],
+  startMarkerForPinning: "",
+  endMarkerForPinning: "",
   folderLinksSettingsArray: [],
 };
 
@@ -500,8 +506,9 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           'entered in "Display order of links", "Duplicate link filtering priority", ' +
           '"Annotation strings", "Advanced annotation strings", "Property mappings", ' +
           '"Previous note property mappings", "Next note property mappings", ' +
-          '"Parent note property mappings", "Include patterns", "Exclude patterns", ' +
-          'and "Link prefix". ' +
+          '"Parent note property mappings", "Annotation strings (Pinned note content)", ' +
+          '"Start marker", "End marker", ' +
+          '"Include patterns", "Exclude patterns", and "Link prefix". ' +
           "Disable this option if you want to include spaces intentionally."
       )
       .addToggle((toggle) => {
@@ -968,6 +975,61 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
             this.plugin.triggerSettingsChangedDebounced();
           });
       });
+
+    new Setting(containerEl).setName("Pinned note content").setHeading();
+
+    new Setting(containerEl)
+      .setName("Annotation strings")
+      .setDesc(
+        "Display part of the current note in the navigation header. " +
+          "The text shown starts immediately after the specified annotation string and " +
+          "continues up to the end of the line. " +
+          "If the start and end markers defined below appear immediately after " +
+          "the annotation string, only the content between those markers is displayed instead. " +
+          "Example:📌[[note 1]]/[[note 2]](end of line) → 📌[[note 1]]/[[note 2]], " +
+          "📌([[note 1]]/[[note 2]])[[note 3]] → 📌[[note 1]]/[[note 2]]. " +
+          "To specify multiple annotations, separate them with commas."
+      )
+      .addText((text) => {
+        const annotations = this.plugin.settingsUnderChange.annotationStringsForPinning.join(",");
+        text
+          .setValue(annotations)
+          .onChange((value) => {
+            this.plugin.settingsUnderChange.annotationStringsForPinning = parsePrefixStrings(
+              value,
+              this.plugin.settings.trimStringsInSettings,
+              false
+            );
+            this.plugin.triggerSettingsChangedDebounced();
+          })
+          .setPlaceholder("📌,🔗");
+      });
+
+    new Setting(containerEl).setName("Start marker").addText((text) => {
+      text
+        .setValue(this.plugin.settingsUnderChange.startMarkerForPinning)
+        .onChange((value) => {
+          this.plugin.settingsUnderChange.startMarkerForPinning = this.plugin.settingsUnderChange
+            .trimStringsInSettings
+            ? value.trim()
+            : value;
+          this.plugin.triggerSettingsChangedDebounced();
+        })
+        .setPlaceholder("(");
+    });
+
+    new Setting(containerEl).setName("End marker").addText((text) => {
+      text
+        .setValue(this.plugin.settingsUnderChange.endMarkerForPinning)
+        .onChange((value) => {
+          this.plugin.settingsUnderChange.endMarkerForPinning = this.plugin.settingsUnderChange
+            .trimStringsInSettings
+            ? value.trim()
+            : value;
+          this.plugin.triggerSettingsChangedDebounced();
+        })
+        .setPlaceholder(")");
+    });
 
     new Setting(containerEl).setName("Folder links").setHeading();
 
