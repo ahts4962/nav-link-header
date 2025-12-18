@@ -6,7 +6,7 @@ import {
   DISPLAY_ORDER_PLACEHOLDER_FOLDER,
   DISPLAY_ORDER_PLACEHOLDER_PERIODIC,
   DISPLAY_ORDER_PLACEHOLDER_PROPERTY,
-} from "./linkContainer";
+} from "./itemStatesContainer";
 import { EMOJI_ANNOTATION_PLACEHOLDER } from "./annotatedLink";
 import { deepCopy } from "./utils";
 
@@ -17,6 +17,7 @@ export interface NavLinkHeaderSettings {
   propertyNameForDisplayText: string;
   filterDuplicateNotes: boolean;
   duplicateNoteFilteringPriority: string[];
+  itemCollapsePrefixes: string[];
   displayLoadingMessage: boolean;
   displayPlaceholder: boolean;
   confirmFileCreation: boolean;
@@ -81,6 +82,7 @@ export const DEFAULT_SETTINGS: NavLinkHeaderSettings = {
   propertyNameForDisplayText: "",
   filterDuplicateNotes: true,
   duplicateNoteFilteringPriority: [],
+  itemCollapsePrefixes: [],
   displayLoadingMessage: true,
   displayPlaceholder: false,
   confirmFileCreation: true,
@@ -465,6 +467,25 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       });
 
     new Setting(containerEl)
+      .setName("Item collapse prefixes")
+      .setDesc(
+        "Items whose prefix (e.g., an emoji) matches any of these strings will be collapsed into " +
+          "a single entry. " +
+          "Prefixes can also be added or removed by clicking them in the navigation header."
+      )
+      .addText((text) => {
+        const prefixes = this.plugin.settingsUnderChange.itemCollapsePrefixes.join(",");
+        text.setValue(prefixes).onChange((value) => {
+          this.plugin.settingsUnderChange.itemCollapsePrefixes = parsePrefixStrings(
+            value,
+            this.plugin.settings.trimStringsInSettings,
+            true
+          );
+          this.plugin.triggerSettingsChangedDebounced();
+        });
+      });
+
+    new Setting(containerEl)
       .setName("Display loading message")
       .setDesc(
         'Display a loading message ("Loading...") in the navigation while links are being loaded.'
@@ -504,6 +525,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       .setDesc(
         "When enabled, leading and trailing whitespace will be trimmed from the strings " +
           'entered in "Display order of links", "Duplicate link filtering priority", ' +
+          '"Item collapse prefixes", ' +
           '"Annotation strings", "Advanced annotation strings", "Property mappings", ' +
           '"Previous note property mappings", "Next note property mappings", ' +
           '"Parent note property mappings", "Annotation strings (Pinned note content)", ' +

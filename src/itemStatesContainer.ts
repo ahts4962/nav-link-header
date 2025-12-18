@@ -72,8 +72,8 @@ export class ItemStatesContainer {
       });
       if (i !== -1) {
         // If the link is already in the list
-        const existingPrefix = (this.items[i] as PrefixedLinkState).prefix;
-        const newPrefix = item.prefix;
+        const existingPrefix = (this.items[i] as PrefixedLinkState).prefix.label;
+        const newPrefix = item.prefix.label;
         const priority = this.plugin.settings.duplicateNoteFilteringPriority;
         const existingIndex = priority.indexOf(existingPrefix);
         const newIndex = priority.indexOf(newPrefix);
@@ -110,7 +110,7 @@ export class ItemStatesContainer {
    */
   private getSortTag(item: PrefixedLinkState | ThreeWayLinkState | PinnedNoteContentState): string {
     if (item instanceof PrefixedLinkState || item instanceof PinnedNoteContentState) {
-      return item.prefix;
+      return item.prefix.label;
     } else {
       if (item.type === "periodic") {
         return DISPLAY_ORDER_PLACEHOLDER_PERIODIC;

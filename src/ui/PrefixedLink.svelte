@@ -1,16 +1,17 @@
 <script lang="ts">
   import type { PrefixedLinkState } from "./states";
   import NavigationLink from "./NavigationLink.svelte";
+  import Prefix from "./Prefix.svelte";
 
   const { state }: { state: PrefixedLinkState } = $props();
 </script>
 
 <!--
   @component
-  A component that represents a link with a prefix string (typically emoji).
+  A component that represents a link with a prefix.
 -->
 <div class="nav-link-header-link-container nav-link-header-prefixed">
-  <div class="nav-link-header-link-prefix">{state.prefix}</div>
+  <Prefix state={state.prefix} />
   <NavigationLink state={state.link} />
 </div>
 
@@ -18,8 +19,5 @@
   .nav-link-header-link-container {
     display: flex;
     flex-wrap: wrap;
-  }
-  .nav-link-header-link-prefix {
-    white-space: pre-wrap;
   }
 </style>

@@ -1,4 +1,5 @@
 export type LinkEventHandler = (target: NavigationLinkState, e: MouseEvent) => void;
+export type PrefixEventHandler = (target: PrefixState) => void;
 
 /**
  * The state of a `NavigationLink`.
@@ -45,17 +46,34 @@ export class NavigationLinkState {
 }
 
 /**
+ * The state of a `Prefix`.
+ */
+export class PrefixState {
+  public label: string;
+  public clickHandler: PrefixEventHandler;
+
+  /**
+   * @param label The string (e.g., emoji) used as the prefix.
+   * @param clickHandler The function to call when the prefix is clicked.
+   */
+  constructor({ label, clickHandler }: { label: string; clickHandler: PrefixEventHandler }) {
+    this.label = label;
+    this.clickHandler = clickHandler;
+  }
+}
+
+/**
  * The state of a `PrefixedLink`.
  */
 export class PrefixedLinkState {
-  public prefix: string;
+  public prefix: PrefixState;
   public link: NavigationLinkState;
 
   /**
-   * @param prefix The string (e.g., emoji) placed before the link.
+   * @param prefix The prefix placed before the link.
    * @param link The link.
    */
-  constructor({ prefix, link }: { prefix: string; link: NavigationLinkState }) {
+  constructor({ prefix, link }: { prefix: PrefixState; link: NavigationLinkState }) {
     this.prefix = prefix;
     this.link = link;
   }
@@ -113,14 +131,20 @@ export class ThreeWayLinkState {
  * The state of a `PinnedNoteContent`.
  */
 export class PinnedNoteContentState {
-  public prefix: string;
+  public prefix: PrefixState;
   public content: (NavigationLinkState | string)[];
 
   /**
-   * @param prefix The string (e.g., emoji) placed before the pinned note content.
+   * @param prefix The prefix placed before the pinned note content.
    * @param content The content of the pinned note, consisting of links and plain text.
    */
-  constructor({ prefix, content }: { prefix: string; content: (NavigationLinkState | string)[] }) {
+  constructor({
+    prefix,
+    content,
+  }: {
+    prefix: PrefixState;
+    content: (NavigationLinkState | string)[];
+  }) {
     this.prefix = prefix;
     this.content = content;
   }

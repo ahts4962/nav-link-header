@@ -3,10 +3,12 @@ import { mount, unmount } from "svelte";
 import type NavLinkHeader from "./main";
 import {
   NavigationLinkState,
+  PrefixState,
   PrefixedLinkState,
   ThreeWayLinkState,
   PinnedNoteContentState,
   type LinkEventHandler,
+  type PrefixEventHandler,
 } from "./ui/states";
 import { ItemStatesContainer } from "./itemStatesContainer";
 import { AnnotatedLinksManager } from "./annotatedLink";
@@ -120,15 +122,28 @@ export class NavigationComponent extends Component {
         });
       }
     };
+    const prefixClickHandler: PrefixEventHandler = (target) => {
+      const label = target.label;
+      if (!this.plugin.settingsUnderChange.itemCollapsePrefixes.includes(label)) {
+        this.plugin.settingsUnderChange.itemCollapsePrefixes.push(label);
+        this.plugin.triggerSettingsChanged();
+      }
+    };
 
-    this.constructPropertyLinkStates(file, clickHandler, mouseOverHandler).forEach((link) => {
+    this.constructPropertyLinkStates(
+      file,
+      clickHandler,
+      mouseOverHandler,
+      prefixClickHandler
+    ).forEach((link) => {
       itemStatesContainer.addItem(link);
     });
 
     const threeWayPropertyLinkState = this.constructThreeWayPropertyLinkState(
       file,
       clickHandler,
-      mouseOverHandler
+      mouseOverHandler,
+      prefixClickHandler
     );
     if (threeWayPropertyLinkState) {
       itemStatesContainer.addItem(threeWayPropertyLinkState);
@@ -137,13 +152,19 @@ export class NavigationComponent extends Component {
     const periodicNoteLinkState = this.constructPeriodicNoteLinkState(
       file,
       clickHandler,
-      mouseOverHandler
+      mouseOverHandler,
+      prefixClickHandler
     );
     if (periodicNoteLinkState) {
       itemStatesContainer.addItem(periodicNoteLinkState);
     }
 
-    this.constructFolderLinkStates(file, clickHandler, mouseOverHandler).forEach((link) => {
+    this.constructFolderLinkStates(
+      file,
+      clickHandler,
+      mouseOverHandler,
+      prefixClickHandler
+    ).forEach((link) => {
       itemStatesContainer.addItem(link);
     });
 
@@ -153,7 +174,8 @@ export class NavigationComponent extends Component {
     const pinnedNoteContentStates = await this.constructPinnedNoteContentStates(
       file,
       clickHandler,
-      mouseOverHandler
+      mouseOverHandler,
+      prefixClickHandler
     );
     if (!this.loaded) {
       return;
@@ -166,7 +188,12 @@ export class NavigationComponent extends Component {
     }
 
     try {
-      const generator = this.constructAnnotatedLinkStates(file, clickHandler, mouseOverHandler);
+      const generator = this.constructAnnotatedLinkStates(
+        file,
+        clickHandler,
+        mouseOverHandler,
+        prefixClickHandler
+      );
       for await (const link of generator) {
         if (!this.loaded) {
           return;
@@ -201,12 +228,14 @@ export class NavigationComponent extends Component {
    * @param file The file to construct the property link states for.
    * @param clickHandler The click handler for the links.
    * @param mouseOverHandler The mouse over handler for the links.
+   * @param prefixClickHandler The click handler for the prefixes.
    * @returns The property link states.
    */
   private constructPropertyLinkStates(
     file: TFile,
     clickHandler: LinkEventHandler,
-    mouseOverHandler: LinkEventHandler
+    mouseOverHandler: LinkEventHandler,
+    prefixClickHandler: PrefixEventHandler
   ): PrefixedLinkState[] {
     const result: PrefixedLinkState[] = [];
 
@@ -218,7 +247,7 @@ export class NavigationComponent extends Component {
     for (const link of propertyLinks) {
       result.push(
         new PrefixedLinkState({
-          prefix: link.prefix,
+          prefix: new PrefixState({ label: link.prefix, clickHandler: prefixClickHandler }),
           link: new NavigationLinkState({
             destination: link.destination,
             isExternal: link.isExternal,
@@ -239,12 +268,14 @@ export class NavigationComponent extends Component {
    * @param file The file to construct the three-way property link states for.
    * @param clickHandler The click handler for the links.
    * @param mouseOverHandler The mouse over handler for the links.
+   * @param prefixClickHandler The click handler for the prefixes.
    * @returns The three-way property link state.
    */
   private constructThreeWayPropertyLinkState(
     file: TFile,
     clickHandler: LinkEventHandler,
-    mouseOverHandler: LinkEventHandler
+    mouseOverHandler: LinkEventHandler,
+    prefixClickHandler: PrefixEventHandler
   ): ThreeWayLinkState | undefined {
     if (
       this.plugin.settings.previousLinkPropertyMappings.length === 0 &&
@@ -280,7 +311,7 @@ export class NavigationComponent extends Component {
       previous.hidden = false;
       previous.links = threeWayPropertyLink.previous.map((link) => {
         return new PrefixedLinkState({
-          prefix: link.prefix,
+          prefix: new PrefixState({ label: link.prefix, clickHandler: prefixClickHandler }),
           link: new NavigationLinkState({
             destination: link.destination,
             isExternal: link.isExternal,
@@ -297,7 +328,7 @@ export class NavigationComponent extends Component {
       next.hidden = false;
       next.links = threeWayPropertyLink.next.map((link) => {
         return new PrefixedLinkState({
-          prefix: link.prefix,
+          prefix: new PrefixState({ label: link.prefix, clickHandler: prefixClickHandler }),
           link: new NavigationLinkState({
             destination: link.destination,
             isExternal: link.isExternal,
@@ -314,7 +345,7 @@ export class NavigationComponent extends Component {
       parent.hidden = false;
       parent.links = threeWayPropertyLink.parent.map((link) => {
         return new PrefixedLinkState({
-          prefix: link.prefix,
+          prefix: new PrefixState({ label: link.prefix, clickHandler: prefixClickHandler }),
           link: new NavigationLinkState({
             destination: link.destination,
             isExternal: link.isExternal,
@@ -340,12 +371,14 @@ export class NavigationComponent extends Component {
    * @param file The file to construct the periodic note link states for.
    * @param clickHandler The default click handler for the links.
    * @param mouseOverHandler The default mouse over handler for the links.
+   * @param prefixClickHandler The click handler for the prefixes.
    * @returns The periodic note link state.
    */
   private constructPeriodicNoteLinkState(
     file: TFile,
     clickHandler: LinkEventHandler,
-    mouseOverHandler: LinkEventHandler
+    mouseOverHandler: LinkEventHandler,
+    prefixClickHandler: PrefixEventHandler
   ): ThreeWayLinkState | undefined {
     const periodicNotesManager = this.plugin.findComponent(PeriodicNotesManager)!;
     periodicNotesManager.syncActiveState();
@@ -379,7 +412,7 @@ export class NavigationComponent extends Component {
       if (periodicNoteLinks.previousPath) {
         previous.links.push(
           new PrefixedLinkState({
-            prefix: "",
+            prefix: new PrefixState({ label: "", clickHandler: prefixClickHandler }),
             link: new NavigationLinkState({
               destination: periodicNoteLinks.previousPath,
               isExternal: false,
@@ -394,7 +427,7 @@ export class NavigationComponent extends Component {
       if (periodicNoteLinks.nextPath) {
         next.links.push(
           new PrefixedLinkState({
-            prefix: "",
+            prefix: new PrefixState({ label: "", clickHandler: prefixClickHandler }),
             link: new NavigationLinkState({
               destination: periodicNoteLinks.nextPath,
               isExternal: false,
@@ -419,7 +452,7 @@ export class NavigationComponent extends Component {
         if (!periodicNoteLinks.parentDate) {
           parent.links.push(
             new PrefixedLinkState({
-              prefix: "",
+              prefix: new PrefixState({ label: "", clickHandler: prefixClickHandler }),
               link: new NavigationLinkState({
                 destination: periodicNoteLinks.parentPath,
                 isExternal: false,
@@ -449,7 +482,7 @@ export class NavigationComponent extends Component {
           };
           parent.links.push(
             new PrefixedLinkState({
-              prefix: "",
+              prefix: new PrefixState({ label: "", clickHandler: prefixClickHandler }),
               link: new NavigationLinkState({
                 destination: periodicNoteLinks.parentPath,
                 isExternal: false,
@@ -481,12 +514,14 @@ export class NavigationComponent extends Component {
    * @param file The file to construct the folder link states for.
    * @param clickHandler The click handler for the links.
    * @param mouseOverHandler The mouse over handler for the links.
+   * @param prefixClickHandler The click handler for the prefixes.
    * @returns The folder link states.
    */
   private constructFolderLinkStates(
     file: TFile,
     clickHandler: LinkEventHandler,
-    mouseOverHandler: LinkEventHandler
+    mouseOverHandler: LinkEventHandler,
+    prefixClickHandler: PrefixEventHandler
   ): ThreeWayLinkState[] {
     const result: ThreeWayLinkState[] = [];
 
@@ -513,7 +548,10 @@ export class NavigationComponent extends Component {
 
       previous.links = adjacentFiles.previous.map((path) => {
         return new PrefixedLinkState({
-          prefix: settings.linkPrefix,
+          prefix: new PrefixState({
+            label: settings.linkPrefix,
+            clickHandler: prefixClickHandler,
+          }),
           link: new NavigationLinkState({
             destination: path,
             isExternal: false,
@@ -527,7 +565,10 @@ export class NavigationComponent extends Component {
 
       next.links = adjacentFiles.next.map((path) => {
         return new PrefixedLinkState({
-          prefix: settings.linkPrefix,
+          prefix: new PrefixState({
+            label: settings.linkPrefix,
+            clickHandler: prefixClickHandler,
+          }),
           link: new NavigationLinkState({
             destination: path,
             isExternal: false,
@@ -544,7 +585,10 @@ export class NavigationComponent extends Component {
         if (adjacentFiles.parent.length > 0) {
           parent.links = adjacentFiles.parent.map((path) => {
             return new PrefixedLinkState({
-              prefix: settings.linkPrefix,
+              prefix: new PrefixState({
+                label: settings.linkPrefix,
+                clickHandler: prefixClickHandler,
+              }),
               link: new NavigationLinkState({
                 destination: path,
                 isExternal: false,
@@ -578,12 +622,14 @@ export class NavigationComponent extends Component {
    * @param file The file to construct the pinned note content states for.
    * @param clickHandler The click handler for the links.
    * @param mouseOverHandler The mouse over handler for the links.
+   * @param prefixClickHandler The click handler for the prefixes.
    * @returns The pinned note content states.
    */
   private async constructPinnedNoteContentStates(
     file: TFile,
     clickHandler: LinkEventHandler,
-    mouseOverHandler: LinkEventHandler
+    mouseOverHandler: LinkEventHandler,
+    prefixClickHandler: PrefixEventHandler
   ): Promise<PinnedNoteContentState[]> {
     if (this.plugin.settings.annotationStringsForPinning.length === 0) {
       return [];
@@ -591,7 +637,10 @@ export class NavigationComponent extends Component {
 
     return (await getPinnedNoteContents(this.plugin, file)).map((pinnedNoteContent) => {
       return new PinnedNoteContentState({
-        prefix: pinnedNoteContent.prefix,
+        prefix: new PrefixState({
+          label: pinnedNoteContent.prefix,
+          clickHandler: prefixClickHandler,
+        }),
         content: pinnedNoteContent.content.map((item) => {
           if (typeof item === "string") {
             return item;
@@ -620,6 +669,7 @@ export class NavigationComponent extends Component {
    * @param file The file to construct the annotated link states for.
    * @param clickHandler The click handler for the links.
    * @param mouseOverHandler The mouse over handler for the links.
+   * @param prefixClickHandler The click handler for the prefixes.
    * @returns The annotated link states.
    * @throws {PluginError} Throws when the `AnnotatedLinksManager` has been reset
    *     during async operation.
@@ -627,7 +677,8 @@ export class NavigationComponent extends Component {
   private async *constructAnnotatedLinkStates(
     file: TFile,
     clickHandler: LinkEventHandler,
-    mouseOverHandler: LinkEventHandler
+    mouseOverHandler: LinkEventHandler,
+    prefixClickHandler: PrefixEventHandler
   ): AsyncGenerator<PrefixedLinkState> {
     const annotatedLinksManager = this.plugin.findComponent(AnnotatedLinksManager)!;
     if (!annotatedLinksManager.isActive) {
@@ -637,7 +688,7 @@ export class NavigationComponent extends Component {
     const generator = annotatedLinksManager.searchAnnotatedLinks(file);
     for await (const link of generator) {
       yield new PrefixedLinkState({
-        prefix: link.prefix,
+        prefix: new PrefixState({ label: link.prefix, clickHandler: prefixClickHandler }),
         link: new NavigationLinkState({
           destination: link.destinationPath,
           isExternal: false,
