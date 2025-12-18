@@ -149,3 +149,20 @@ export class PinnedNoteContentState {
     this.content = content;
   }
 }
+
+/**
+ * The state of a `CollapsedItem`.
+ */
+export class CollapsedItemState {
+  public prefix: PrefixState;
+  public itemCount: number;
+
+  /**
+   * @param prefix The prefix placed before the collapsed item.
+   * @param itemCount The number of items that are collapsed.
+   */
+  constructor({ prefix, itemCount }: { prefix: PrefixState; itemCount: number }) {
+    this.prefix = prefix;
+    this.itemCount = itemCount;
+  }
+}

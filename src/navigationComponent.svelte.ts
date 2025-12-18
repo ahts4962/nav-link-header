@@ -2,11 +2,12 @@ import { Component, type TFile } from "obsidian";
 import { mount, unmount } from "svelte";
 import type NavLinkHeader from "./main";
 import {
+  CollapsedItemState,
   NavigationLinkState,
-  PrefixState,
-  PrefixedLinkState,
-  ThreeWayLinkState,
   PinnedNoteContentState,
+  PrefixedLinkState,
+  PrefixState,
+  ThreeWayLinkState,
   type LinkEventHandler,
   type PrefixEventHandler,
 } from "./ui/states";
@@ -19,8 +20,8 @@ import { FolderLinksManager } from "./folderLink";
 import { FileCreationModal } from "./fileCreationModal";
 import Navigation from "./ui/Navigation.svelte";
 import {
-  getStringValuesFromFileProperty,
   getFileStemFromPath,
+  getStringValuesFromFileProperty,
   openExternalLink,
   PluginError,
 } from "./utils";
@@ -32,7 +33,7 @@ export class NavigationComponent extends Component {
   private navigation?: ReturnType<typeof Navigation>;
 
   private navigationProps: {
-    items: (PrefixedLinkState | ThreeWayLinkState | PinnedNoteContentState)[];
+    items: (PrefixedLinkState | ThreeWayLinkState | PinnedNoteContentState | CollapsedItemState)[];
     isLoading: boolean;
     matchWidthToLineLength: boolean;
     displayLoadingMessage: boolean;

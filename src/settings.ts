@@ -479,7 +479,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           this.plugin.settingsUnderChange.itemCollapsePrefixes = parsePrefixStrings(
             value,
             this.plugin.settings.trimStringsInSettings,
-            true
+            false
           );
           this.plugin.triggerSettingsChangedDebounced();
         });

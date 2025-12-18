@@ -1,5 +1,12 @@
 import type NavLinkHeader from "./main";
-import { PinnedNoteContentState, PrefixedLinkState, type ThreeWayLinkState } from "./ui/states";
+import {
+  CollapsedItemState,
+  PinnedNoteContentState,
+  PrefixedLinkState,
+  PrefixState,
+  ThreeWayLinkState,
+  type PrefixEventHandler,
+} from "./ui/states";
 
 export const DISPLAY_ORDER_PLACEHOLDER_PERIODIC = "[[p]]";
 export const DISPLAY_ORDER_PLACEHOLDER_PROPERTY = "[[P]]";
@@ -11,52 +18,51 @@ export const DISPLAY_ORDER_PLACEHOLDER_FOLDER = "[[f]]";
  */
 export class ItemStatesContainer {
   private items: (PrefixedLinkState | ThreeWayLinkState | PinnedNoteContentState)[] = [];
-  private sorted = false;
 
   constructor(private plugin: NavLinkHeader) {}
 
   /**
    * Returns the items added so far.
-   * The items are sorted according to the plugin settings.
+   * The items are collapsed and sorted according to the plugin settings.
    */
-  public getItems(): (PrefixedLinkState | ThreeWayLinkState | PinnedNoteContentState)[] {
-    if (this.sorted) {
-      return this.items;
-    }
-
-    // Sort the items.
+  public getItems(): (
+    | PrefixedLinkState
+    | ThreeWayLinkState
+    | PinnedNoteContentState
+    | CollapsedItemState
+  )[] {
+    const items = this.getCollapsedItemStates();
     const order = [...this.plugin.settings.displayOrderOfLinks];
-    const existingSortTags = [...new Set(this.items.map((link) => this.getSortTag(link)))];
+    const existingSortTags = [...new Set(items.map((link) => getSortTag(link)))];
     const additionalSortTags = existingSortTags.filter((tag) => !order.includes(tag));
     additionalSortTags.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
     order.push(...additionalSortTags);
 
-    this.items.sort((a, b) => {
-      const aSortTag = this.getSortTag(a);
-      const bSortTag = this.getSortTag(b);
-      const aIndex = order.indexOf(aSortTag);
-      const bIndex = order.indexOf(bSortTag);
-      if (aIndex === bIndex) {
-        if (aSortTag === DISPLAY_ORDER_PLACEHOLDER_FOLDER) {
-          return (a as ThreeWayLinkState).index - (b as ThreeWayLinkState).index;
-        } else if (a instanceof PrefixedLinkState && b instanceof PrefixedLinkState) {
-          return a.link.displayText.localeCompare(b.link.displayText, undefined, {
-            numeric: true,
-          });
-        } else if (a instanceof PrefixedLinkState && b instanceof PinnedNoteContentState) {
-          return -1;
-        } else if (b instanceof PrefixedLinkState && a instanceof PinnedNoteContentState) {
-          return 1;
-        } else {
-          return 0;
-        }
+    items.sort((a, b) => {
+      const aSortTag = getSortTag(a);
+      const bSortTag = getSortTag(b);
+      const sortTagComp = order.indexOf(aSortTag) - order.indexOf(bSortTag);
+      if (sortTagComp !== 0) {
+        return sortTagComp;
+      }
+
+      const typeComp = getLinkTypeOrder(a) - getLinkTypeOrder(b);
+      if (typeComp !== 0) {
+        return typeComp;
+      }
+
+      if (a instanceof ThreeWayLinkState && b instanceof ThreeWayLinkState) {
+        return a.index - b.index;
+      } else if (a instanceof PrefixedLinkState && b instanceof PrefixedLinkState) {
+        return a.link.displayText.localeCompare(b.link.displayText, undefined, {
+          numeric: true,
+        });
       } else {
-        return aIndex - bIndex;
+        return 0;
       }
     });
 
-    this.sorted = true;
-    return this.items;
+    return items;
   }
 
   /**
@@ -100,25 +106,131 @@ export class ItemStatesContainer {
     } else {
       this.items.push(item);
     }
-
-    this.sorted = false;
   }
 
   /**
-   * Returns the sort tag for the item.
-   * The sort tag is the equivalent of strings in `displayOrderOfLinks` setting.
+   * Returns the item states after collapsing items according to the plugin settings.
    */
-  private getSortTag(item: PrefixedLinkState | ThreeWayLinkState | PinnedNoteContentState): string {
-    if (item instanceof PrefixedLinkState || item instanceof PinnedNoteContentState) {
-      return item.prefix.label;
-    } else {
-      if (item.type === "periodic") {
-        return DISPLAY_ORDER_PLACEHOLDER_PERIODIC;
-      } else if (item.type === "property") {
-        return DISPLAY_ORDER_PLACEHOLDER_PROPERTY;
+  private getCollapsedItemStates(): (
+    | PrefixedLinkState
+    | ThreeWayLinkState
+    | PinnedNoteContentState
+    | CollapsedItemState
+  )[] {
+    const itemCollapsePrefixes = [...new Set(this.plugin.settings.itemCollapsePrefixes)].filter(
+      (prefix) => prefix.length > 0
+    );
+    if (itemCollapsePrefixes.length === 0) {
+      return [...this.items];
+    }
+
+    const items = this.items.map((item) => {
+      if (item instanceof ThreeWayLinkState) {
+        // Deep copy ThreeWayLinkState to modify its links array.
+        return new ThreeWayLinkState({
+          type: item.type,
+          index: item.index,
+          previous: {
+            links: [...item.previous.links],
+            hidden: item.previous.hidden,
+          },
+          next: {
+            links: [...item.next.links],
+            hidden: item.next.hidden,
+          },
+          parent: {
+            links: [...item.parent.links],
+            hidden: item.parent.hidden,
+          },
+          delimiters: item.delimiters,
+        });
       } else {
-        return DISPLAY_ORDER_PLACEHOLDER_FOLDER;
+        return item;
+      }
+    });
+    const collapsedItems: CollapsedItemState[] = [];
+    const prefixClickHandler: PrefixEventHandler = (target) => {
+      const label = target.label;
+      const prefixes = this.plugin.settingsUnderChange.itemCollapsePrefixes;
+      if (prefixes.includes(label)) {
+        this.plugin.settingsUnderChange.itemCollapsePrefixes = prefixes.filter((p) => p !== label);
+        this.plugin.triggerSettingsChanged();
+      }
+    };
+
+    for (const prefix of itemCollapsePrefixes) {
+      let count = 0;
+      for (let i = items.length - 1; i >= 0; i--) {
+        const item = items[i];
+        if (item instanceof PrefixedLinkState || item instanceof PinnedNoteContentState) {
+          if (item.prefix.label === prefix) {
+            count++;
+            items.splice(i, 1);
+          }
+        } else {
+          // ThreeWayLinkState
+          [item.previous, item.next, item.parent].forEach((link) => {
+            for (let j = link.links.length - 1; j >= 0; j--) {
+              if (link.links[j].prefix.label === prefix) {
+                count++;
+                link.links.splice(j, 1);
+              }
+            }
+          });
+        }
+      }
+
+      if (count > 0) {
+        collapsedItems.push(
+          new CollapsedItemState({
+            prefix: new PrefixState({ label: prefix, clickHandler: prefixClickHandler }),
+            itemCount: count,
+          })
+        );
       }
     }
+
+    return [...items, ...collapsedItems];
+  }
+}
+
+/**
+ * Returns the sort tag for the item.
+ * The sort tag is the equivalent of strings in `displayOrderOfLinks` setting.
+ */
+function getSortTag(
+  item: PrefixedLinkState | ThreeWayLinkState | PinnedNoteContentState | CollapsedItemState
+): string {
+  if (
+    item instanceof PrefixedLinkState ||
+    item instanceof PinnedNoteContentState ||
+    item instanceof CollapsedItemState
+  ) {
+    return item.prefix.label;
+  } else {
+    if (item.type === "periodic") {
+      return DISPLAY_ORDER_PLACEHOLDER_PERIODIC;
+    } else if (item.type === "property") {
+      return DISPLAY_ORDER_PLACEHOLDER_PROPERTY;
+    } else {
+      return DISPLAY_ORDER_PLACEHOLDER_FOLDER;
+    }
+  }
+}
+
+/**
+ * Returns the order index for the item type.
+ */
+function getLinkTypeOrder(
+  item: PrefixedLinkState | ThreeWayLinkState | PinnedNoteContentState | CollapsedItemState
+): number {
+  if (item instanceof ThreeWayLinkState) {
+    return 0;
+  } else if (item instanceof PrefixedLinkState) {
+    return 1;
+  } else if (item instanceof PinnedNoteContentState) {
+    return 2;
+  } else {
+    return 3;
   }
 }

@@ -1,8 +1,14 @@
 <script lang="ts">
-  import { PrefixedLinkState, ThreeWayLinkState, PinnedNoteContentState } from "./states";
+  import {
+    CollapsedItemState,
+    PinnedNoteContentState,
+    PrefixedLinkState,
+    ThreeWayLinkState,
+  } from "./states";
+  import CollapsedItem from "./CollapsedItem.svelte";
+  import PinnedNoteContent from "./PinnedNoteContent.svelte";
   import PrefixedLink from "./PrefixedLink.svelte";
   import ThreeWayLink from "./ThreeWayLink.svelte";
-  import PinnedNoteContent from "./PinnedNoteContent.svelte";
 
   const {
     items,
@@ -11,7 +17,7 @@
     displayLoadingMessage,
     displayPlaceholder,
   }: {
-    items: (PrefixedLinkState | ThreeWayLinkState | PinnedNoteContentState)[];
+    items: (PrefixedLinkState | ThreeWayLinkState | PinnedNoteContentState | CollapsedItemState)[];
     isLoading: boolean;
     matchWidthToLineLength: boolean;
     displayLoadingMessage: boolean;
@@ -54,6 +60,8 @@
           <ThreeWayLink state={item} />
         {:else if item instanceof PinnedNoteContentState}
           <PinnedNoteContent state={item} />
+        {:else if item instanceof CollapsedItemState}
+          <CollapsedItem state={item} />
         {/if}
       {/each}
       {#if isLoading && displayLoadingMessage}
