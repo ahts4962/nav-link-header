@@ -1,21 +1,17 @@
 <script lang="ts">
-  import {
-    PrefixedLinkState,
-    ThreeWayLinkState,
-    PinnedNoteContentState,
-  } from "../navigationLinkState";
+  import { PrefixedLinkState, ThreeWayLinkState, PinnedNoteContentState } from "./states";
   import PrefixedLink from "./PrefixedLink.svelte";
   import ThreeWayLink from "./ThreeWayLink.svelte";
   import PinnedNoteContent from "./PinnedNoteContent.svelte";
 
   const {
-    links,
+    items,
     isLoading,
     matchWidthToLineLength,
     displayLoadingMessage,
     displayPlaceholder,
   }: {
-    links: (PrefixedLinkState | ThreeWayLinkState | PinnedNoteContentState)[];
+    items: (PrefixedLinkState | ThreeWayLinkState | PinnedNoteContentState)[];
     isLoading: boolean;
     matchWidthToLineLength: boolean;
     displayLoadingMessage: boolean;
@@ -23,9 +19,9 @@
   } = $props();
 
   const showNavigation = $derived(
-    links.length > 0 ||
+    items.length > 0 ||
       (isLoading && displayLoadingMessage) ||
-      (links.length === 0 && !isLoading && displayPlaceholder),
+      (items.length === 0 && !isLoading && displayPlaceholder),
   );
 </script>
 
@@ -33,9 +29,9 @@
   @component
   Container for navigation links.
 
-  Links are displayed in the order provided by the `links` prop.
+  Links are displayed in the order provided by the `items` prop.
   The loading message and "No links" placeholder are shown based on the relevant properties.
-  If `matchWidthToLineLength` is `true`, the navigation width matches
+  If `matchWidthToLineLength` is `true`, the navigation header width matches
   the note's content line length.
 -->
 {#if showNavigation}
@@ -51,19 +47,19 @@
         matchWidthToLineLength && "nav-link-header-width-matched",
       ]}
     >
-      {#each links as link (link)}
-        {#if link instanceof PrefixedLinkState}
-          <PrefixedLink state={link} />
-        {:else if link instanceof ThreeWayLinkState}
-          <ThreeWayLink state={link} />
-        {:else if link instanceof PinnedNoteContentState}
-          <PinnedNoteContent state={link} />
+      {#each items as item (item)}
+        {#if item instanceof PrefixedLinkState}
+          <PrefixedLink state={item} />
+        {:else if item instanceof ThreeWayLinkState}
+          <ThreeWayLink state={item} />
+        {:else if item instanceof PinnedNoteContentState}
+          <PinnedNoteContent state={item} />
         {/if}
       {/each}
       {#if isLoading && displayLoadingMessage}
         <div class="nav-link-header-message nav-link-header-muted">Loading...</div>
       {/if}
-      {#if links.length === 0 && !isLoading && displayPlaceholder}
+      {#if items.length === 0 && !isLoading && displayPlaceholder}
         <div class="nav-link-header-message nav-link-header-muted">No links</div>
       {/if}
     </div>

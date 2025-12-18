@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { NavigationLinkState, type PinnedNoteContentState } from "../navigationLinkState";
+  import { NavigationLinkState, type PinnedNoteContentState } from "./states";
   import NavigationLink from "./NavigationLink.svelte";
 
   const { state }: { state: PinnedNoteContentState } = $props();

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { NavigationLinkState } from "../navigationLinkState";
+  import type { NavigationLinkState } from "./states";
   import Icon from "./Icon.svelte";
 
   const { state }: { state: NavigationLinkState } = $props();

@@ -1,41 +1,37 @@
 import type NavLinkHeader from "./main";
-import {
-  PinnedNoteContentState,
-  PrefixedLinkState,
-  type ThreeWayLinkState,
-} from "./navigationLinkState";
+import { PinnedNoteContentState, PrefixedLinkState, type ThreeWayLinkState } from "./ui/states";
 
 export const DISPLAY_ORDER_PLACEHOLDER_PERIODIC = "[[p]]";
 export const DISPLAY_ORDER_PLACEHOLDER_PROPERTY = "[[P]]";
 export const DISPLAY_ORDER_PLACEHOLDER_FOLDER = "[[f]]";
 
 /**
- * A container for links.
- * This class is used to store, sort, and filter links.
+ * A container for item states.
+ * This class is used to store, sort, and filter item states.
  */
-export class LinkContainer {
-  private links: (PrefixedLinkState | ThreeWayLinkState | PinnedNoteContentState)[] = [];
+export class ItemStatesContainer {
+  private items: (PrefixedLinkState | ThreeWayLinkState | PinnedNoteContentState)[] = [];
   private sorted = false;
 
   constructor(private plugin: NavLinkHeader) {}
 
   /**
-   * Returns the links added so far.
-   * The links are sorted according to the plugin settings.
+   * Returns the items added so far.
+   * The items are sorted according to the plugin settings.
    */
-  public getLinks(): (PrefixedLinkState | ThreeWayLinkState | PinnedNoteContentState)[] {
+  public getItems(): (PrefixedLinkState | ThreeWayLinkState | PinnedNoteContentState)[] {
     if (this.sorted) {
-      return this.links;
+      return this.items;
     }
 
-    // Sort the links.
+    // Sort the items.
     const order = [...this.plugin.settings.displayOrderOfLinks];
-    const existingSortTags = [...new Set(this.links.map((link) => this.getSortTag(link)))];
+    const existingSortTags = [...new Set(this.items.map((link) => this.getSortTag(link)))];
     const additionalSortTags = existingSortTags.filter((tag) => !order.includes(tag));
     additionalSortTags.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
     order.push(...additionalSortTags);
 
-    this.links.sort((a, b) => {
+    this.items.sort((a, b) => {
       const aSortTag = this.getSortTag(a);
       const bSortTag = this.getSortTag(b);
       const aIndex = order.indexOf(aSortTag);
@@ -60,65 +56,65 @@ export class LinkContainer {
     });
 
     this.sorted = true;
-    return this.links;
+    return this.items;
   }
 
   /**
-   * Adds a link to the container.
-   * The link is filtered according to the plugin settings.
-   * @param link The link to add.
+   * Adds an item to the container.
+   * The item is filtered according to the plugin settings.
+   * @param item The item to add.
    */
-  public addLink(link: PrefixedLinkState | ThreeWayLinkState | PinnedNoteContentState) {
+  public addItem(item: PrefixedLinkState | ThreeWayLinkState | PinnedNoteContentState) {
     // Filter out any prefixed links that have the same destination.
-    if (this.plugin.settings.filterDuplicateNotes && link instanceof PrefixedLinkState) {
-      const i = this.links.findIndex((l) => {
-        return l instanceof PrefixedLinkState && l.link.destination === link.link.destination;
+    if (this.plugin.settings.filterDuplicateNotes && item instanceof PrefixedLinkState) {
+      const i = this.items.findIndex((l) => {
+        return l instanceof PrefixedLinkState && l.link.destination === item.link.destination;
       });
       if (i !== -1) {
         // If the link is already in the list
-        const existingPrefix = (this.links[i] as PrefixedLinkState).prefix;
-        const newPrefix = link.prefix;
+        const existingPrefix = (this.items[i] as PrefixedLinkState).prefix;
+        const newPrefix = item.prefix;
         const priority = this.plugin.settings.duplicateNoteFilteringPriority;
         const existingIndex = priority.indexOf(existingPrefix);
         const newIndex = priority.indexOf(newPrefix);
         if (existingIndex === -1 && newIndex === -1) {
           if (existingPrefix.localeCompare(newPrefix, undefined, { numeric: true }) > 0) {
-            this.links[i] = link;
+            this.items[i] = item;
           } else {
             return;
           }
         } else if (existingIndex === -1) {
-          this.links[i] = link;
+          this.items[i] = item;
         } else if (newIndex === -1) {
           return;
         } else {
           if (newIndex < existingIndex) {
-            this.links[i] = link;
+            this.items[i] = item;
           } else {
             return;
           }
         }
       } else {
-        this.links.push(link);
+        this.items.push(item);
       }
     } else {
-      this.links.push(link);
+      this.items.push(item);
     }
 
     this.sorted = false;
   }
 
   /**
-   * Returns the sort tag for the link.
+   * Returns the sort tag for the item.
    * The sort tag is the equivalent of strings in `displayOrderOfLinks` setting.
    */
-  private getSortTag(link: PrefixedLinkState | ThreeWayLinkState | PinnedNoteContentState): string {
-    if (link instanceof PrefixedLinkState || link instanceof PinnedNoteContentState) {
-      return link.prefix;
+  private getSortTag(item: PrefixedLinkState | ThreeWayLinkState | PinnedNoteContentState): string {
+    if (item instanceof PrefixedLinkState || item instanceof PinnedNoteContentState) {
+      return item.prefix;
     } else {
-      if (link.type === "periodic") {
+      if (item.type === "periodic") {
         return DISPLAY_ORDER_PLACEHOLDER_PERIODIC;
-      } else if (link.type === "property") {
+      } else if (item.type === "property") {
         return DISPLAY_ORDER_PLACEHOLDER_PROPERTY;
       } else {
         return DISPLAY_ORDER_PLACEHOLDER_FOLDER;

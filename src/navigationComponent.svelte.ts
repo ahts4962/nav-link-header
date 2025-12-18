@@ -7,8 +7,8 @@ import {
   ThreeWayLinkState,
   PinnedNoteContentState,
   type LinkEventHandler,
-} from "./navigationLinkState";
-import { LinkContainer } from "./linkContainer";
+} from "./ui/states";
+import { ItemStatesContainer } from "./itemStatesContainer";
 import { AnnotatedLinksManager } from "./annotatedLink";
 import { getPropertyLinks, getThreeWayPropertyLink } from "./propertyLink";
 import { createPeriodicNote, PeriodicNotesManager } from "./periodicNotes";
@@ -30,13 +30,13 @@ export class NavigationComponent extends Component {
   private navigation?: ReturnType<typeof Navigation>;
 
   private navigationProps: {
-    links: (PrefixedLinkState | ThreeWayLinkState | PinnedNoteContentState)[];
+    items: (PrefixedLinkState | ThreeWayLinkState | PinnedNoteContentState)[];
     isLoading: boolean;
     matchWidthToLineLength: boolean;
     displayLoadingMessage: boolean;
     displayPlaceholder: boolean;
   } = $state({
-    links: [],
+    items: [],
     isLoading: false,
     matchWidthToLineLength: false,
     displayLoadingMessage: false,
@@ -60,7 +60,7 @@ export class NavigationComponent extends Component {
    * Initializes the navigation component.
    */
   public onload(): void {
-    this.navigationProps.links = [];
+    this.navigationProps.items = [];
     this.navigationProps.isLoading = false;
     this.navigationProps.matchWidthToLineLength = false;
     this.navigationProps.displayLoadingMessage = false;
@@ -96,7 +96,7 @@ export class NavigationComponent extends Component {
     this.navigationProps.displayPlaceholder = this.plugin.settings.displayPlaceholder;
 
     const filePath = file.path;
-    const newLinks = new LinkContainer(this.plugin);
+    const itemStatesContainer = new ItemStatesContainer(this.plugin);
     const clickHandler: LinkEventHandler = (target, e) => {
       if (target.isExternal) {
         void openExternalLink(this.plugin.app, target.destination, true);
@@ -122,7 +122,7 @@ export class NavigationComponent extends Component {
     };
 
     this.constructPropertyLinkStates(file, clickHandler, mouseOverHandler).forEach((link) => {
-      newLinks.addLink(link);
+      itemStatesContainer.addItem(link);
     });
 
     const threeWayPropertyLinkState = this.constructThreeWayPropertyLinkState(
@@ -131,7 +131,7 @@ export class NavigationComponent extends Component {
       mouseOverHandler
     );
     if (threeWayPropertyLinkState) {
-      newLinks.addLink(threeWayPropertyLinkState);
+      itemStatesContainer.addItem(threeWayPropertyLinkState);
     }
 
     const periodicNoteLinkState = this.constructPeriodicNoteLinkState(
@@ -140,15 +140,15 @@ export class NavigationComponent extends Component {
       mouseOverHandler
     );
     if (periodicNoteLinkState) {
-      newLinks.addLink(periodicNoteLinkState);
+      itemStatesContainer.addItem(periodicNoteLinkState);
     }
 
     this.constructFolderLinkStates(file, clickHandler, mouseOverHandler).forEach((link) => {
-      newLinks.addLink(link);
+      itemStatesContainer.addItem(link);
     });
 
     // Update links that can always be constructed synchronously.
-    this.navigationProps.links = [...newLinks.getLinks()];
+    this.navigationProps.items = [...itemStatesContainer.getItems()];
 
     const pinnedNoteContentStates = await this.constructPinnedNoteContentStates(
       file,
@@ -160,9 +160,9 @@ export class NavigationComponent extends Component {
     }
     if (pinnedNoteContentStates.length > 0) {
       pinnedNoteContentStates.forEach((link) => {
-        newLinks.addLink(link);
+        itemStatesContainer.addItem(link);
       });
-      this.navigationProps.links = [...newLinks.getLinks()];
+      this.navigationProps.items = [...itemStatesContainer.getItems()];
     }
 
     try {
@@ -171,8 +171,8 @@ export class NavigationComponent extends Component {
         if (!this.loaded) {
           return;
         }
-        newLinks.addLink(link);
-        this.navigationProps.links = [...newLinks.getLinks()];
+        itemStatesContainer.addItem(link);
+        this.navigationProps.items = [...itemStatesContainer.getItems()];
       }
     } catch (e) {
       if (e instanceof PluginError) {

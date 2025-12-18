@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { PrefixedLinkState } from "../navigationLinkState";
+  import type { PrefixedLinkState } from "./states";
   import NavigationLink from "./NavigationLink.svelte";
 
   const { state }: { state: PrefixedLinkState } = $props();
