@@ -125,6 +125,10 @@ test("parse wiki style link", () => {
   expected = { path: undefined, displayText: undefined };
   expect(parseWikiLink(text)).toStrictEqual(expected);
 
+  text = "[[file1]] [[file2]]";
+  expected = { path: undefined, displayText: undefined };
+  expect(parseWikiLink(text)).toStrictEqual(expected);
+
   text = "[[file|display]]";
   expected = { path: "file", displayText: "display" };
   expect(parseWikiLink(text)).toStrictEqual(expected);
@@ -211,6 +215,46 @@ test("parse markdown style link", () => {
   expect(parseMarkdownLink(text)).toStrictEqual(expected);
 
   text = "dis[play](file)";
+  expected = {
+    destination: undefined,
+    isValidExternalLink: false,
+    displayText: undefined,
+  };
+  expect(parseMarkdownLink(text)).toStrictEqual(expected);
+
+  text = "[[display](file)";
+  expected = {
+    destination: undefined,
+    isValidExternalLink: false,
+    displayText: undefined,
+  };
+  expect(parseMarkdownLink(text)).toStrictEqual(expected);
+
+  text = "[display]](file)";
+  expected = {
+    destination: undefined,
+    isValidExternalLink: false,
+    displayText: undefined,
+  };
+  expect(parseMarkdownLink(text)).toStrictEqual(expected);
+
+  text = "[display]((file)";
+  expected = {
+    destination: undefined,
+    isValidExternalLink: false,
+    displayText: undefined,
+  };
+  expect(parseMarkdownLink(text)).toStrictEqual(expected);
+
+  text = "[display](file))";
+  expected = {
+    destination: undefined,
+    isValidExternalLink: false,
+    displayText: undefined,
+  };
+  expect(parseMarkdownLink(text)).toStrictEqual(expected);
+
+  text = "[display](file) [display](file)";
   expected = {
     destination: undefined,
     isValidExternalLink: false,
