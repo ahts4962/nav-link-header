@@ -36,7 +36,7 @@
 
 <style>
   .nav-link-header-link {
-    display: flex;
+    display: inline-flex;
     flex-wrap: wrap;
   }
 

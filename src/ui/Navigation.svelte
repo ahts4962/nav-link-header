@@ -1,7 +1,12 @@
 <script lang="ts">
-  import { PrefixedLinkState, ThreeWayLinkState } from "../navigationLinkState";
+  import {
+    PrefixedLinkState,
+    ThreeWayLinkState,
+    PinnedNoteContentState,
+  } from "../navigationLinkState";
   import PrefixedLink from "./PrefixedLink.svelte";
   import ThreeWayLink from "./ThreeWayLink.svelte";
+  import PinnedNoteContent from "./PinnedNoteContent.svelte";
 
   const {
     links,
@@ -10,7 +15,7 @@
     displayLoadingMessage,
     displayPlaceholder,
   }: {
-    links: (PrefixedLinkState | ThreeWayLinkState)[];
+    links: (PrefixedLinkState | ThreeWayLinkState | PinnedNoteContentState)[];
     isLoading: boolean;
     matchWidthToLineLength: boolean;
     displayLoadingMessage: boolean;
@@ -51,6 +56,8 @@
           <PrefixedLink state={link} />
         {:else if link instanceof ThreeWayLinkState}
           <ThreeWayLink state={link} />
+        {:else if link instanceof PinnedNoteContentState}
+          <PinnedNoteContent state={link} />
         {/if}
       {/each}
       {#if isLoading && displayLoadingMessage}

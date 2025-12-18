@@ -1,7 +1,7 @@
 export type LinkEventHandler = (target: NavigationLinkState, e: MouseEvent) => void;
 
 /**
- * The state of a NavigationLink.
+ * The state of a `NavigationLink`.
  */
 export class NavigationLinkState {
   public destination: string;
@@ -16,7 +16,7 @@ export class NavigationLinkState {
    *     If the destination is a file path, it must be normalized beforehand.
    * @param isExternal Whether the destination is an external link.
    * @param displayText The display text of the link.
-   * @param resolved Whether the destination path exists (true) or not (false).
+   * @param resolved Whether the destination path exists (`true`) or not (`false`).
    * @param clickHandler The function to call when the link is clicked.
    * @param mouseOverHandler The function to call when the mouse hovers over the link.
    */
@@ -45,14 +45,14 @@ export class NavigationLinkState {
 }
 
 /**
- * The state of a PrefixedLink.
+ * The state of a `PrefixedLink`.
  */
 export class PrefixedLinkState {
   public prefix: string;
   public link: NavigationLinkState;
 
   /**
-   * @param prefix The string (typically emoji) placed before the link.
+   * @param prefix The string (e.g., emoji) placed before the link.
    * @param link The link.
    */
   constructor({ prefix, link }: { prefix: string; link: NavigationLinkState }) {
@@ -62,7 +62,7 @@ export class PrefixedLinkState {
 }
 
 /**
- * The state of a ThreeWayLink.
+ * The state of a `ThreeWayLink`.
  */
 export class ThreeWayLinkState {
   public type: "periodic" | "property" | "folder";
@@ -74,16 +74,16 @@ export class ThreeWayLinkState {
 
   /**
    * @param type The type of the link.
-   * @param index The index of the link (e.g. the index of the folder links).
+   * @param index The index of the link (e.g., the index of the folder links).
    * @param previous The previous links. If `hidden` is `true`, the link is not displayed.
    *     It is possible that `links` is empty and `hidden` is `false`
    *     (e.g., displaying a placeholder).
    * @param next The next links.
    * @param parent The parent links.
    * @param delimiters The style of delimiters to use.
-   *     - "full": < previous | parent | next >
-   *     - "separator": previous | parent | next
-   *     - "none": previous parent next
+   *     - "full": `< previous | parent | next >`
+   *     - "separator": `previous | parent | next`
+   *     - "none": `previous parent next`
    */
   constructor({
     type,
@@ -106,5 +106,22 @@ export class ThreeWayLinkState {
     this.next = next;
     this.parent = parent;
     this.delimiters = delimiters;
+  }
+}
+
+/**
+ * The state of a `PinnedNoteContent`.
+ */
+export class PinnedNoteContentState {
+  public prefix: string;
+  public content: (NavigationLinkState | string)[];
+
+  /**
+   * @param prefix The string (e.g., emoji) placed before the pinned note content.
+   * @param content The content of the pinned note, consisting of links and plain text.
+   */
+  constructor({ prefix, content }: { prefix: string; content: (NavigationLinkState | string)[] }) {
+    this.prefix = prefix;
+    this.content = content;
   }
 }

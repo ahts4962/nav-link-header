@@ -5,12 +5,14 @@ import {
   NavigationLinkState,
   PrefixedLinkState,
   ThreeWayLinkState,
+  PinnedNoteContentState,
   type LinkEventHandler,
 } from "./navigationLinkState";
 import { LinkContainer } from "./linkContainer";
 import { AnnotatedLinksManager } from "./annotatedLink";
 import { getPropertyLinks, getThreeWayPropertyLink } from "./propertyLink";
 import { createPeriodicNote, PeriodicNotesManager } from "./periodicNotes";
+import { getPinnedNoteContents } from "./pinnedNoteContent";
 import { FolderLinksManager } from "./folderLink";
 import { FileCreationModal } from "./fileCreationModal";
 import Navigation from "./ui/Navigation.svelte";
@@ -28,7 +30,7 @@ export class NavigationComponent extends Component {
   private navigation?: ReturnType<typeof Navigation>;
 
   private navigationProps: {
-    links: (PrefixedLinkState | ThreeWayLinkState)[];
+    links: (PrefixedLinkState | ThreeWayLinkState | PinnedNoteContentState)[];
     isLoading: boolean;
     matchWidthToLineLength: boolean;
     displayLoadingMessage: boolean;
@@ -123,13 +125,13 @@ export class NavigationComponent extends Component {
       newLinks.addLink(link);
     });
 
-    const threeWayPropertyLink = this.constructThreeWayPropertyLinkState(
+    const threeWayPropertyLinkState = this.constructThreeWayPropertyLinkState(
       file,
       clickHandler,
       mouseOverHandler
     );
-    if (threeWayPropertyLink) {
-      newLinks.addLink(threeWayPropertyLink);
+    if (threeWayPropertyLinkState) {
+      newLinks.addLink(threeWayPropertyLinkState);
     }
 
     const periodicNoteLinkState = this.constructPeriodicNoteLinkState(
@@ -145,7 +147,23 @@ export class NavigationComponent extends Component {
       newLinks.addLink(link);
     });
 
+    // Update links that can always be constructed synchronously.
     this.navigationProps.links = [...newLinks.getLinks()];
+
+    const pinnedNoteContentStates = await this.constructPinnedNoteContentStates(
+      file,
+      clickHandler,
+      mouseOverHandler
+    );
+    if (!this.loaded) {
+      return;
+    }
+    if (pinnedNoteContentStates.length > 0) {
+      pinnedNoteContentStates.forEach((link) => {
+        newLinks.addLink(link);
+      });
+      this.navigationProps.links = [...newLinks.getLinks()];
+    }
 
     try {
       const generator = this.constructAnnotatedLinkStates(file, clickHandler, mouseOverHandler);
@@ -556,12 +574,54 @@ export class NavigationComponent extends Component {
   }
 
   /**
+   * Constructs the pinned note content states for the specified file.
+   * @param file The file to construct the pinned note content states for.
+   * @param clickHandler The click handler for the links.
+   * @param mouseOverHandler The mouse over handler for the links.
+   * @returns The pinned note content states.
+   */
+  private async constructPinnedNoteContentStates(
+    file: TFile,
+    clickHandler: LinkEventHandler,
+    mouseOverHandler: LinkEventHandler
+  ): Promise<PinnedNoteContentState[]> {
+    if (this.plugin.settings.annotationStringsForPinning.length === 0) {
+      return [];
+    }
+
+    return (await getPinnedNoteContents(this.plugin, file)).map((pinnedNoteContent) => {
+      return new PinnedNoteContentState({
+        prefix: pinnedNoteContent.prefix,
+        content: pinnedNoteContent.content.map((item) => {
+          if (typeof item === "string") {
+            return item;
+          } else {
+            return new NavigationLinkState({
+              destination: item.destination,
+              isExternal: item.isExternal,
+              displayText: this.getDisplayText(
+                item.destination,
+                item.isExternal,
+                item.displayText,
+                false
+              ),
+              resolved: true,
+              clickHandler,
+              mouseOverHandler,
+            });
+          }
+        }),
+      });
+    });
+  }
+
+  /**
    * Constructs the annotated link states for the specified file.
    * @param file The file to construct the annotated link states for.
    * @param clickHandler The click handler for the links.
    * @param mouseOverHandler The mouse over handler for the links.
    * @returns The annotated link states.
-   * @throws {PluginError} Throws when the AnnotatedLinksManager has been reset
+   * @throws {PluginError} Throws when the `AnnotatedLinksManager` has been reset
    *     during async operation.
    */
   private async *constructAnnotatedLinkStates(
@@ -601,12 +661,15 @@ export class NavigationComponent extends Component {
    * @param destination The destination (file path or URL).
    * @param isExternal Whether the destination is an external link.
    * @param manualDisplayText The manual display text (e.g., from `[[path|display]]`).
+   * @param usePropertyValue If `false`, the property value is not used even if
+   *     specified in settings.
    * @returns The display text.
    */
   private getDisplayText(
     destination: string,
     isExternal: boolean,
-    manualDisplayText?: string
+    manualDisplayText?: string,
+    usePropertyValue: boolean = true
   ): string {
     if (manualDisplayText) {
       return manualDisplayText;
@@ -616,13 +679,15 @@ export class NavigationComponent extends Component {
       return destination;
     }
 
-    const propertyName = this.plugin.settings.propertyNameForDisplayText;
-    if (propertyName) {
-      const linkedFile = this.plugin.app.vault.getFileByPath(destination);
-      if (linkedFile) {
-        const values = getStringValuesFromFileProperty(this.plugin.app, linkedFile, propertyName);
-        if (values.length > 0) {
-          return values[0];
+    if (usePropertyValue) {
+      const propertyName = this.plugin.settings.propertyNameForDisplayText;
+      if (propertyName) {
+        const linkedFile = this.plugin.app.vault.getFileByPath(destination);
+        if (linkedFile) {
+          const values = getStringValuesFromFileProperty(this.plugin.app, linkedFile, propertyName);
+          if (values.length > 0) {
+            return values[0];
+          }
         }
       }
     }
