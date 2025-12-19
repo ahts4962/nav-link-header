@@ -9,7 +9,7 @@
   A component that represents a prefix string (e.g., emoji).
 -->
 <button
-  class="nav-link-header-link-prefix"
+  class="nav-link-header-link-prefix clickable-icon"
   onclick={(e) => {
     e.preventDefault();
     state.clickHandler(state);
