@@ -1,17 +1,15 @@
 import { TFile } from "obsidian";
 import type NavLinkHeader from "./main";
-import { Updater } from "./updater";
+import { NavigationUpdater } from "./navigationUpdater";
 import { NavigationComponent } from "./navigationComponent.svelte";
 import type { NavLinkHeaderSettings } from "./settings";
 
 /**
- * Updates and manages navigation in Obsidian workspace leaves.
- * The `LeavesUpdater` class is responsible for updating navigation links in all
- * relevant workspace leaves (such as markdown and canvas views) based on plugin
- * settings. It listens for navigation and settings changes, and updates or cleans up
- * navigation components as needed.
+ * Updates and manages navigation headers in Obsidian workspace leaves.
+ * The `LeavesUpdater` class is responsible for updating navigation headers in all
+ * relevant workspace leaves (such as markdown and canvas views) based on plugin settings.
  */
-export class LeavesUpdater extends Updater {
+export class LeavesUpdater extends NavigationUpdater {
   private _isActive: boolean = false;
 
   public get isActive(): boolean {
@@ -69,7 +67,7 @@ export class LeavesUpdater extends Updater {
   }
 
   /**
-   * Updates the navigation links for all leaves.
+   * Updates navigation headers for all leaves.
    * @param forced See `NavigationComponent.update()`.
    */
   public updateAllLeaves(forced: boolean): void {
@@ -100,13 +98,14 @@ export class LeavesUpdater extends Updater {
         (this.plugin.settings.displayInOtherViews && !knownViewTypes.includes(viewType))
       ) {
         if ("file" in view && view.file instanceof TFile) {
-          this.updateNavigation({
+          const navigationComponent = this.getNavigationComponent({
             parent: view,
             container: view.containerEl,
             nextSibling: view.containerEl.querySelector(".view-content"),
-            file: view.file,
-            forced,
           });
+          if (navigationComponent) {
+            void navigationComponent.update(view.file, forced);
+          }
         }
       }
     });
@@ -120,7 +119,7 @@ export class LeavesUpdater extends Updater {
       const view = leaf.view;
 
       // Removes the added html elements.
-      view.containerEl.querySelector(".nav-link-header-navigation")?.remove();
+      view.containerEl.querySelector(`.${NavigationUpdater.navigationElementClassName}`)?.remove();
 
       // Removes the navigation components.
       if ("_children" in view && view._children instanceof Array) {

@@ -78,15 +78,22 @@ export class NavigationComponent extends Component {
   /**
    * Updates the navigation component with the specified file.
    * @param file The file object currently opened in the parent component.
+   *     If `null`, uses the file from the last update.
    * @param forced If `true`, the navigation component is always updated.
    *     If `false`, the navigation component will not be updated if the file path
    *     has not changed since the last update.
    */
-  public async update(file: TFile, forced: boolean): Promise<void> {
+  public async update(file: TFile | null, forced: boolean): Promise<void> {
     if (!this.loaded) {
       return;
     }
 
+    if (file === null) {
+      file = this.plugin.app.vault.getFileByPath(this.currentFilePath ?? "");
+      if (file === null) {
+        return;
+      }
+    }
     if (!forced && this.currentFilePath === file.path) {
       return;
     }

@@ -1,19 +1,24 @@
 import { Component, HoverPopover, TFile, type HoverParent, type WorkspaceWindow } from "obsidian";
 import type NavLinkHeader from "./main";
-import { Updater } from "./updater";
+import { NavigationUpdater } from "./navigationUpdater";
 import type { NavLinkHeaderSettings } from "./settings";
+import type { NavigationComponent } from "./navigationComponent.svelte";
 
 /**
  * A class that monitors hover popovers. When a hover popover is created, this class
- * triggers the addition of the navigation links to the hover popover.
+ * triggers the addition of the navigation header to the hover popover.
  */
-export class HoverPopoverUpdater extends Updater {
+export class HoverPopoverUpdater extends NavigationUpdater {
   // A map to store the observers for each body element.
   private observers: Map<HTMLBodyElement, MutationObserver> = new Map();
 
   // A reference to the hover parent obtained from the last hover-link event.
   // This is necessary because hover-link event does not directly create a popover.
   private lastHoverParent?: WeakRef<HoverParent>;
+
+  // A set to store weak references to the created navigation components.
+  private navigationComponents: Set<WeakRef<NavigationComponent>> = new Set();
+  private registry: FinalizationRegistry<WeakRef<NavigationComponent>>;
 
   private _isActive: boolean = false;
 
@@ -36,6 +41,10 @@ export class HoverPopoverUpdater extends Updater {
 
   constructor(plugin: NavLinkHeader) {
     super(plugin);
+
+    this.registry = new FinalizationRegistry((ref) => {
+      this.navigationComponents.delete(ref);
+    });
 
     this.isActive = this.plugin.settings.displayInHoverPopovers;
   }
@@ -61,6 +70,16 @@ export class HoverPopoverUpdater extends Updater {
     // Stores the hover parent when the hover-link event is triggered.
     // This is used when the hover popover is actually created later.
     this.lastHoverParent = new WeakRef(hoverParent);
+  }
+
+  public override onForcedNavigationUpdateRequired(): void {
+    if (!this.isActive) {
+      return;
+    }
+
+    for (const ref of this.navigationComponents) {
+      ref.deref()?.update(null, true);
+    }
   }
 
   public override onSettingsChanged(
@@ -93,7 +112,7 @@ export class HoverPopoverUpdater extends Updater {
             node.classList.contains("popover") &&
             node.classList.contains("hover-popover")
           ) {
-            void this.updateHoverPopover();
+            void this.addNavigationToHoverPopover();
             return;
           }
         }
@@ -105,9 +124,9 @@ export class HoverPopoverUpdater extends Updater {
   }
 
   /**
-   * Adds the navigation links to the newly created hover popover.
+   * Adds a navigation header to the newly created hover popover.
    */
-  private async updateHoverPopover(): Promise<void> {
+  private async addNavigationToHoverPopover(): Promise<void> {
     // Parent component is retrieved from the last hover-link event.
     const hoverParent = this.lastHoverParent?.deref();
     if (!(hoverParent?.hoverPopover instanceof HoverPopover)) {
@@ -269,13 +288,17 @@ export class HoverPopoverUpdater extends Updater {
           nextSibling = null;
         }
 
-        this.updateNavigation({
+        const navigationComponent = this.getNavigationComponent({
           parent: child,
           container,
           nextSibling,
-          file: child.file,
-          forced: true,
         });
+        if (navigationComponent) {
+          const ref = new WeakRef(navigationComponent);
+          this.navigationComponents.add(ref);
+          this.registry.register(navigationComponent, ref);
+          void navigationComponent.update(child.file, true);
+        }
       }
     }
   }
@@ -289,6 +312,8 @@ export class HoverPopoverUpdater extends Updater {
       observer.disconnect();
     }
     this.observers.clear();
+
     this.lastHoverParent = undefined;
+    this.navigationComponents.clear();
   }
 }
