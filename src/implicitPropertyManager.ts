@@ -62,6 +62,14 @@ export class ImplicitPropertyManager extends PluginComponent {
     this.initializeCache();
   }
 
+  public override onMetadataResolved(): void {
+    if (!this.isActive) {
+      return;
+    }
+
+    this.initializeCache();
+  }
+
   public override onMetadataChanged(file: TFile, data: string, cache: CachedMetadata): void {
     if (!this.isActive) {
       return;

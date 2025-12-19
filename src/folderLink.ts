@@ -25,7 +25,7 @@ export class FolderLinksManager extends PluginComponent {
     super();
 
     for (let i = 0; i < this.plugin.settings.folderLinksSettingsArray.length; i++) {
-      this.folderGroupEntries.push(new FolderGroupEntry(plugin, i));
+      this.folderGroupEntries.push(new FolderGroupEntry(this.plugin, i));
     }
   }
 
@@ -53,6 +53,17 @@ export class FolderLinksManager extends PluginComponent {
     }
     for (const entry of this.folderGroupEntries) {
       entry.onFileRenamed(file, oldPath);
+    }
+  }
+
+  public override onMetadataResolved(): void {
+    if (!this.isActive) {
+      return;
+    }
+
+    this.folderGroupEntries.length = 0;
+    for (let i = 0; i < this.plugin.settings.folderLinksSettingsArray.length; i++) {
+      this.folderGroupEntries.push(new FolderGroupEntry(this.plugin, i));
     }
   }
 
@@ -94,7 +105,7 @@ export class FolderLinksManager extends PluginComponent {
   }
 
   public override dispose(): void {
-    this.folderGroupEntries = [];
+    this.folderGroupEntries.length = 0;
   }
 
   /**

@@ -40,6 +40,13 @@ export abstract class PluginComponent {
   public onMetadataChanged(file: TFile, data: string, cache: CachedMetadata): void {}
 
   /**
+   * Called when the metadata cache has been fully resolved.
+   * This method is called when the `resolved` event fires for the first time,
+   * in order to detect the completion of the metadata cache initialization at Obsidian startup.
+   */
+  public onMetadataResolved(): void {}
+
+  /**
    * Called when a new workspace window is opened.
    * @param window The opened workspace window.
    */

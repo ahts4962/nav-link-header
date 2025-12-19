@@ -18,6 +18,8 @@ import { deepCopy } from "./utils";
 export default class NavLinkHeader extends Plugin {
   private components: PluginComponent[] = [];
 
+  private metadataResolved: boolean = false;
+
   // Currently applied settings.
   private _settings: NavLinkHeaderSettings = deepCopy(DEFAULT_SETTINGS);
 
@@ -109,7 +111,23 @@ export default class NavLinkHeader extends Plugin {
     );
 
     this.registerEvent(
+      this.app.metadataCache.on("resolved", () => {
+        if (this.metadataResolved) {
+          return;
+        }
+        this.metadataResolved = true;
+        for (const component of this.components) {
+          component.onMetadataResolved();
+        }
+        this.triggerForcedNavigationUpdateRequiredDebounced();
+      })
+    );
+
+    this.registerEvent(
       this.app.metadataCache.on("changed", (file, data, cache) => {
+        // "changed" event implies that the initial resolution is done.
+        this.metadataResolved = true;
+
         for (const component of this.components) {
           component.onMetadataChanged(file, data, cache);
         }
