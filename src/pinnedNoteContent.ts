@@ -79,7 +79,7 @@ function parsePinnedNoteContent(app: App, file: TFile, content: string): PinnedN
     text: string;
   }[] = [];
 
-  for (const match of content.matchAll(/\[\[[^\[\]]+\]\]/g)) {
+  for (const match of content.matchAll(/\[\[[^[\]]+\]\]/g)) {
     matchInfos.push({
       index: match.index,
       length: match[0].length,
@@ -88,7 +88,7 @@ function parsePinnedNoteContent(app: App, file: TFile, content: string): PinnedN
     });
   }
 
-  for (const match of content.matchAll(/\[[^\[\]]+\]\([^\(\)]+\)/g)) {
+  for (const match of content.matchAll(/\[[^[\]]+\]\([^()]+\)/g)) {
     matchInfos.push({
       index: match.index,
       length: match[0].length,

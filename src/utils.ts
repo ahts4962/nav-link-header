@@ -129,7 +129,7 @@ export function parseWikiLink(text: string): {
   displayText?: string;
 } {
   text = text.trim();
-  const re = /^\[\[([^\[\]]+)\]\]$/;
+  const re = /^\[\[([^[\]]+)\]\]$/;
   const match = text.match(re);
   if (!match) {
     return { path: undefined, displayText: undefined };
@@ -177,7 +177,7 @@ export function parseMarkdownLink(text: string): {
   displayText?: string;
 } {
   text = text.trim();
-  const re = /^\[([^\[\]]+)\]\(([^\(\)]+)\)$/;
+  const re = /^\[([^[\]]+)\]\(([^()]+)\)$/;
   const match = text.match(re);
   if (!match) {
     return {
