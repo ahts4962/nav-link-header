@@ -15,6 +15,8 @@ import {
 } from "./settings";
 import { deepCopy } from "./utils";
 
+export const NAVIGATION_ELEMENT_CLASS_NAME: string = "nav-link-header-navigation";
+
 export default class NavLinkHeader extends Plugin {
   private components: PluginComponent[] = [];
 

@@ -39,13 +39,7 @@ export class NavigationController implements HoverParent {
     matchWidthToLineLength: boolean;
     displayLoadingMessage: boolean;
     displayPlaceholder: boolean;
-  } = $state({
-    items: [],
-    isLoading: false,
-    matchWidthToLineLength: false,
-    displayLoadingMessage: false,
-    displayPlaceholder: false,
-  });
+  };
 
   public hoverPopover: HoverPopover | null = null;
 
@@ -59,11 +53,14 @@ export class NavigationController implements HoverParent {
    * @param containerEl The container element to add the navigation header.
    */
   constructor(private plugin: NavLinkHeader, private containerEl: Element) {
-    this.navigationProps.items = [];
-    this.navigationProps.isLoading = false;
-    this.navigationProps.matchWidthToLineLength = false;
-    this.navigationProps.displayLoadingMessage = false;
-    this.navigationProps.displayPlaceholder = false;
+    this.navigationProps = $state({
+      items: [],
+      isLoading: false,
+      matchWidthToLineLength: false,
+      displayLoadingMessage: false,
+      displayPlaceholder: false,
+    });
+
     this.navigation = mount(Navigation, {
       target: this.containerEl,
       props: this.navigationProps,
