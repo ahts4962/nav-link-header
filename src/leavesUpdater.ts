@@ -1,4 +1,4 @@
-import { TFile, type WorkspaceWindow } from "obsidian";
+import { TFile } from "obsidian";
 import type NavLinkHeader from "./main";
 import { NAVIGATION_ELEMENT_CLASS_NAME } from "./main";
 import { PluginComponent } from "./pluginComponent";
@@ -11,9 +11,6 @@ import type { NavLinkHeaderSettings } from "./settings";
  * relevant workspace leaves (such as markdown and canvas views) based on plugin settings.
  */
 export class LeavesUpdater extends PluginComponent {
-  // A map to keep track of mutation observers for each window's body element.
-  private observers: Map<HTMLBodyElement, MutationObserver> = new Map();
-
   // A map to keep track of navigation controllers for each navigation element.
   private navigationControllers: Map<Element, NavigationController> = new Map();
 
@@ -24,12 +21,8 @@ export class LeavesUpdater extends PluginComponent {
   }
 
   private set isActive(val: boolean) {
-    if (!this._isActive && val) {
-      this.addObserversToAllWindows();
-    }
     if (this._isActive && !val) {
       this.removeAllNavigationElements();
-      this.removeAllObservers();
     }
     this._isActive = val;
   }
@@ -37,27 +30,6 @@ export class LeavesUpdater extends PluginComponent {
   constructor(private plugin: NavLinkHeader) {
     super();
     this.isActive = this.plugin.settings.displayInLeaves;
-  }
-
-  public override onWindowOpen(window: WorkspaceWindow): void {
-    if (this.isActive) {
-      // Adds an observer when a new window is opened.
-      this.addObserver(window.doc.querySelector("body"));
-    }
-  }
-
-  public override onWindowClose(window: WorkspaceWindow): void {
-    if (this.isActive) {
-      // Removes the observer when a window is closed.
-      const body = window.doc.querySelector("body");
-      if (body) {
-        const observer = this.observers.get(body);
-        if (observer) {
-          observer.disconnect();
-          this.observers.delete(body);
-        }
-      }
-    }
   }
 
   public override onNavigationUpdateRequired(): void {
@@ -69,6 +41,14 @@ export class LeavesUpdater extends PluginComponent {
   public override onForcedNavigationUpdateRequired(): void {
     if (this.isActive) {
       this.updateAllLeaves(true);
+    }
+  }
+
+  public override onNavigationElementRemoved(element: Element): void {
+    const navigationController = this.navigationControllers.get(element);
+    if (navigationController) {
+      navigationController.dispose();
+      this.navigationControllers.delete(element);
     }
   }
 
@@ -98,15 +78,6 @@ export class LeavesUpdater extends PluginComponent {
   }
 
   /**
-   * Adds observers to all currently opened windows.
-   */
-  private addObserversToAllWindows(): void {
-    this.plugin.app.workspace.iterateAllLeaves((leaf) => {
-      this.addObserver(leaf.view.containerEl.closest("body"));
-    });
-  }
-
-  /**
    * Removes all navigation elements and their associated controllers from all leaves.
    */
   private removeAllNavigationElements(): void {
@@ -121,58 +92,6 @@ export class LeavesUpdater extends PluginComponent {
       navigationController.dispose();
     }
     this.navigationControllers.clear();
-  }
-
-  /**
-   * Cleans up all observers.
-   */
-  public removeAllObservers(): void {
-    for (const observer of this.observers.values()) {
-      observer.disconnect();
-    }
-    this.observers.clear();
-  }
-
-  /**
-   * Adds a `MutationObserver` to the body element to detect removal of navigation elements.
-   * If `MutationObserver` is already added to the specified body element, this method does nothing.
-   * @param body The body element to observe.
-   */
-  private addObserver(body: HTMLBodyElement | null): void {
-    if (!body || this.observers.has(body)) {
-      return;
-    }
-
-    const observer = new MutationObserver((records) => {
-      for (const record of records) {
-        for (const node of record.removedNodes) {
-          if (!(node instanceof Element)) {
-            continue;
-          }
-
-          const navigationElements: Element[] = [];
-          if (node.classList.contains(NAVIGATION_ELEMENT_CLASS_NAME)) {
-            navigationElements.push(node);
-          } else {
-            navigationElements.push(...node.querySelectorAll(`.${NAVIGATION_ELEMENT_CLASS_NAME}`));
-          }
-
-          for (const navigationElement of navigationElements) {
-            if (navigationElement.isConnected) {
-              continue;
-            }
-            const navigationController = this.navigationControllers.get(navigationElement);
-            if (navigationController) {
-              navigationController.dispose();
-              this.navigationControllers.delete(navigationElement);
-            }
-          }
-        }
-      }
-    });
-
-    observer.observe(body, { childList: true, subtree: true });
-    this.observers.set(body, observer);
   }
 
   /**

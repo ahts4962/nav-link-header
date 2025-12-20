@@ -1,4 +1,4 @@
-import { Component, HoverPopover, TFile, type HoverParent, type WorkspaceWindow } from "obsidian";
+import { Component, HoverPopover, TFile, type HoverParent } from "obsidian";
 import type NavLinkHeader from "./main";
 import { NAVIGATION_ELEMENT_CLASS_NAME } from "./main";
 import { PluginComponent } from "./pluginComponent";
@@ -6,19 +6,13 @@ import { NavigationController } from "./navigationController.svelte";
 import type { NavLinkHeaderSettings } from "./settings";
 
 /**
- * A class that monitors hover popovers. When a hover popover is created, this class
- * triggers the addition of the navigation header to the hover popover.
+ * Updates and manages navigation headers in hover popovers.
+ * The `HoverPopoverUpdater` class is responsible for updating navigation headers in
+ * hover popovers based on plugin settings.
  */
 export class HoverPopoverUpdater extends PluginComponent {
-  // A map to keep track of mutation observers for each window's body element.
-  private observers: Map<HTMLBodyElement, MutationObserver> = new Map();
-
   // A map to keep track of navigation controllers for each navigation element.
   private navigationControllers: Map<Element, NavigationController> = new Map();
-
-  // A reference to the hover parent obtained from the last hover-link event.
-  // This is used to get the hover parent when the hover popover is actually created.
-  private lastHoverParent?: WeakRef<HoverParent>;
 
   private _isActive: boolean = false;
 
@@ -27,13 +21,8 @@ export class HoverPopoverUpdater extends PluginComponent {
   }
 
   private set isActive(val: boolean) {
-    if (!this._isActive && val) {
-      this.addObserversToAllWindows();
-    }
     if (this._isActive && !val) {
       this.removeAllNavigationElements();
-      this.removeAllObservers();
-      this.lastHoverParent = undefined;
     }
     this._isActive = val;
   }
@@ -43,37 +32,25 @@ export class HoverPopoverUpdater extends PluginComponent {
     this.isActive = this.plugin.settings.displayInHoverPopovers;
   }
 
-  public override onWindowOpen(window: WorkspaceWindow): void {
-    if (this.isActive) {
-      // Adds an observer when a new window is opened.
-      this.addObserver(window.doc.querySelector("body"));
-    }
-  }
-
-  public override onWindowClose(window: WorkspaceWindow): void {
-    if (this.isActive) {
-      // Removes the observer when a window is closed.
-      const body = window.doc.querySelector("body");
-      if (body) {
-        const observer = this.observers.get(body);
-        if (observer) {
-          observer.disconnect();
-          this.observers.delete(body);
-        }
-      }
-    }
-  }
-
-  public override onHoverLink(hoverParent: HoverParent): void {
-    // Stores the hover parent when the hover-link event is triggered.
-    this.lastHoverParent = new WeakRef(hoverParent);
-  }
-
   public override onForcedNavigationUpdateRequired(): void {
     if (this.isActive) {
       for (const navigationController of this.navigationControllers.values()) {
         void navigationController.update(null, true);
       }
+    }
+  }
+
+  public override onNavigationElementRemoved(element: Element): void {
+    const navigationController = this.navigationControllers.get(element);
+    if (navigationController) {
+      navigationController.dispose();
+      this.navigationControllers.delete(element);
+    }
+  }
+
+  public override onHoverPopoverCreated(hoverParent: HoverParent): void {
+    if (this.isActive) {
+      void this.addNavigationToHoverPopover(hoverParent);
     }
   }
 
@@ -103,28 +80,19 @@ export class HoverPopoverUpdater extends PluginComponent {
   }
 
   /**
-   * Adds observers to all currently opened windows.
-   */
-  private addObserversToAllWindows(): void {
-    this.plugin.app.workspace.iterateAllLeaves((leaf) => {
-      this.addObserver(leaf.view.containerEl.closest("body"));
-    });
-  }
-
-  /**
    * Removes all navigation elements and their associated controllers from all popovers.
    */
   private removeAllNavigationElements(): void {
     this.plugin.app.workspace.iterateAllLeaves((leaf) => {
-      const navigationElements = leaf.view.containerEl
+      const hoverPopoverElements = leaf.view.containerEl
         .closest("body")
-        ?.querySelectorAll(`.${NAVIGATION_ELEMENT_CLASS_NAME}`);
+        ?.querySelectorAll(".popover.hover-popover");
+      if (!hoverPopoverElements) {
+        return;
+      }
 
-      if (navigationElements) {
-        // Removes the added html elements.
-        for (const navigationElement of navigationElements) {
-          navigationElement.remove();
-        }
+      for (const hoverPopoverElement of hoverPopoverElements) {
+        hoverPopoverElement.querySelector(`.${NAVIGATION_ELEMENT_CLASS_NAME}`)?.remove();
       }
     });
 
@@ -135,75 +103,9 @@ export class HoverPopoverUpdater extends PluginComponent {
   }
 
   /**
-   * Cleans up all observers.
-   */
-  public removeAllObservers(): void {
-    for (const observer of this.observers.values()) {
-      observer.disconnect();
-    }
-    this.observers.clear();
-  }
-
-  /**
-   * Adds a `MutationObserver` to the body element to detect addition of hover popovers and
-   * removal of navigation elements.
-   * If `MutationObserver` is already added to the specified body element, this method does nothing.
-   * @param body The body element to observe.
-   */
-  private addObserver(body: HTMLBodyElement | null): void {
-    if (!body || this.observers.has(body)) {
-      return;
-    }
-
-    const observer = new MutationObserver((records) => {
-      for (const record of records) {
-        for (const node of record.removedNodes) {
-          if (!(node instanceof Element)) {
-            continue;
-          }
-
-          const navigationElements: Element[] = [];
-          if (node.classList.contains(NAVIGATION_ELEMENT_CLASS_NAME)) {
-            navigationElements.push(node);
-          } else {
-            navigationElements.push(...node.querySelectorAll(`.${NAVIGATION_ELEMENT_CLASS_NAME}`));
-          }
-
-          for (const navigationElement of navigationElements) {
-            if (navigationElement.isConnected) {
-              continue;
-            }
-            const navigationController = this.navigationControllers.get(navigationElement);
-            if (navigationController) {
-              navigationController.dispose();
-              this.navigationControllers.delete(navigationElement);
-            }
-          }
-        }
-
-        for (const node of record.addedNodes) {
-          if (
-            node instanceof Element &&
-            node.classList.contains("popover") &&
-            node.classList.contains("hover-popover")
-          ) {
-            void this.addNavigationToHoverPopover();
-            break;
-          }
-        }
-      }
-    });
-
-    observer.observe(body, { childList: true, subtree: true });
-    this.observers.set(body, observer);
-  }
-
-  /**
    * Adds a navigation header to the newly created hover popover.
    */
-  private async addNavigationToHoverPopover(): Promise<void> {
-    // Parent component is retrieved from the last hover-link event.
-    const hoverParent = this.lastHoverParent?.deref();
+  private async addNavigationToHoverPopover(hoverParent: HoverParent): Promise<void> {
     if (!(hoverParent?.hoverPopover instanceof HoverPopover)) {
       return;
     }

@@ -3,7 +3,7 @@ import type { NavLinkHeaderSettings } from "./settings";
 
 /**
  * Represents the main component for the plugin, providing lifecycle hooks and event handlers
- * for file operations, window events, navigation updates, and settings changes.
+ * for file operations, window events, navigation updates, DOM events, and settings changes.
  */
 export abstract class PluginComponent {
   /**
@@ -73,6 +73,18 @@ export abstract class PluginComponent {
    * Called when a forced navigation update is required.
    */
   public onForcedNavigationUpdateRequired(): void {}
+
+  /**
+   * Called when a navigation element is removed from the DOM.
+   * @param element The removed navigation element.
+   */
+  public onNavigationElementRemoved(element: Element): void {}
+
+  /**
+   * Called when a hover popover is created.
+   * @param hoverParent The parent component of the hover popover.
+   */
+  public onHoverPopoverCreated(hoverParent: HoverParent): void {}
 
   /**
    * Called when the plugin settings have changed.

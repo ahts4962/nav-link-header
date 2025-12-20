@@ -1,5 +1,6 @@
 import { debounce, Plugin, type HoverParent } from "obsidian";
 import type { PluginComponent } from "./pluginComponent";
+import { DomEventManager } from "./domEventManager";
 import { LeavesUpdater } from "./leavesUpdater";
 import { HoverPopoverUpdater } from "./hoverPopoverUpdater";
 import { AnnotatedLinksManager } from "./annotatedLink";
@@ -55,6 +56,7 @@ export default class NavLinkHeader extends Plugin {
     this.addSettingTab(new NavLinkHeaderSettingTab(this));
 
     this.app.workspace.onLayoutReady(() => {
+      this.components.push(new DomEventManager(this));
       this.components.push(new LeavesUpdater(this));
       this.components.push(new HoverPopoverUpdater(this));
       this.components.push(new AnnotatedLinksManager(this));
@@ -177,6 +179,30 @@ export default class NavLinkHeader extends Plugin {
           component.onForcedNavigationUpdateRequired();
         }
       })
+    );
+
+    this.registerEvent(
+      this.app.workspace.on(
+        // @ts-expect-error: custom event.
+        "nav-link-header:navigation-element-removed",
+        (element: Element) => {
+          for (const component of this.components) {
+            component.onNavigationElementRemoved(element);
+          }
+        }
+      )
+    );
+
+    this.registerEvent(
+      this.app.workspace.on(
+        // @ts-expect-error: custom event.
+        "nav-link-header:hover-popover-created",
+        (hoverParent: HoverParent) => {
+          for (const component of this.components) {
+            component.onHoverPopoverCreated(hoverParent);
+          }
+        }
+      )
     );
 
     this.registerEvent(
