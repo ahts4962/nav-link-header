@@ -1,4 +1,4 @@
-import { Component, type TFile } from "obsidian";
+import { type TFile, type HoverParent, HoverPopover } from "obsidian";
 import { mount, unmount } from "svelte";
 import type NavLinkHeader from "./main";
 import {
@@ -27,9 +27,10 @@ import {
 } from "./utils";
 
 /**
- * Navigation component to add the navigation links to.
+ * A class responsible for aggregating data and passing it to UI components.
+ * Each instance corresponds to a single navigation header.
  */
-export class NavigationComponent extends Component {
+export class NavigationController implements HoverParent {
   private navigation?: ReturnType<typeof Navigation>;
 
   private navigationProps: {
@@ -46,23 +47,18 @@ export class NavigationComponent extends Component {
     displayPlaceholder: false,
   });
 
-  private currentFilePath?: string;
+  public hoverPopover: HoverPopover | null = null;
 
-  private loaded: boolean = false;
+  private filePath?: string; // The file path of the view to which the navigation header belongs.
+
+  private disposed: boolean = false;
 
   /**
-   * Creates a new navigation component.
+   * Creates a new `NavigationController`.
    * @param plugin The plugin instance.
-   * @param containerEl The container element to add the navigation links.
+   * @param containerEl The container element to add the navigation header.
    */
   constructor(private plugin: NavLinkHeader, private containerEl: Element) {
-    super();
-  }
-
-  /**
-   * Initializes the navigation component.
-   */
-  public onload(): void {
     this.navigationProps.items = [];
     this.navigationProps.isLoading = false;
     this.navigationProps.matchWidthToLineLength = false;
@@ -72,32 +68,31 @@ export class NavigationComponent extends Component {
       target: this.containerEl,
       props: this.navigationProps,
     });
-    this.loaded = true;
   }
 
   /**
-   * Updates the navigation component with the specified file.
-   * @param file The file object currently opened in the parent component.
+   * Updates the navigation header with the specified file.
+   * @param file The file object to update the navigation header for.
    *     If `null`, uses the file from the last update.
-   * @param forced If `true`, the navigation component is always updated.
-   *     If `false`, the navigation component will not be updated if the file path
+   * @param forced If `true`, the navigation header is always updated.
+   *     If `false`, the navigation header will not be updated if the file path
    *     has not changed since the last update.
    */
   public async update(file: TFile | null, forced: boolean): Promise<void> {
-    if (!this.loaded) {
+    if (this.disposed) {
       return;
     }
 
     if (file === null) {
-      file = this.plugin.app.vault.getFileByPath(this.currentFilePath ?? "");
+      file = this.plugin.app.vault.getFileByPath(this.filePath ?? "");
       if (file === null) {
         return;
       }
     }
-    if (!forced && this.currentFilePath === file.path) {
+    if (!forced && this.filePath === file.path) {
       return;
     }
-    this.currentFilePath = file.path;
+    this.filePath = file.path;
 
     this.navigationProps.isLoading = true;
     this.navigationProps.matchWidthToLineLength =
@@ -105,7 +100,7 @@ export class NavigationComponent extends Component {
     this.navigationProps.displayLoadingMessage = this.plugin.settings.displayLoadingMessage;
     this.navigationProps.displayPlaceholder = this.plugin.settings.displayPlaceholder;
 
-    const filePath = file.path;
+    const filePath = this.filePath;
     const itemStatesContainer = new ItemStatesContainer(this.plugin);
     const clickHandler: LinkEventHandler = (target, e) => {
       if (target.isExternal) {
@@ -185,7 +180,7 @@ export class NavigationComponent extends Component {
       mouseOverHandler,
       prefixClickHandler
     );
-    if (!this.loaded) {
+    if (this.disposed) {
       return;
     }
     if (pinnedNoteContentStates.length > 0) {
@@ -203,7 +198,7 @@ export class NavigationComponent extends Component {
         prefixClickHandler
       );
       for await (const link of generator) {
-        if (!this.loaded) {
+        if (this.disposed) {
           return;
         }
         itemStatesContainer.addItem(link);
@@ -220,15 +215,15 @@ export class NavigationComponent extends Component {
   }
 
   /**
-   * Unloads the navigation component
+   * Unloads the navigation header and releases resources.
    */
-  public onunload(): void {
+  public dispose(): void {
     if (this.navigation) {
       void unmount(this.navigation);
       this.navigation = undefined;
     }
-    this.currentFilePath = undefined;
-    this.loaded = false;
+    this.filePath = undefined;
+    this.disposed = true;
   }
 
   /**
