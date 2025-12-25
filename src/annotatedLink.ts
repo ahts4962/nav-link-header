@@ -21,8 +21,8 @@ const MATCHED_ANNOTATION_PLACEHOLDER: string = "__MATCHED_ANNOTATION__";
  */
 export class AnnotatedLinksManager extends PluginComponent {
   // The cache object that stores the result of annotated links search.
-  // Cache structure: cache[backlinkFilePath][currentFilePath] = [prefix1, prefix2, ...]
-  private cache: Map<string, Map<string, string[]>> = new Map();
+  // Cache structure: cache[backlinkFilePath][currentFilePath] = {prefix1, prefix2, ...}
+  private cache: Map<string, Map<string, Set<string>>> = new Map();
 
   private _isActive: boolean = false;
 
@@ -111,11 +111,11 @@ export class AnnotatedLinksManager extends PluginComponent {
   /**
    * Searches for annotated links in the content of the backlinks of the specified file.
    * @param file Annotated links are searched from the backlinks of this file.
-   * @returns Returns annotated links asynchronously, one at a time.
+   * @returns Returns annotated links asynchronously.
    * @throws {PluginError} Throws if `AnnotatedLinksManager` is deactivated or reset
    *     during the asynchronous operation.
    */
-  public async *searchAnnotatedLinks(file: TFile): AsyncGenerator<PrefixedLinkInfo> {
+  public async *searchAnnotatedLinks(file: TFile): AsyncGenerator<PrefixedLinkInfo[]> {
     if (!this.isActive) {
       return;
     }
@@ -128,7 +128,7 @@ export class AnnotatedLinksManager extends PluginComponent {
     this.plugin.settings.annotationStrings.forEach((annotation) => {
       const sanitized = sanitizeRegexInput(annotation);
       if (this.plugin.settings.hideAnnotatedLinkPrefix) {
-        annotationMappings.unshift({ regex: sanitized, prefix: "" });
+        annotationMappings.push({ regex: sanitized, prefix: "" });
       } else {
         // Use the matched string as the prefix.
         annotationMappings.push({ regex: sanitized, prefix: MATCHED_ANNOTATION_PLACEHOLDER });
@@ -142,12 +142,12 @@ export class AnnotatedLinksManager extends PluginComponent {
     for (const backlink of backlinks) {
       const cachedResult = cache.get(backlink)?.get(file.path);
       if (cachedResult) {
-        for (const prefix of cachedResult) {
-          yield {
+        yield Array.from(cachedResult, (prefix) => {
+          return {
             prefix,
             link: { destination: backlink, isExternal: false, isResolved: true, displayText: "" },
           };
-        }
+        });
         continue;
       }
 
@@ -162,7 +162,7 @@ export class AnnotatedLinksManager extends PluginComponent {
         throw new PluginError("AnnotatedLinksManager was reset during operation.");
       }
 
-      const detectedAnnotations: string[] = [];
+      const prefixes: Set<string> = new Set();
       for (const mapping of annotationMappings) {
         const annotationRegex = constructAnnotationRegex(mapping.regex, ignoreVariationSelectors);
 
@@ -173,26 +173,25 @@ export class AnnotatedLinksManager extends PluginComponent {
           annotationRegex,
           allowSpace
         );
-        if (matchedAnnotations.length === 0) {
-          continue;
-        }
 
-        const matchedAnnotation =
-          mapping.prefix === MATCHED_ANNOTATION_PLACEHOLDER
-            ? matchedAnnotations[0]
-            : mapping.prefix;
-
-        detectedAnnotations.push(matchedAnnotation);
-        yield {
-          prefix: matchedAnnotation,
-          link: { destination: backlink, isExternal: false, isResolved: true, displayText: "" },
-        };
+        matchedAnnotations.forEach((annotation) => {
+          prefixes.add(
+            mapping.prefix === MATCHED_ANNOTATION_PLACEHOLDER ? annotation : mapping.prefix
+          );
+        });
       }
 
       if (!cache.has(backlink)) {
         cache.set(backlink, new Map());
       }
-      cache.get(backlink)!.set(file.path, detectedAnnotations);
+      cache.get(backlink)!.set(file.path, prefixes);
+
+      yield Array.from(prefixes, (prefix) => {
+        return {
+          prefix,
+          link: { destination: backlink, isExternal: false, isResolved: true, displayText: "" },
+        };
+      });
     }
   }
 
@@ -203,8 +202,8 @@ export class AnnotatedLinksManager extends PluginComponent {
    * @param filePath The path of the file (searches for links to this file in `content`).
    * @param annotationRegex The regex pattern of the annotation string.
    * @param allowSpace Whether to allow space after the annotation string.
-   * @returns An array of matched annotation strings.
-   *     If no matches are found or `annotationRegex` is invalid, an empty array is returned.
+   * @returns A set of matched annotation strings.
+   *     If no matches are found or `annotationRegex` is invalid, an empty set is returned.
    */
   private searchAnnotatedLinksInContent(
     content: string,
@@ -212,7 +211,7 @@ export class AnnotatedLinksManager extends PluginComponent {
     filePath: string,
     annotationRegex: string,
     allowSpace: boolean
-  ): string[] {
+  ): Set<string> {
     const optionalSpace = allowSpace ? " ?" : "";
     let wikiRegex: RegExp | undefined = undefined;
     let markdownRegex: RegExp | undefined = undefined;
@@ -229,7 +228,7 @@ export class AnnotatedLinksManager extends PluginComponent {
         "gu"
       );
     } catch {
-      return [];
+      return new Set();
     }
 
     const searchConfigs = [
@@ -252,7 +251,7 @@ export class AnnotatedLinksManager extends PluginComponent {
       },
     ];
 
-    const matchedAnnotations: string[] = [];
+    const matchedAnnotations: Set<string> = new Set();
     for (const { regex, extractor } of searchConfigs) {
       for (const match of content.matchAll(regex)) {
         const matchedPath = this.plugin.app.metadataCache.getFirstLinkpathDest(
@@ -260,7 +259,7 @@ export class AnnotatedLinksManager extends PluginComponent {
           backlinkFilePath
         )?.path;
         if (matchedPath === filePath) {
-          matchedAnnotations.push(match[1]);
+          matchedAnnotations.add(match[1]);
         }
       }
     }

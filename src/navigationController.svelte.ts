@@ -177,7 +177,7 @@ export class NavigationController implements HoverParent {
         if (this.disposed) {
           return;
         }
-        itemPropsContainer.addItem(props);
+        props.forEach((p) => itemPropsContainer.addItem(p));
         this.navigationProps.items = itemPropsContainer.getItems();
       }
     } catch (e) {
@@ -496,23 +496,25 @@ export class NavigationController implements HoverParent {
   private async *constructAnnotatedLinkProps(
     file: TFile,
     defaultHandlers: EventHandlersForProps
-  ): AsyncGenerator<PrefixedLinkProps> {
+  ): AsyncGenerator<PrefixedLinkProps[]> {
     const annotatedLinksManager = this.plugin.findComponent(AnnotatedLinksManager)!;
     if (!annotatedLinksManager.isActive) {
       return;
     }
 
     const generator = annotatedLinksManager.searchAnnotatedLinks(file);
-    for await (const link of generator) {
-      yield {
-        type: "prefixed-link",
-        prefix: { label: link.prefix, clickHandler: defaultHandlers.prefixClickHandler },
-        link: {
-          linkInfo: this.resolveDisplayText(link.link),
-          clickHandler: defaultHandlers.clickHandler,
-          mouseOverHandler: defaultHandlers.mouseOverHandler,
-        },
-      };
+    for await (const links of generator) {
+      yield links.map((link) => {
+        return {
+          type: "prefixed-link",
+          prefix: { label: link.prefix, clickHandler: defaultHandlers.prefixClickHandler },
+          link: {
+            linkInfo: this.resolveDisplayText(link.link),
+            clickHandler: defaultHandlers.clickHandler,
+            mouseOverHandler: defaultHandlers.mouseOverHandler,
+          },
+        };
+      });
     }
   }
 
