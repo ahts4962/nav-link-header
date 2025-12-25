@@ -2,16 +2,6 @@ import type { App, TFile } from "obsidian";
 import type { LinkInfo } from "./types";
 
 /**
- * Represents an error specific to the plugin.
- */
-export class PluginError extends Error {
-  constructor(message: string) {
-    super(message);
-    this.name = "PluginError";
-  }
-}
-
-/**
  * Compares two values and returns `true` if these values are equal.
  * For arrays and objects, the comparison is recursive.
  */

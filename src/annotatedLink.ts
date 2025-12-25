@@ -4,7 +4,8 @@ import type NavLinkHeader from "./main";
 import type { PrefixedLinkInfo } from "./types";
 import { PluginComponent } from "./pluginComponent";
 import type { NavLinkHeaderSettings } from "./settings";
-import { deepEqual, PluginError, sanitizeRegexInput } from "./utils";
+import { PluginError } from "./pluginError";
+import { deepEqual, sanitizeRegexInput } from "./utils";
 
 export const exportedForTesting = {
   constructAnnotationRegex,

@@ -18,12 +18,8 @@ import { getPinnedNoteContents } from "./pinnedNoteContent";
 import { FolderLinksManager } from "./folderLink";
 import { FileCreationModal } from "./fileCreationModal";
 import Navigation from "./ui/Navigation.svelte";
-import {
-  getFileStemFromPath,
-  getStringValuesFromFileProperty,
-  openExternalLink,
-  PluginError,
-} from "./utils";
+import { PluginError } from "./pluginError";
+import { getFileStemFromPath, getStringValuesFromFileProperty, openExternalLink } from "./utils";
 
 type EventHandlersForProps = {
   clickHandler: LinkEventHandler;
