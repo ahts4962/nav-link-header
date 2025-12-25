@@ -1,9 +1,12 @@
 <script lang="ts">
-  import type { ThreeWayLinkState } from "./states";
+  import type { ThreeWayLinkProps } from "./props";
   import PrefixedLink from "./PrefixedLink.svelte";
   import Icon from "./Icon.svelte";
 
-  const { state }: { state: ThreeWayLinkState } = $props();
+  const { props }: { props: ThreeWayLinkProps } = $props();
+  const isPreviousHidden = $derived(props.links.previous.hidden);
+  const isNextHidden = $derived(props.links.next.hidden);
+  const isParentHidden = $derived(props.links.parent.hidden);
 </script>
 
 <!--
@@ -14,47 +17,53 @@
   and `hidden` is `false`, a placeholder is shown. If `hidden` is `true`, nothing is displayed.
 -->
 <div class="nav-link-header-link-container nav-link-header-three-way">
-  {#if state.delimiters === "full"}
+  {#if props.delimiters === "full"}
     <Icon iconId="chevrons-left" />
   {/if}
-  {#if !state.previous.hidden}
-    {#if state.previous.links.length > 0}
-      {#each state.previous.links as link (link)}
-        <PrefixedLink state={link} />
+
+  {#if !isPreviousHidden}
+    {#if props.links.previous.links.length > 0}
+      {#each props.links.previous.links as link (link)}
+        <PrefixedLink props={link} />
       {/each}
     {:else}
       <Icon iconId="minus" muted />
     {/if}
   {/if}
-  {#if state.delimiters !== "none"}
-    {#if !state.parent.hidden && !state.previous.hidden}
+
+  {#if props.delimiters !== "none"}
+    {#if !isParentHidden && !isPreviousHidden}
       <div class="nav-link-header-separator">|</div>
     {/if}
   {/if}
-  {#if !state.parent.hidden}
-    {#if state.parent.links.length > 0}
-      {#each state.parent.links as link (link)}
-        <PrefixedLink state={link} />
+
+  {#if !isParentHidden}
+    {#if props.links.parent.links.length > 0}
+      {#each props.links.parent.links as link (link)}
+        <PrefixedLink props={link} />
       {/each}
     {:else}
       <Icon iconId="minus" muted />
     {/if}
   {/if}
-  {#if state.delimiters !== "none"}
-    {#if !state.next.hidden && (!state.previous.hidden || !state.parent.hidden)}
+
+  {#if props.delimiters !== "none"}
+    {#if !isNextHidden && (!isPreviousHidden || !isParentHidden)}
       <div class="nav-link-header-separator">|</div>
     {/if}
   {/if}
-  {#if !state.next.hidden}
-    {#if state.next.links.length > 0}
-      {#each state.next.links as link (link)}
-        <PrefixedLink state={link} />
+
+  {#if !isNextHidden}
+    {#if props.links.next.links.length > 0}
+      {#each props.links.next.links as link (link)}
+        <PrefixedLink props={link} />
       {/each}
     {:else}
       <Icon iconId="minus" muted />
     {/if}
   {/if}
-  {#if state.delimiters === "full"}
+
+  {#if props.delimiters === "full"}
     <Icon iconId="chevrons-right" />
   {/if}
 </div>

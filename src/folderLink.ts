@@ -1,6 +1,7 @@
 import { type CachedMetadata, Vault, TFile, TFolder, type TAbstractFile } from "obsidian";
 import { minimatch } from "minimatch";
 import type NavLinkHeader from "./main";
+import type { ThreeWayDirection } from "./types";
 import { PluginComponent } from "./pluginComponent";
 import type { FolderLinksSettings, NavLinkHeaderSettings } from "./settings";
 import {
@@ -114,12 +115,9 @@ export class FolderLinksManager extends PluginComponent {
    * @returns An array of objects, each containing the previous, next, and parent file paths
    *     (if available), as well as the index of the folder group entry.
    */
-  public getAdjacentFiles(file: TFile): {
-    previous: string[];
-    next: string[];
-    parent: string[];
-    index: number;
-  }[] {
+  public getAdjacentFiles(
+    file: TFile
+  ): { index: number; filePaths: Record<ThreeWayDirection, string[]> }[] {
     if (!this.isActive) {
       return [];
     }
@@ -127,13 +125,8 @@ export class FolderLinksManager extends PluginComponent {
     const results: ReturnType<typeof this.getAdjacentFiles> = [];
     for (let i = 0; i < this.folderGroupEntries.length; i++) {
       const groupResult = this.folderGroupEntries[i].getAdjacentFiles(file);
-      for (const result of groupResult) {
-        results.push({
-          previous: result.previous,
-          next: result.next,
-          parent: result.parent,
-          index: i,
-        });
+      for (const adjacentFiles of groupResult) {
+        results.push({ index: i, filePaths: adjacentFiles });
       }
     }
     return results;
@@ -247,20 +240,12 @@ class FolderGroupEntry {
    * @returns An array of objects, each containing the previous, next, and parent file paths
    *     (if available).
    */
-  public getAdjacentFiles(file: TFile): {
-    previous: string[];
-    next: string[];
-    parent: string[];
-  }[] {
-    const results: ReturnType<typeof this.getAdjacentFiles> = [];
+  public getAdjacentFiles(file: TFile): Record<ThreeWayDirection, string[]>[] {
+    const results: Record<ThreeWayDirection, string[]>[] = [];
     for (let i = 0; i < this.folderEntries.length; i++) {
-      const result = this.folderEntries[i].getAdjacentFiles(file);
-      if (result.currentFileIncluded) {
-        results.push({
-          previous: result.previous,
-          next: result.next,
-          parent: result.parent,
-        });
+      const adjacentFiles = this.folderEntries[i].getAdjacentFiles(file);
+      if (adjacentFiles.currentFileIncluded) {
+        results.push(adjacentFiles.filePaths);
       }
     }
     return results;
@@ -492,15 +477,11 @@ class FolderEntry {
    */
   public getAdjacentFiles(file: TFile): {
     currentFileIncluded: boolean;
-    previous: string[];
-    next: string[];
-    parent: string[];
+    filePaths: Record<ThreeWayDirection, string[]>;
   } {
     const result: ReturnType<typeof this.getAdjacentFiles> = {
       currentFileIncluded: false,
-      previous: [],
-      next: [],
-      parent: [],
+      filePaths: { previous: [], next: [], parent: [] },
     };
 
     const index = this.files.findIndex((f) => f.path === file.path);
@@ -516,7 +497,7 @@ class FolderEntry {
       i >= 0 && remaining > 0;
       i--, remaining--
     ) {
-      result.previous.unshift(this.files[i].path);
+      result.filePaths.previous.unshift(this.files[i].path);
     }
 
     for (
@@ -524,13 +505,13 @@ class FolderEntry {
       i < this.files.length && remaining > 0;
       i++, remaining--
     ) {
-      result.next.push(this.files[i].path);
+      result.filePaths.next.push(this.files[i].path);
     }
 
     if (settings.parentPath) {
       const parentFile = this.plugin.app.vault.getFileByPath(settings.parentPath);
       if (parentFile) {
-        result.parent = [parentFile.path];
+        result.filePaths.parent = [parentFile.path];
       }
     }
 

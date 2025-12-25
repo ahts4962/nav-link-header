@@ -1,7 +1,7 @@
 <script lang="ts">
-  import type { PrefixState } from "./states";
+  import type { PrefixProps } from "./props";
 
-  const { state }: { state: PrefixState } = $props();
+  const { props }: { props: PrefixProps } = $props();
 </script>
 
 <!--
@@ -12,10 +12,10 @@
   class="nav-link-header-link-prefix clickable-icon"
   onclick={(e) => {
     e.preventDefault();
-    state.clickHandler(state);
+    props.clickHandler(props);
   }}
 >
-  {state.label}
+  {props.label}
 </button>
 
 <style>

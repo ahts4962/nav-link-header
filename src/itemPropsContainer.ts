@@ -1,37 +1,33 @@
 import type NavLinkHeader from "./main";
-import {
-  CollapsedItemState,
-  PinnedNoteContentState,
-  PrefixedLinkState,
-  PrefixState,
-  ThreeWayLinkState,
-  type PrefixEventHandler,
-} from "./ui/states";
+import type {
+  CollapsedItemProps,
+  NavigationItemProps,
+  NavigationItemPropsWithoutCollapsed,
+  PrefixedLinkProps,
+  PrefixEventHandler,
+  ThreeWayLinkProps,
+} from "./ui/props";
 
 export const DISPLAY_ORDER_PLACEHOLDER_PERIODIC = "[[p]]";
 export const DISPLAY_ORDER_PLACEHOLDER_PROPERTY = "[[P]]";
 export const DISPLAY_ORDER_PLACEHOLDER_FOLDER = "[[f]]";
 
 /**
- * A container for item states.
- * This class is used to store, sort, and filter item states.
+ * A container for item props.
+ * This class is used to store, sort, and filter item props.
  */
-export class ItemStatesContainer {
-  private items: (PrefixedLinkState | ThreeWayLinkState | PinnedNoteContentState)[] = [];
+export class ItemPropsContainer {
+  private items: NavigationItemPropsWithoutCollapsed[] = [];
 
   constructor(private plugin: NavLinkHeader) {}
 
   /**
    * Returns the items added so far.
    * The items are collapsed and sorted according to the plugin settings.
+   * @return The sorted and collapsed items. The returned array is a new array.
    */
-  public getItems(): (
-    | PrefixedLinkState
-    | ThreeWayLinkState
-    | PinnedNoteContentState
-    | CollapsedItemState
-  )[] {
-    const items = this.getCollapsedItemStates();
+  public getItems(): NavigationItemProps[] {
+    const items = this.getCollapsedItemProps();
     const order = [...this.plugin.settings.displayOrderOfLinks];
     const existingSortTags = [...new Set(items.map((link) => getSortTag(link)))];
     const additionalSortTags = existingSortTags.filter((tag) => !order.includes(tag));
@@ -51,10 +47,10 @@ export class ItemStatesContainer {
         return typeComp;
       }
 
-      if (a instanceof ThreeWayLinkState && b instanceof ThreeWayLinkState) {
+      if (a.type === "three-way-link" && b.type === "three-way-link") {
         return a.index - b.index;
-      } else if (a instanceof PrefixedLinkState && b instanceof PrefixedLinkState) {
-        return a.link.displayText.localeCompare(b.link.displayText, undefined, {
+      } else if (a.type === "prefixed-link" && b.type === "prefixed-link") {
+        return a.link.linkInfo.displayText.localeCompare(b.link.linkInfo.displayText, undefined, {
           numeric: true,
         });
       } else {
@@ -70,15 +66,18 @@ export class ItemStatesContainer {
    * The item is filtered according to the plugin settings.
    * @param item The item to add.
    */
-  public addItem(item: PrefixedLinkState | ThreeWayLinkState | PinnedNoteContentState) {
+  public addItem(item: NavigationItemPropsWithoutCollapsed): void {
     // Filter out any prefixed links that have the same destination.
-    if (this.plugin.settings.filterDuplicateNotes && item instanceof PrefixedLinkState) {
+    if (this.plugin.settings.filterDuplicateNotes && item.type === "prefixed-link") {
       const i = this.items.findIndex((l) => {
-        return l instanceof PrefixedLinkState && l.link.destination === item.link.destination;
+        return (
+          l.type === "prefixed-link" &&
+          l.link.linkInfo.destination === item.link.linkInfo.destination
+        );
       });
       if (i !== -1) {
         // If the link is already in the list
-        const existingPrefix = (this.items[i] as PrefixedLinkState).prefix.label;
+        const existingPrefix = (this.items[i] as PrefixedLinkProps).prefix.label;
         const newPrefix = item.prefix.label;
         const priority = this.plugin.settings.duplicateNoteFilteringPriority;
         const existingIndex = priority.indexOf(existingPrefix);
@@ -109,14 +108,9 @@ export class ItemStatesContainer {
   }
 
   /**
-   * Returns the item states after collapsing items according to the plugin settings.
+   * Returns the item props after collapsing items according to the plugin settings.
    */
-  private getCollapsedItemStates(): (
-    | PrefixedLinkState
-    | ThreeWayLinkState
-    | PinnedNoteContentState
-    | CollapsedItemState
-  )[] {
+  private getCollapsedItemProps(): NavigationItemProps[] {
     const itemCollapsePrefixes = [...new Set(this.plugin.settings.itemCollapsePrefixes)].filter(
       (prefix) => prefix.length > 0
     );
@@ -125,30 +119,21 @@ export class ItemStatesContainer {
     }
 
     const items = this.items.map((item) => {
-      if (item instanceof ThreeWayLinkState) {
-        // Deep copy ThreeWayLinkState to modify its links array.
-        return new ThreeWayLinkState({
-          type: item.type,
-          index: item.index,
-          previous: {
-            links: [...item.previous.links],
-            hidden: item.previous.hidden,
+      if (item.type === "three-way-link") {
+        // Deep copy ThreeWayLinkProps to modify its links array.
+        return {
+          ...item,
+          links: {
+            previous: { ...item.links.previous, links: [...item.links.previous.links] },
+            next: { ...item.links.next, links: [...item.links.next.links] },
+            parent: { ...item.links.parent, links: [...item.links.parent.links] },
           },
-          next: {
-            links: [...item.next.links],
-            hidden: item.next.hidden,
-          },
-          parent: {
-            links: [...item.parent.links],
-            hidden: item.parent.hidden,
-          },
-          delimiters: item.delimiters,
-        });
+        } as ThreeWayLinkProps;
       } else {
         return item;
       }
     });
-    const collapsedItems: CollapsedItemState[] = [];
+    const collapsedItems: CollapsedItemProps[] = [];
     const prefixClickHandler: PrefixEventHandler = (target) => {
       const label = target.label;
       const prefixes = this.plugin.settingsUnderChange.itemCollapsePrefixes;
@@ -162,31 +147,29 @@ export class ItemStatesContainer {
       let count = 0;
       for (let i = items.length - 1; i >= 0; i--) {
         const item = items[i];
-        if (item instanceof PrefixedLinkState || item instanceof PinnedNoteContentState) {
+        if (item.type === "three-way-link") {
+          [item.links.previous, item.links.next, item.links.parent].forEach((dir) => {
+            for (let j = dir.links.length - 1; j >= 0; j--) {
+              if (dir.links[j].prefix.label === prefix) {
+                count++;
+                dir.links.splice(j, 1);
+              }
+            }
+          });
+        } else {
           if (item.prefix.label === prefix) {
             count++;
             items.splice(i, 1);
           }
-        } else {
-          // ThreeWayLinkState
-          [item.previous, item.next, item.parent].forEach((link) => {
-            for (let j = link.links.length - 1; j >= 0; j--) {
-              if (link.links[j].prefix.label === prefix) {
-                count++;
-                link.links.splice(j, 1);
-              }
-            }
-          });
         }
       }
 
       if (count > 0) {
-        collapsedItems.push(
-          new CollapsedItemState({
-            prefix: new PrefixState({ label: prefix, clickHandler: prefixClickHandler }),
-            itemCount: count,
-          })
-        );
+        collapsedItems.push({
+          type: "collapsed-item",
+          prefix: { label: prefix, clickHandler: prefixClickHandler },
+          itemCount: count,
+        });
       }
     }
 
@@ -198,22 +181,28 @@ export class ItemStatesContainer {
  * Returns the sort tag for the item.
  * The sort tag is the equivalent of strings in `displayOrderOfLinks` setting.
  */
-function getSortTag(
-  item: PrefixedLinkState | ThreeWayLinkState | PinnedNoteContentState | CollapsedItemState
-): string {
-  if (
-    item instanceof PrefixedLinkState ||
-    item instanceof PinnedNoteContentState ||
-    item instanceof CollapsedItemState
-  ) {
-    return item.prefix.label;
-  } else {
-    if (item.type === "periodic") {
-      return DISPLAY_ORDER_PLACEHOLDER_PERIODIC;
-    } else if (item.type === "property") {
-      return DISPLAY_ORDER_PLACEHOLDER_PROPERTY;
-    } else {
-      return DISPLAY_ORDER_PLACEHOLDER_FOLDER;
+function getSortTag(item: NavigationItemProps): string {
+  switch (item.type) {
+    case "prefixed-link":
+    case "pinned-note-content":
+    case "collapsed-item":
+      return item.prefix.label;
+    case "three-way-link":
+      switch (item.source) {
+        case "periodic":
+          return DISPLAY_ORDER_PLACEHOLDER_PERIODIC;
+        case "property":
+          return DISPLAY_ORDER_PLACEHOLDER_PROPERTY;
+        case "folder":
+          return DISPLAY_ORDER_PLACEHOLDER_FOLDER;
+        default: {
+          const _exhaustiveCheck: never = item.source;
+          return _exhaustiveCheck;
+        }
+      }
+    default: {
+      const _exhaustiveCheck: never = item;
+      return _exhaustiveCheck;
     }
   }
 }
@@ -221,16 +210,19 @@ function getSortTag(
 /**
  * Returns the order index for the item type.
  */
-function getLinkTypeOrder(
-  item: PrefixedLinkState | ThreeWayLinkState | PinnedNoteContentState | CollapsedItemState
-): number {
-  if (item instanceof ThreeWayLinkState) {
-    return 0;
-  } else if (item instanceof PrefixedLinkState) {
-    return 1;
-  } else if (item instanceof PinnedNoteContentState) {
-    return 2;
-  } else {
-    return 3;
+function getLinkTypeOrder(item: NavigationItemProps): number {
+  switch (item.type) {
+    case "three-way-link":
+      return 0;
+    case "prefixed-link":
+      return 1;
+    case "pinned-note-content":
+      return 2;
+    case "collapsed-item":
+      return 3;
+    default: {
+      const _exhaustiveCheck: never = item;
+      return _exhaustiveCheck;
+    }
   }
 }

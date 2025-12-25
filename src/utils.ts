@@ -1,4 +1,5 @@
 import type { App, TFile } from "obsidian";
+import type { LinkInfo } from "./types";
 
 /**
  * Represents an error specific to the plugin.
@@ -291,22 +292,11 @@ function getValuesFromFileProperty(
  * @param app The application instance.
  * @param file The file to search in.
  * @param propertyName The name of the property to search for links.
- * @returns The array of links. Each link contains the destination (file path for internal links
- *     or URL for external links), whether the link is external,
- *     and the display text (if specified).
- *     If the property does not exist or valid links are not found, an empty array is returned.
+ * @returns The array of links. If the property does not exist or valid links are not found,
+ *     an empty array is returned.
  */
-export function getLinksFromFileProperty(
-  app: App,
-  file: TFile,
-  propertyName: string
-): {
-  destination: string;
-  isExternal: boolean;
-  displayText?: string;
-}[] {
-  const result: ReturnType<typeof getLinksFromFileProperty> = [];
-
+export function getLinksFromFileProperty(app: App, file: TFile, propertyName: string): LinkInfo[] {
+  const result: LinkInfo[] = [];
   const propertyValues = getStringValuesFromFileProperty(app, file, propertyName);
 
   for (const value of propertyValues) {
@@ -337,11 +327,7 @@ export function getLinksFromFileProperty(
       destination = linkedFile.path;
     }
 
-    result.push({
-      destination,
-      isExternal,
-      displayText,
-    });
+    result.push({ destination, isExternal, isResolved: true, displayText: displayText ?? "" });
   }
 
   return result;

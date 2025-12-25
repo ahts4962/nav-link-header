@@ -1,10 +1,5 @@
 <script lang="ts">
-  import {
-    CollapsedItemState,
-    PinnedNoteContentState,
-    PrefixedLinkState,
-    ThreeWayLinkState,
-  } from "./states";
+  import type { NavigationItemProps } from "./props";
   import CollapsedItem from "./CollapsedItem.svelte";
   import PinnedNoteContent from "./PinnedNoteContent.svelte";
   import PrefixedLink from "./PrefixedLink.svelte";
@@ -17,7 +12,7 @@
     displayLoadingMessage,
     displayPlaceholder,
   }: {
-    items: (PrefixedLinkState | ThreeWayLinkState | PinnedNoteContentState | CollapsedItemState)[];
+    items: NavigationItemProps[];
     isLoading: boolean;
     matchWidthToLineLength: boolean;
     displayLoadingMessage: boolean;
@@ -54,14 +49,14 @@
       ]}
     >
       {#each items as item (item)}
-        {#if item instanceof PrefixedLinkState}
-          <PrefixedLink state={item} />
-        {:else if item instanceof ThreeWayLinkState}
-          <ThreeWayLink state={item} />
-        {:else if item instanceof PinnedNoteContentState}
-          <PinnedNoteContent state={item} />
-        {:else if item instanceof CollapsedItemState}
-          <CollapsedItem state={item} />
+        {#if item.type === "prefixed-link"}
+          <PrefixedLink props={item} />
+        {:else if item.type === "three-way-link"}
+          <ThreeWayLink props={item} />
+        {:else if item.type === "pinned-note-content"}
+          <PinnedNoteContent props={item} />
+        {:else if item.type === "collapsed-item"}
+          <CollapsedItem props={item} />
         {/if}
       {/each}
       {#if isLoading && displayLoadingMessage}

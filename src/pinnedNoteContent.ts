@@ -1,16 +1,16 @@
 import type { App, TFile } from "obsidian";
 import type NavLinkHeader from "./main";
+import type { LinkInfo } from "./types";
 import { parseMarkdownLink, parseWikiLink, sanitizeRegexInput } from "./utils";
 
 /**
  * The interface representing a pinned note content.
  * Each pinned note content consists of a prefix (e.g., an emoji) and an array of content items.
- * Each content item can be either a string (plain text) or an object representing a link
- * with its destination, whether it's external, and optional display text.
+ * Each content item can be either a string (plain text) or an object representing a link.
  */
-export interface PinnedNoteContent {
+export interface PinnedNoteContentInfo {
   prefix: string;
-  content: ({ destination: string; isExternal: boolean; displayText?: string } | string)[];
+  content: (LinkInfo | string)[];
 }
 
 /**
@@ -22,7 +22,7 @@ export interface PinnedNoteContent {
 export async function getPinnedNoteContents(
   plugin: NavLinkHeader,
   file: TFile
-): Promise<PinnedNoteContent[]> {
+): Promise<PinnedNoteContentInfo[]> {
   const annotationStrings = plugin.settings.annotationStringsForPinning;
   const startMarker = plugin.settings.startMarkerForPinning;
   const endMarker = plugin.settings.endMarkerForPinning;
@@ -30,7 +30,7 @@ export async function getPinnedNoteContents(
   const sanitizedEndMarker = sanitizeRegexInput(endMarker);
 
   const content = await plugin.app.vault.cachedRead(file);
-  const result: { index: number; content: PinnedNoteContent }[] = [];
+  const result: { index: number; content: PinnedNoteContentInfo }[] = [];
   for (const annotationString of annotationStrings) {
     const sanitizedAnnotationString = sanitizeRegexInput(annotationString);
 
@@ -71,7 +71,7 @@ export async function getPinnedNoteContents(
  * @param content The pinned note content string.
  * @returns The parsed `PinnedNoteContent` object.
  */
-function parsePinnedNoteContent(app: App, file: TFile, content: string): PinnedNoteContent {
+function parsePinnedNoteContent(app: App, file: TFile, content: string): PinnedNoteContentInfo {
   const matchInfos: {
     index: number;
     length: number;
@@ -108,7 +108,7 @@ function parsePinnedNoteContent(app: App, file: TFile, content: string): PinnedN
 
   matchInfos.sort((a, b) => a.index - b.index);
 
-  const result: PinnedNoteContent = { prefix: "", content: [] };
+  const result: PinnedNoteContentInfo = { prefix: "", content: [] };
   let cursor = 0;
   let matchIndex = 0;
   while (true) {
@@ -167,7 +167,12 @@ function parsePinnedNoteContent(app: App, file: TFile, content: string): PinnedN
         result.content.push(matchInfo.text);
       }
     } else {
-      result.content.push({ destination, isExternal, displayText });
+      result.content.push({
+        destination,
+        isExternal,
+        isResolved: true,
+        displayText: displayText ?? "",
+      });
     }
 
     cursor = matchInfo.index + matchInfo.length;

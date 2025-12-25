@@ -6,7 +6,7 @@ import {
   DISPLAY_ORDER_PLACEHOLDER_FOLDER,
   DISPLAY_ORDER_PLACEHOLDER_PERIODIC,
   DISPLAY_ORDER_PLACEHOLDER_PROPERTY,
-} from "./itemStatesContainer";
+} from "./itemPropsContainer";
 import { EMOJI_ANNOTATION_PLACEHOLDER } from "./annotatedLink";
 import { deepCopy } from "./utils";
 

@@ -22,6 +22,7 @@ import {
   type IGranularity,
 } from "obsidian-daily-notes-interface";
 import type NavLinkHeader from "./main";
+import type { ThreeWayDirection } from "./types";
 import { PluginComponent } from "./pluginComponent";
 import type { NavLinkHeaderSettings } from "./settings";
 import { deepEqual, isFileInFolder, joinPaths } from "./utils";
@@ -200,25 +201,21 @@ export class PeriodicNotesManager extends PluginComponent {
    * Searches for the adjacent notes of the specified file.
    * @returns `currentGranularity` is the granularity of the current note.
    *     If the note is not a periodic note, `currentGranularity` is `undefined`.
-   *     `previousPath`, `nextPath`, and `parentPath` are the paths to the previous, next,
+   *     `paths.previous`, `paths.next`, and `paths.parent` are the paths to the previous, next,
    *     and parent notes, respectively. If not found, `undefined` is returned for each.
    *     If `parentDate` is not `undefined`, it means that the parent note does not exist,
-   *     but can be created by using this date (`parentPath` is also available).
+   *     but can be created by using this date (`paths.parent` is also available).
    *     `parentGranularity` is the granularity of the parent note.
    */
   public searchAdjacentNotes(file: TFile): {
     currentGranularity?: IGranularity;
-    previousPath?: string;
-    nextPath?: string;
-    parentPath?: string;
+    paths: Record<ThreeWayDirection, string | undefined>;
     parentDate?: Moment;
     parentGranularity?: IGranularity;
   } {
     const result: ReturnType<typeof this.searchAdjacentNotes> = {
       currentGranularity: undefined,
-      previousPath: undefined,
-      nextPath: undefined,
-      parentPath: undefined,
+      paths: { previous: undefined, next: undefined, parent: undefined },
       parentDate: undefined,
       parentGranularity: undefined,
     };
@@ -235,8 +232,8 @@ export class PeriodicNotesManager extends PluginComponent {
       const dateUID = getDateUID(date, granularity);
       const index = uids.indexOf(dateUID);
 
-      result.previousPath = index > 0 ? allNotes[uids[index - 1]].path : undefined;
-      result.nextPath = index < uids.length - 1 ? allNotes[uids[index + 1]].path : undefined;
+      result.paths.previous = index > 0 ? allNotes[uids[index - 1]].path : undefined;
+      result.paths.next = index < uids.length - 1 ? allNotes[uids[index + 1]].path : undefined;
     }
 
     const parentGranularity = this.getParentLinkGranularity(granularity);
@@ -253,14 +250,14 @@ export class PeriodicNotesManager extends PluginComponent {
     const parentUID = getDateUID(date, parentGranularity);
     const parentNote = allParentNotes[parentUID];
     if (parentNote) {
-      result.parentPath = parentNote.path;
+      result.paths.parent = parentNote.path;
     } else {
       const { format, folder } = getPeriodicNoteSettings(parentGranularity);
       let fileName = date.format(format);
       if (!fileName.endsWith(".md")) {
         fileName += ".md";
       }
-      result.parentPath = joinPaths(normalizePath(folder ?? "/"), normalizePath(fileName));
+      result.paths.parent = joinPaths(normalizePath(folder ?? "/"), normalizePath(fileName));
       result.parentDate = date;
     }
 

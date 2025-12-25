@@ -1,8 +1,8 @@
 <script lang="ts">
-  import type { CollapsedItemState } from "./states";
+  import type { CollapsedItemProps } from "./props";
   import Prefix from "./Prefix.svelte";
 
-  const { state }: { state: CollapsedItemState } = $props();
+  const { props }: { props: CollapsedItemProps } = $props();
 </script>
 
 <!--
@@ -10,9 +10,9 @@
   A component that represents a collapsed item.
 -->
 <div class="nav-link-header-link-container nav-link-header-collapsed-item">
-  <Prefix state={state.prefix} />
+  <Prefix props={props.prefix} />
   <div class="nav-link-header-muted">
-    {`(${state.itemCount} ${state.itemCount === 1 ? "item" : "items"})`}
+    {`(${props.itemCount} ${props.itemCount === 1 ? "item" : "items"})`}
   </div>
 </div>
 

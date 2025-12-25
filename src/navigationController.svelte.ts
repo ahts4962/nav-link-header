@@ -1,17 +1,16 @@
 import { type TFile, type HoverParent, HoverPopover } from "obsidian";
 import { mount, unmount } from "svelte";
 import type NavLinkHeader from "./main";
-import {
-  CollapsedItemState,
-  NavigationLinkState,
-  PinnedNoteContentState,
-  PrefixedLinkState,
-  PrefixState,
-  ThreeWayLinkState,
-  type LinkEventHandler,
-  type PrefixEventHandler,
-} from "./ui/states";
-import { ItemStatesContainer } from "./itemStatesContainer";
+import type { LinkInfo, ThreeWayDirection } from "./types";
+import type {
+  LinkEventHandler,
+  NavigationItemProps,
+  PinnedNoteContentProps,
+  PrefixedLinkProps,
+  PrefixEventHandler,
+  ThreeWayLinkProps,
+} from "./ui/props";
+import { ItemPropsContainer } from "./itemPropsContainer";
 import { AnnotatedLinksManager } from "./annotatedLink";
 import { getPropertyLinks, getThreeWayPropertyLink } from "./propertyLink";
 import { createPeriodicNote, PeriodicNotesManager } from "./periodicNotes";
@@ -26,6 +25,12 @@ import {
   PluginError,
 } from "./utils";
 
+type EventHandlersForProps = {
+  clickHandler: LinkEventHandler;
+  mouseOverHandler: LinkEventHandler;
+  prefixClickHandler: PrefixEventHandler;
+};
+
 /**
  * A class responsible for aggregating data and passing it to UI components.
  * Each instance corresponds to a single navigation header.
@@ -34,7 +39,7 @@ export class NavigationController implements HoverParent {
   private navigation?: ReturnType<typeof Navigation>;
 
   private navigationProps: {
-    items: (PrefixedLinkState | ThreeWayLinkState | PinnedNoteContentState | CollapsedItemState)[];
+    items: NavigationItemProps[];
     isLoading: boolean;
     matchWidthToLineLength: boolean;
     displayLoadingMessage: boolean;
@@ -98,108 +103,86 @@ export class NavigationController implements HoverParent {
     this.navigationProps.displayPlaceholder = this.plugin.settings.displayPlaceholder;
 
     const filePath = this.filePath;
-    const itemStatesContainer = new ItemStatesContainer(this.plugin);
-    const clickHandler: LinkEventHandler = (target, e) => {
-      if (target.isExternal) {
-        void openExternalLink(this.plugin.app, target.destination, true);
-      } else {
-        void this.plugin.app.workspace.openLinkText(
-          target.destination,
-          filePath,
-          e.ctrlKey || e.button === 1
-        );
-      }
-    };
-    const mouseOverHandler: LinkEventHandler = (target, e) => {
-      if (!target.isExternal) {
-        this.plugin.app.workspace.trigger("hover-link", {
-          event: e,
-          source: "nav-link-header",
-          hoverParent: this,
-          targetEl: e.target,
-          linktext: target.destination,
-          sourcePath: filePath,
-        });
-      }
-    };
-    const prefixClickHandler: PrefixEventHandler = (target) => {
-      const label = target.label;
-      if (!this.plugin.settingsUnderChange.itemCollapsePrefixes.includes(label)) {
-        this.plugin.settingsUnderChange.itemCollapsePrefixes.push(label);
-        this.plugin.triggerSettingsChanged();
-      }
+    const itemPropsContainer = new ItemPropsContainer(this.plugin);
+    const defaultHandlers: EventHandlersForProps = {
+      clickHandler: (target, e) => {
+        if (target.linkInfo.isExternal) {
+          void openExternalLink(this.plugin.app, target.linkInfo.destination, true);
+        } else {
+          void this.plugin.app.workspace.openLinkText(
+            target.linkInfo.destination,
+            filePath,
+            e.ctrlKey || e.button === 1
+          );
+        }
+      },
+      mouseOverHandler: (target, e) => {
+        if (!target.linkInfo.isExternal) {
+          this.plugin.app.workspace.trigger("hover-link", {
+            event: e,
+            source: "nav-link-header",
+            hoverParent: this,
+            targetEl: e.target,
+            linktext: target.linkInfo.destination,
+            sourcePath: filePath,
+          });
+        }
+      },
+      prefixClickHandler: (target) => {
+        const label = target.label;
+        if (!this.plugin.settingsUnderChange.itemCollapsePrefixes.includes(label)) {
+          this.plugin.settingsUnderChange.itemCollapsePrefixes.push(label);
+          this.plugin.triggerSettingsChanged();
+        }
+      },
     };
 
-    this.constructPropertyLinkStates(
-      file,
-      clickHandler,
-      mouseOverHandler,
-      prefixClickHandler
-    ).forEach((link) => {
-      itemStatesContainer.addItem(link);
+    this.constructPropertyLinkProps(file, defaultHandlers).forEach((props) => {
+      itemPropsContainer.addItem(props);
     });
 
-    const threeWayPropertyLinkState = this.constructThreeWayPropertyLinkState(
+    const threeWayPropertyLinkProps = this.constructThreeWayPropertyLinkProps(
       file,
-      clickHandler,
-      mouseOverHandler,
-      prefixClickHandler
+      defaultHandlers
     );
-    if (threeWayPropertyLinkState) {
-      itemStatesContainer.addItem(threeWayPropertyLinkState);
+    if (threeWayPropertyLinkProps) {
+      itemPropsContainer.addItem(threeWayPropertyLinkProps);
     }
 
-    const periodicNoteLinkState = this.constructPeriodicNoteLinkState(
-      file,
-      clickHandler,
-      mouseOverHandler,
-      prefixClickHandler
-    );
-    if (periodicNoteLinkState) {
-      itemStatesContainer.addItem(periodicNoteLinkState);
+    const periodicNoteLinkProps = this.constructPeriodicNoteLinkProps(file, defaultHandlers);
+    if (periodicNoteLinkProps) {
+      itemPropsContainer.addItem(periodicNoteLinkProps);
     }
 
-    this.constructFolderLinkStates(
-      file,
-      clickHandler,
-      mouseOverHandler,
-      prefixClickHandler
-    ).forEach((link) => {
-      itemStatesContainer.addItem(link);
+    this.constructFolderLinkProps(file, defaultHandlers).forEach((props) => {
+      itemPropsContainer.addItem(props);
     });
 
-    // Update links that can always be constructed synchronously.
-    this.navigationProps.items = [...itemStatesContainer.getItems()];
+    // Update props that can always be constructed synchronously.
+    this.navigationProps.items = itemPropsContainer.getItems();
 
-    const pinnedNoteContentStates = await this.constructPinnedNoteContentStates(
+    const pinnedNoteContentProps = await this.constructPinnedNoteContentProps(
       file,
-      clickHandler,
-      mouseOverHandler,
-      prefixClickHandler
+      defaultHandlers
     );
     if (this.disposed) {
       return;
     }
-    if (pinnedNoteContentStates.length > 0) {
-      pinnedNoteContentStates.forEach((link) => {
-        itemStatesContainer.addItem(link);
+    if (pinnedNoteContentProps.length > 0) {
+      pinnedNoteContentProps.forEach((props) => {
+        itemPropsContainer.addItem(props);
       });
-      this.navigationProps.items = [...itemStatesContainer.getItems()];
+      this.navigationProps.items = itemPropsContainer.getItems();
     }
 
     try {
-      const generator = this.constructAnnotatedLinkStates(
-        file,
-        clickHandler,
-        mouseOverHandler,
-        prefixClickHandler
-      );
-      for await (const link of generator) {
+      const generator = this.constructAnnotatedLinkProps(file, defaultHandlers);
+      for await (const props of generator) {
         if (this.disposed) {
           return;
         }
-        itemStatesContainer.addItem(link);
-        this.navigationProps.items = [...itemStatesContainer.getItems()];
+        itemPropsContainer.addItem(props);
+        this.navigationProps.items = itemPropsContainer.getItems();
       }
     } catch (e) {
       if (e instanceof PluginError) {
@@ -224,162 +207,95 @@ export class NavigationController implements HoverParent {
   }
 
   /**
-   * Constructs the property link states for the specified file.
-   * @param file The file to construct the property link states for.
-   * @param clickHandler The click handler for the links.
-   * @param mouseOverHandler The mouse over handler for the links.
-   * @param prefixClickHandler The click handler for the prefixes.
-   * @returns The property link states.
+   * Constructs the property link props for the specified file.
+   * @param file The file to construct the property link props for.
+   * @returns The property link props.
    */
-  private constructPropertyLinkStates(
+  private constructPropertyLinkProps(
     file: TFile,
-    clickHandler: LinkEventHandler,
-    mouseOverHandler: LinkEventHandler,
-    prefixClickHandler: PrefixEventHandler
-  ): PrefixedLinkState[] {
-    const result: PrefixedLinkState[] = [];
-
+    defaultHandlers: EventHandlersForProps
+  ): PrefixedLinkProps[] {
     if (this.plugin.settings.propertyMappings.length === 0) {
-      return result;
+      return [];
     }
 
-    const propertyLinks = getPropertyLinks(this.plugin, file);
-    for (const link of propertyLinks) {
-      result.push(
-        new PrefixedLinkState({
-          prefix: new PrefixState({ label: link.prefix, clickHandler: prefixClickHandler }),
-          link: new NavigationLinkState({
-            destination: link.destination,
-            isExternal: link.isExternal,
-            displayText: this.getDisplayText(link.destination, link.isExternal, link.displayText),
-            resolved: true,
-            clickHandler,
-            mouseOverHandler,
-          }),
-        })
-      );
-    }
-
-    return result;
-  }
-
-  /**
-   * Constructs the three-way property link state for the specified file.
-   * @param file The file to construct the three-way property link states for.
-   * @param clickHandler The click handler for the links.
-   * @param mouseOverHandler The mouse over handler for the links.
-   * @param prefixClickHandler The click handler for the prefixes.
-   * @returns The three-way property link state.
-   */
-  private constructThreeWayPropertyLinkState(
-    file: TFile,
-    clickHandler: LinkEventHandler,
-    mouseOverHandler: LinkEventHandler,
-    prefixClickHandler: PrefixEventHandler
-  ): ThreeWayLinkState | undefined {
-    if (
-      this.plugin.settings.previousLinkPropertyMappings.length === 0 &&
-      this.plugin.settings.nextLinkPropertyMappings.length === 0 &&
-      this.plugin.settings.parentLinkPropertyMappings.length === 0
-    ) {
-      return undefined;
-    }
-
-    const threeWayPropertyLink = getThreeWayPropertyLink(this.plugin, file);
-    if (
-      threeWayPropertyLink.previous.length === 0 &&
-      threeWayPropertyLink.next.length === 0 &&
-      threeWayPropertyLink.parent.length === 0
-    ) {
-      return undefined;
-    }
-
-    const previous: {
-      links: PrefixedLinkState[];
-      hidden: boolean;
-    } = { links: [], hidden: true };
-    const next: {
-      links: PrefixedLinkState[];
-      hidden: boolean;
-    } = { links: [], hidden: true };
-    const parent: {
-      links: PrefixedLinkState[];
-      hidden: boolean;
-    } = { links: [], hidden: true };
-
-    if (this.plugin.settings.previousLinkPropertyMappings.length > 0) {
-      previous.hidden = false;
-      previous.links = threeWayPropertyLink.previous.map((link) => {
-        return new PrefixedLinkState({
-          prefix: new PrefixState({ label: link.prefix, clickHandler: prefixClickHandler }),
-          link: new NavigationLinkState({
-            destination: link.destination,
-            isExternal: link.isExternal,
-            displayText: this.getDisplayText(link.destination, link.isExternal, link.displayText),
-            resolved: true,
-            clickHandler,
-            mouseOverHandler,
-          }),
-        });
-      });
-    }
-
-    if (this.plugin.settings.nextLinkPropertyMappings.length > 0) {
-      next.hidden = false;
-      next.links = threeWayPropertyLink.next.map((link) => {
-        return new PrefixedLinkState({
-          prefix: new PrefixState({ label: link.prefix, clickHandler: prefixClickHandler }),
-          link: new NavigationLinkState({
-            destination: link.destination,
-            isExternal: link.isExternal,
-            displayText: this.getDisplayText(link.destination, link.isExternal, link.displayText),
-            resolved: true,
-            clickHandler,
-            mouseOverHandler,
-          }),
-        });
-      });
-    }
-
-    if (this.plugin.settings.parentLinkPropertyMappings.length > 0) {
-      parent.hidden = false;
-      parent.links = threeWayPropertyLink.parent.map((link) => {
-        return new PrefixedLinkState({
-          prefix: new PrefixState({ label: link.prefix, clickHandler: prefixClickHandler }),
-          link: new NavigationLinkState({
-            destination: link.destination,
-            isExternal: link.isExternal,
-            displayText: this.getDisplayText(link.destination, link.isExternal, link.displayText),
-            resolved: true,
-            clickHandler,
-            mouseOverHandler,
-          }),
-        });
-      });
-    }
-
-    return new ThreeWayLinkState({
-      type: "property",
-      previous: previous,
-      next: next,
-      parent: parent,
+    return getPropertyLinks(this.plugin, file).map((link) => {
+      return {
+        type: "prefixed-link",
+        prefix: { label: link.prefix, clickHandler: defaultHandlers.prefixClickHandler },
+        link: {
+          linkInfo: this.resolveDisplayText(link.link),
+          clickHandler: defaultHandlers.clickHandler,
+          mouseOverHandler: defaultHandlers.mouseOverHandler,
+        },
+      };
     });
   }
 
   /**
-   * Constructs the periodic note link state for the specified file.
-   * @param file The file to construct the periodic note link states for.
-   * @param clickHandler The default click handler for the links.
-   * @param mouseOverHandler The default mouse over handler for the links.
-   * @param prefixClickHandler The click handler for the prefixes.
-   * @returns The periodic note link state.
+   * Constructs the three-way property link props for the specified file.
+   * @param file The file to construct the three-way property link props for.
+   * @returns The three-way property link props.
    */
-  private constructPeriodicNoteLinkState(
+  private constructThreeWayPropertyLinkProps(
     file: TFile,
-    clickHandler: LinkEventHandler,
-    mouseOverHandler: LinkEventHandler,
-    prefixClickHandler: PrefixEventHandler
-  ): ThreeWayLinkState | undefined {
+    defaultHandlers: EventHandlersForProps
+  ): ThreeWayLinkProps | undefined {
+    const directions = ["previous", "next", "parent"] as const;
+    const propertyMappings = {
+      previous: this.plugin.settings.previousLinkPropertyMappings,
+      next: this.plugin.settings.nextLinkPropertyMappings,
+      parent: this.plugin.settings.parentLinkPropertyMappings,
+    };
+
+    if (directions.every((dir) => propertyMappings[dir].length === 0)) {
+      return undefined;
+    }
+
+    const threeWayPropertyLink = getThreeWayPropertyLink(this.plugin, file);
+    if (directions.every((dir) => threeWayPropertyLink[dir].length === 0)) {
+      return undefined;
+    }
+
+    return {
+      type: "three-way-link",
+      source: "property",
+      index: 0,
+      links: directions.reduce((acc, dir) => {
+        if (propertyMappings[dir].length === 0) {
+          acc[dir] = { links: [], hidden: true };
+          return acc;
+        }
+
+        acc[dir] = {
+          links: threeWayPropertyLink[dir].map((link) => {
+            return {
+              type: "prefixed-link",
+              prefix: { label: link.prefix, clickHandler: defaultHandlers.prefixClickHandler },
+              link: {
+                linkInfo: this.resolveDisplayText(link.link),
+                clickHandler: defaultHandlers.clickHandler,
+                mouseOverHandler: defaultHandlers.mouseOverHandler,
+              },
+            };
+          }),
+          hidden: false,
+        };
+        return acc;
+      }, {} as Record<ThreeWayDirection, { links: PrefixedLinkProps[]; hidden: boolean }>),
+      delimiters: "full",
+    };
+  }
+
+  /**
+   * Constructs the periodic note link props for the specified file.
+   * @param file The file to construct the periodic note link props for.
+   * @returns The periodic note link props.
+   */
+  private constructPeriodicNoteLinkProps(
+    file: TFile,
+    defaultHandlers: EventHandlersForProps
+  ): ThreeWayLinkProps | undefined {
     const periodicNotesManager = this.plugin.findComponent(PeriodicNotesManager)!;
     periodicNotesManager.syncActiveState();
     if (!periodicNotesManager.isActive) {
@@ -391,88 +307,61 @@ export class NavigationController implements HoverParent {
       return undefined;
     }
 
-    const previous: {
-      links: PrefixedLinkState[];
-      hidden: boolean;
-    } = { links: [], hidden: true };
-    const next: {
-      links: PrefixedLinkState[];
-      hidden: boolean;
-    } = { links: [], hidden: true };
-    const parent: {
-      links: PrefixedLinkState[];
-      hidden: boolean;
-    } = { links: [], hidden: true };
-
-    // Previous and next links
-    if (periodicNotesManager.isPrevNextLinkEnabled(periodicNoteLinks.currentGranularity)) {
-      previous.hidden = false;
-      next.hidden = false;
-
-      if (periodicNoteLinks.previousPath) {
-        previous.links.push(
-          new PrefixedLinkState({
-            prefix: new PrefixState({ label: "", clickHandler: prefixClickHandler }),
-            link: new NavigationLinkState({
-              destination: periodicNoteLinks.previousPath,
-              isExternal: false,
-              displayText: this.getDisplayText(periodicNoteLinks.previousPath, false),
-              resolved: true,
-              clickHandler,
-              mouseOverHandler,
-            }),
-          })
-        );
-      }
-      if (periodicNoteLinks.nextPath) {
-        next.links.push(
-          new PrefixedLinkState({
-            prefix: new PrefixState({ label: "", clickHandler: prefixClickHandler }),
-            link: new NavigationLinkState({
-              destination: periodicNoteLinks.nextPath,
-              isExternal: false,
-              displayText: this.getDisplayText(periodicNoteLinks.nextPath, false),
-              resolved: true,
-              clickHandler,
-              mouseOverHandler,
-            }),
-          })
-        );
-      }
+    if (
+      !periodicNoteLinks.parentGranularity &&
+      !periodicNotesManager.isPrevNextLinkEnabled(periodicNoteLinks.currentGranularity)
+    ) {
+      return undefined;
     }
 
-    // Parent link
-    const parentGranularity = periodicNotesManager.getParentLinkGranularity(
-      periodicNoteLinks.currentGranularity
-    );
-    if (parentGranularity) {
-      parent.hidden = false;
+    const directions = ["previous", "next", "parent"] as const;
+    return {
+      type: "three-way-link",
+      source: "periodic",
+      index: 0,
+      links: directions.reduce((acc, dir) => {
+        const linkInfo: LinkInfo = {
+          destination: periodicNoteLinks.paths[dir] ?? "",
+          isExternal: false,
+          isResolved: true,
+          displayText: "",
+        };
 
-      if (periodicNoteLinks.parentPath) {
-        if (!periodicNoteLinks.parentDate) {
-          parent.links.push(
-            new PrefixedLinkState({
-              prefix: new PrefixState({ label: "", clickHandler: prefixClickHandler }),
-              link: new NavigationLinkState({
-                destination: periodicNoteLinks.parentPath,
-                isExternal: false,
-                displayText: this.getDisplayText(periodicNoteLinks.parentPath, false),
-                resolved: true,
-                clickHandler,
-                mouseOverHandler,
-              }),
-            })
-          );
+        if (dir === "parent") {
+          if (!periodicNoteLinks.parentGranularity) {
+            acc[dir] = { links: [], hidden: true };
+            return acc;
+          }
         } else {
+          if (!periodicNotesManager.isPrevNextLinkEnabled(periodicNoteLinks.currentGranularity!)) {
+            acc[dir] = { links: [], hidden: true };
+            return acc;
+          }
+        }
+
+        if (linkInfo.destination.length === 0) {
+          acc[dir] = { links: [], hidden: false };
+          return acc;
+        }
+
+        let clickHandler = defaultHandlers.clickHandler;
+        let mouseOverHandler = defaultHandlers.mouseOverHandler;
+
+        if (dir === "parent" && periodicNoteLinks.parentDate !== undefined) {
           // Make unresolved link.
-          const clickHandlerForUnresolvedLinks: LinkEventHandler = (target, e) => {
+          linkInfo.isResolved = false;
+          clickHandler = (target, e) => {
             if (this.plugin.settings.confirmFileCreation) {
-              new FileCreationModal(this.plugin, getFileStemFromPath(target.destination), () => {
-                void createPeriodicNote(
-                  periodicNoteLinks.parentGranularity!,
-                  periodicNoteLinks.parentDate!
-                );
-              }).open();
+              new FileCreationModal(
+                this.plugin,
+                getFileStemFromPath(target.linkInfo.destination),
+                () => {
+                  void createPeriodicNote(
+                    periodicNoteLinks.parentGranularity!,
+                    periodicNoteLinks.parentDate!
+                  );
+                }
+              ).open();
             } else {
               void createPeriodicNote(
                 periodicNoteLinks.parentGranularity!,
@@ -480,50 +369,39 @@ export class NavigationController implements HoverParent {
               );
             }
           };
-          parent.links.push(
-            new PrefixedLinkState({
-              prefix: new PrefixState({ label: "", clickHandler: prefixClickHandler }),
-              link: new NavigationLinkState({
-                destination: periodicNoteLinks.parentPath,
-                isExternal: false,
-                displayText: getFileStemFromPath(periodicNoteLinks.parentPath),
-                resolved: false,
-                clickHandler: clickHandlerForUnresolvedLinks,
-                mouseOverHandler: () => {},
-              }),
-            })
-          );
+          mouseOverHandler = () => {};
         }
-      }
-    }
 
-    if (previous.hidden && next.hidden && parent.hidden) {
-      return undefined;
-    }
-
-    return new ThreeWayLinkState({
-      type: "periodic",
-      previous: previous,
-      next: next,
-      parent: parent,
-    });
+        acc[dir] = {
+          links: [
+            {
+              type: "prefixed-link",
+              prefix: { label: "", clickHandler: defaultHandlers.prefixClickHandler },
+              link: {
+                linkInfo: this.resolveDisplayText(linkInfo),
+                clickHandler,
+                mouseOverHandler,
+              },
+            },
+          ],
+          hidden: false,
+        };
+        return acc;
+      }, {} as Record<ThreeWayDirection, { links: PrefixedLinkProps[]; hidden: boolean }>),
+      delimiters: "full",
+    };
   }
 
   /**
-   * Constructs the folder link states for the specified file.
-   * @param file The file to construct the folder link states for.
-   * @param clickHandler The click handler for the links.
-   * @param mouseOverHandler The mouse over handler for the links.
-   * @param prefixClickHandler The click handler for the prefixes.
-   * @returns The folder link states.
+   * Constructs the folder link props for the specified file.
+   * @param file The file to construct the folder link props for.
+   * @returns The folder link props.
    */
-  private constructFolderLinkStates(
+  private constructFolderLinkProps(
     file: TFile,
-    clickHandler: LinkEventHandler,
-    mouseOverHandler: LinkEventHandler,
-    prefixClickHandler: PrefixEventHandler
-  ): ThreeWayLinkState[] {
-    const result: ThreeWayLinkState[] = [];
+    defaultHandlers: EventHandlersForProps
+  ): ThreeWayLinkProps[] {
+    const result: ThreeWayLinkProps[] = [];
 
     const folderLinksManager = this.plugin.findComponent(FolderLinksManager)!;
     if (!folderLinksManager.isActive) {
@@ -532,154 +410,97 @@ export class NavigationController implements HoverParent {
 
     for (const adjacentFiles of folderLinksManager.getAdjacentFiles(file)) {
       const settings = this.plugin.settings.folderLinksSettingsArray[adjacentFiles.index];
+      const directions = ["previous", "next", "parent"] as const;
 
-      const previous: {
-        links: PrefixedLinkState[];
-        hidden: boolean;
-      } = { links: [], hidden: false };
-      const next: {
-        links: PrefixedLinkState[];
-        hidden: boolean;
-      } = { links: [], hidden: false };
-      const parent: {
-        links: PrefixedLinkState[];
-        hidden: boolean;
-      } = { links: [], hidden: true };
+      result.push({
+        type: "three-way-link",
+        source: "folder",
+        index: adjacentFiles.index,
+        links: directions.reduce((acc, dir) => {
+          if (dir === "parent" && settings.parentPath.length === 0) {
+            acc[dir] = { links: [], hidden: true };
+            return acc;
+          }
 
-      previous.links = adjacentFiles.previous.map((path) => {
-        return new PrefixedLinkState({
-          prefix: new PrefixState({
-            label: settings.linkPrefix,
-            clickHandler: prefixClickHandler,
-          }),
-          link: new NavigationLinkState({
-            destination: path,
-            isExternal: false,
-            displayText: this.getDisplayText(path, false),
-            resolved: true,
-            clickHandler,
-            mouseOverHandler,
-          }),
-        });
-      });
-
-      next.links = adjacentFiles.next.map((path) => {
-        return new PrefixedLinkState({
-          prefix: new PrefixState({
-            label: settings.linkPrefix,
-            clickHandler: prefixClickHandler,
-          }),
-          link: new NavigationLinkState({
-            destination: path,
-            isExternal: false,
-            displayText: this.getDisplayText(path, false),
-            resolved: true,
-            clickHandler,
-            mouseOverHandler,
-          }),
-        });
-      });
-
-      if (this.plugin.settings.folderLinksSettingsArray[adjacentFiles.index].parentPath) {
-        parent.hidden = false;
-        if (adjacentFiles.parent.length > 0) {
-          parent.links = adjacentFiles.parent.map((path) => {
-            return new PrefixedLinkState({
-              prefix: new PrefixState({
-                label: settings.linkPrefix,
-                clickHandler: prefixClickHandler,
-              }),
-              link: new NavigationLinkState({
+          acc[dir] = {
+            links: adjacentFiles.filePaths[dir].map((path) => {
+              const linkInfo: LinkInfo = {
                 destination: path,
                 isExternal: false,
-                displayText: this.getDisplayText(path, false),
-                resolved: true,
-                clickHandler,
-                mouseOverHandler,
-              }),
-            });
-          });
-        }
-      }
+                isResolved: true,
+                displayText: "",
+              };
 
-      result.push(
-        new ThreeWayLinkState({
-          type: "folder",
-          index: adjacentFiles.index,
-          previous: previous,
-          next: next,
-          parent: parent,
-          delimiters: settings.displayStyle,
-        })
-      );
+              return {
+                type: "prefixed-link",
+                prefix: {
+                  label: settings.linkPrefix,
+                  clickHandler: defaultHandlers.prefixClickHandler,
+                },
+                link: {
+                  linkInfo: this.resolveDisplayText(linkInfo),
+                  clickHandler: defaultHandlers.clickHandler,
+                  mouseOverHandler: defaultHandlers.mouseOverHandler,
+                },
+              };
+            }),
+            hidden: false,
+          };
+          return acc;
+        }, {} as Record<ThreeWayDirection, { links: PrefixedLinkProps[]; hidden: boolean }>),
+        delimiters: settings.displayStyle,
+      });
     }
 
     return result;
   }
 
   /**
-   * Constructs the pinned note content states for the specified file.
-   * @param file The file to construct the pinned note content states for.
-   * @param clickHandler The click handler for the links.
-   * @param mouseOverHandler The mouse over handler for the links.
-   * @param prefixClickHandler The click handler for the prefixes.
-   * @returns The pinned note content states.
+   * Constructs the pinned note content props for the specified file.
+   * @param file The file to construct the pinned note content props for.
+   * @returns The pinned note content props.
    */
-  private async constructPinnedNoteContentStates(
+  private async constructPinnedNoteContentProps(
     file: TFile,
-    clickHandler: LinkEventHandler,
-    mouseOverHandler: LinkEventHandler,
-    prefixClickHandler: PrefixEventHandler
-  ): Promise<PinnedNoteContentState[]> {
+    defaultHandlers: EventHandlersForProps
+  ): Promise<PinnedNoteContentProps[]> {
     if (this.plugin.settings.annotationStringsForPinning.length === 0) {
       return [];
     }
 
     return (await getPinnedNoteContents(this.plugin, file)).map((pinnedNoteContent) => {
-      return new PinnedNoteContentState({
-        prefix: new PrefixState({
+      return {
+        type: "pinned-note-content",
+        prefix: {
           label: pinnedNoteContent.prefix,
-          clickHandler: prefixClickHandler,
-        }),
+          clickHandler: defaultHandlers.prefixClickHandler,
+        },
         content: pinnedNoteContent.content.map((item) => {
           if (typeof item === "string") {
             return item;
           } else {
-            return new NavigationLinkState({
-              destination: item.destination,
-              isExternal: item.isExternal,
-              displayText: this.getDisplayText(
-                item.destination,
-                item.isExternal,
-                item.displayText,
-                false
-              ),
-              resolved: true,
-              clickHandler,
-              mouseOverHandler,
-            });
+            return {
+              linkInfo: this.resolveDisplayText(item, false),
+              clickHandler: defaultHandlers.clickHandler,
+              mouseOverHandler: defaultHandlers.mouseOverHandler,
+            };
           }
         }),
-      });
+      };
     });
   }
 
   /**
-   * Constructs the annotated link states for the specified file.
-   * @param file The file to construct the annotated link states for.
-   * @param clickHandler The click handler for the links.
-   * @param mouseOverHandler The mouse over handler for the links.
-   * @param prefixClickHandler The click handler for the prefixes.
-   * @returns The annotated link states.
+   * Constructs the annotated link props for the specified file.
+   * @param file The file to construct the annotated link props for.
+   * @returns The annotated link props.
    * @throws {PluginError} Throws when the `AnnotatedLinksManager` has been reset
    *     during async operation.
    */
-  private async *constructAnnotatedLinkStates(
+  private async *constructAnnotatedLinkProps(
     file: TFile,
-    clickHandler: LinkEventHandler,
-    mouseOverHandler: LinkEventHandler,
-    prefixClickHandler: PrefixEventHandler
-  ): AsyncGenerator<PrefixedLinkState> {
+    defaultHandlers: EventHandlersForProps
+  ): AsyncGenerator<PrefixedLinkProps> {
     const annotatedLinksManager = this.plugin.findComponent(AnnotatedLinksManager)!;
     if (!annotatedLinksManager.isActive) {
       return;
@@ -687,62 +508,54 @@ export class NavigationController implements HoverParent {
 
     const generator = annotatedLinksManager.searchAnnotatedLinks(file);
     for await (const link of generator) {
-      yield new PrefixedLinkState({
-        prefix: new PrefixState({ label: link.prefix, clickHandler: prefixClickHandler }),
-        link: new NavigationLinkState({
-          destination: link.destinationPath,
-          isExternal: false,
-          displayText: this.getDisplayText(link.destinationPath, false),
-          resolved: true,
-          clickHandler,
-          mouseOverHandler,
-        }),
-      });
+      yield {
+        type: "prefixed-link",
+        prefix: { label: link.prefix, clickHandler: defaultHandlers.prefixClickHandler },
+        link: {
+          linkInfo: this.resolveDisplayText(link.link),
+          clickHandler: defaultHandlers.clickHandler,
+          mouseOverHandler: defaultHandlers.mouseOverHandler,
+        },
+      };
     }
   }
 
   /**
-   * Gets the display text for the specified destination.
-   * The return value is determined based on the following order of priority:
-   * 1. `manualDisplayText` (if specified).
-   * 2. The destination URL (if `isExternal` is `true`).
-   * 3. The specified property value of destination file
-   *    (if `propertyNameForDisplayText` is specified in settings).
-   * 4. The title of the destination path.
-   * @param destination The destination (file path or URL).
-   * @param isExternal Whether the destination is an external link.
-   * @param manualDisplayText The manual display text (e.g., from `[[path|display]]`).
-   * @param usePropertyValue If `false`, the property value is not used even if
-   *     specified in settings.
-   * @returns The display text.
+   * Resolves and sets the display text of the given link information.
+   * If `linkInfo.displayText` is already set, the link information is returned as-is.
+   * Otherwise, the display text is determined according to the following priority:
+   * 1. If the link is external, use the destination URL/path.
+   * 2. If `usePropertyValue` is `true` and a property name is configured,
+   *    attempt to read the first string value from the linked file's property.
+   * 3. Fallback to the file stem derived from the destination path.
+   * This method creates and returns a new `LinkInfo` instance with the resolved display text.
+   * @param linkInfo The link information whose display text should be resolved.
+   * @param usePropertyValue Whether to use a file property value as the display text
+   *     when available. Defaults to `true`.
+   * @returns A new `LinkInfo` instance with the resolved display text.
    */
-  private getDisplayText(
-    destination: string,
-    isExternal: boolean,
-    manualDisplayText?: string,
-    usePropertyValue: boolean = true
-  ): string {
-    if (manualDisplayText) {
-      return manualDisplayText;
+  private resolveDisplayText(linkInfo: LinkInfo, usePropertyValue: boolean = true): LinkInfo {
+    if (linkInfo.displayText.length > 0) {
+      return { ...linkInfo };
     }
 
-    if (isExternal) {
-      return destination;
+    if (linkInfo.isExternal) {
+      return { ...linkInfo, displayText: linkInfo.destination };
     }
 
     if (usePropertyValue) {
       const propertyName = this.plugin.settings.propertyNameForDisplayText;
       if (propertyName) {
-        const linkedFile = this.plugin.app.vault.getFileByPath(destination);
+        const linkedFile = this.plugin.app.vault.getFileByPath(linkInfo.destination);
         if (linkedFile) {
           const values = getStringValuesFromFileProperty(this.plugin.app, linkedFile, propertyName);
           if (values.length > 0) {
-            return values[0];
+            return { ...linkInfo, displayText: values[0] };
           }
         }
       }
     }
 
-    return getFileStemFromPath(destination);
+    return { ...linkInfo, displayText: getFileStemFromPath(linkInfo.destination) };
   }
 }

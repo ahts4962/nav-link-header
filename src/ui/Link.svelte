@@ -1,35 +1,36 @@
 <script lang="ts">
-  import type { NavigationLinkState } from "./states";
+  import type { LinkProps } from "./props";
   import Icon from "./Icon.svelte";
 
-  const { state }: { state: NavigationLinkState } = $props();
+  const { props }: { props: LinkProps } = $props();
 </script>
 
 <!--
   @component
-  A component that represents a link to a note.
+  A component that represents a link.
 
-  If `state.resolved` is `false`, the link will be rendered as an unresolved link.
-  If `state.isExternal` is `true`, an external link icon will be displayed next to the link.
+  If `props.linkInfo.isResolved` is `false`, the link will be rendered as an unresolved link.
+  If `props.linkInfo.isExternal` is `true`, an external link icon will be displayed
+  next to the link.
 -->
 <div class="nav-link-header-link">
   <a
-    class={[!state.resolved && "nav-link-header-unresolved"]}
+    class={[!props.linkInfo.isResolved && "nav-link-header-unresolved"]}
     href="#top"
     onclick={(e) => {
       e.preventDefault();
-      state.clickHandler(state, e);
+      props.clickHandler(props, e);
     }}
     onauxclick={(e) => {
       e.preventDefault();
-      state.clickHandler(state, e);
+      props.clickHandler(props, e);
     }}
     onmouseover={(e) => {
-      state.mouseOverHandler(state, e);
+      props.mouseOverHandler(props, e);
     }}
-    onfocus={() => {}}>{state.displayText}</a
+    onfocus={() => {}}>{props.linkInfo.displayText}</a
   >
-  {#if state.isExternal}
+  {#if props.linkInfo.isExternal}
     <Icon iconId="external-link" muted size="var(--icon-xs)" />
   {/if}
 </div>

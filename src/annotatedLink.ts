@@ -1,6 +1,7 @@
 import { type TAbstractFile, TFile } from "obsidian";
 import emojiRegex from "emoji-regex-xs";
 import type NavLinkHeader from "./main";
+import type { PrefixedLinkInfo } from "./types";
 import { PluginComponent } from "./pluginComponent";
 import type { NavLinkHeaderSettings } from "./settings";
 import { deepEqual, PluginError, sanitizeRegexInput } from "./utils";
@@ -113,9 +114,7 @@ export class AnnotatedLinksManager extends PluginComponent {
    * @throws {PluginError} Throws if `AnnotatedLinksManager` is deactivated or reset
    *     during the asynchronous operation.
    */
-  public async *searchAnnotatedLinks(
-    file: TFile
-  ): AsyncGenerator<{ destinationPath: string; prefix: string }> {
+  public async *searchAnnotatedLinks(file: TFile): AsyncGenerator<PrefixedLinkInfo> {
     if (!this.isActive) {
       return;
     }
@@ -143,7 +142,10 @@ export class AnnotatedLinksManager extends PluginComponent {
       const cachedResult = cache.get(backlink)?.get(file.path);
       if (cachedResult) {
         for (const prefix of cachedResult) {
-          yield { destinationPath: backlink, prefix };
+          yield {
+            prefix,
+            link: { destination: backlink, isExternal: false, isResolved: true, displayText: "" },
+          };
         }
         continue;
       }
@@ -181,8 +183,8 @@ export class AnnotatedLinksManager extends PluginComponent {
 
         detectedAnnotations.push(matchedAnnotation);
         yield {
-          destinationPath: backlink,
           prefix: matchedAnnotation,
+          link: { destination: backlink, isExternal: false, isResolved: true, displayText: "" },
         };
       }
 

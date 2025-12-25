@@ -1,9 +1,9 @@
 <script lang="ts">
-  import type { PrefixedLinkState } from "./states";
-  import NavigationLink from "./NavigationLink.svelte";
+  import type { PrefixedLinkProps } from "./props";
+  import Link from "./Link.svelte";
   import Prefix from "./Prefix.svelte";
 
-  const { state }: { state: PrefixedLinkState } = $props();
+  const { props }: { props: PrefixedLinkProps } = $props();
 </script>
 
 <!--
@@ -11,8 +11,8 @@
   A component that represents a link with a prefix.
 -->
 <div class="nav-link-header-link-container nav-link-header-prefixed">
-  <Prefix state={state.prefix} />
-  <NavigationLink state={state.link} />
+  <Prefix props={props.prefix} />
+  <Link props={props.link} />
 </div>
 
 <style>

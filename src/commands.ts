@@ -1,5 +1,6 @@
 import type { TFile } from "obsidian";
 import type NavLinkHeader from "./main";
+import type { ThreeWayDirection } from "./types";
 import { PeriodicNotesManager } from "./periodicNotes";
 import { getThreeWayPropertyLink } from "./propertyLink";
 import { FolderLinksManager } from "./folderLink";
@@ -208,8 +209,7 @@ export function addCommands(plugin: NavLinkHeader): void {
 }
 
 /**
- * Opens the previous, next, or parent note specified by file property
- * (helper function for `addCommands`).
+ * Opens the previous, next, or parent property link (helper function for `addCommands`).
  * @param plugin The plugin instance.
  * @param file The active file.
  * @param direction The direction to open.
@@ -219,7 +219,7 @@ export function addCommands(plugin: NavLinkHeader): void {
 function openThreeWayPropertyLink(
   plugin: NavLinkHeader,
   file: TFile,
-  direction: "previous" | "next" | "parent",
+  direction: ThreeWayDirection,
   checking: boolean
 ): boolean {
   if (
@@ -232,38 +232,15 @@ function openThreeWayPropertyLink(
 
   const links = getThreeWayPropertyLink(plugin, file);
 
-  if (direction === "previous") {
-    if (links.previous.length === 0) {
-      return false;
-    }
-    if (!checking) {
-      if (links.previous[0].isExternal) {
-        void openExternalLink(plugin.app, links.previous[0].destination, true);
-      } else {
-        void plugin.app.workspace.openLinkText(links.previous[0].destination, file.path);
-      }
-    }
-  } else if (direction === "next") {
-    if (links.next.length === 0) {
-      return false;
-    }
-    if (!checking) {
-      if (links.next[0].isExternal) {
-        void openExternalLink(plugin.app, links.next[0].destination, true);
-      } else {
-        void plugin.app.workspace.openLinkText(links.next[0].destination, file.path);
-      }
-    }
-  } else if (direction === "parent") {
-    if (links.parent.length === 0) {
-      return false;
-    }
-    if (!checking) {
-      if (links.parent[0].isExternal) {
-        void openExternalLink(plugin.app, links.parent[0].destination, true);
-      } else {
-        void plugin.app.workspace.openLinkText(links.parent[0].destination, file.path);
-      }
+  if (links[direction].length === 0) {
+    return false;
+  }
+
+  if (!checking) {
+    if (links[direction][0].link.isExternal) {
+      void openExternalLink(plugin.app, links[direction][0].link.destination, true);
+    } else {
+      void plugin.app.workspace.openLinkText(links[direction][0].link.destination, file.path);
     }
   }
 
@@ -281,7 +258,7 @@ function openThreeWayPropertyLink(
 function openPeriodicNote(
   plugin: NavLinkHeader,
   file: TFile,
-  direction: "previous" | "next" | "parent",
+  direction: ThreeWayDirection,
   checking: boolean
 ): boolean {
   const periodicNotesManager = plugin.findComponent(PeriodicNotesManager)!;
@@ -292,38 +269,23 @@ function openPeriodicNote(
 
   const adjacentNotes = periodicNotesManager.searchAdjacentNotes(file);
 
-  if (direction === "previous") {
-    if (!adjacentNotes.previousPath) {
-      return false;
-    }
-    if (!checking) {
-      void plugin.app.workspace.openLinkText(adjacentNotes.previousPath, file.path);
-    }
-  } else if (direction === "next") {
-    if (!adjacentNotes.nextPath) {
-      return false;
-    }
-    if (!checking) {
-      void plugin.app.workspace.openLinkText(adjacentNotes.nextPath, file.path);
-    }
-  } else if (direction === "parent") {
-    if (
-      !adjacentNotes.parentPath ||
-      adjacentNotes.parentDate !== undefined // Unresolved link
-    ) {
-      return false;
-    }
-    if (!checking) {
-      void plugin.app.workspace.openLinkText(adjacentNotes.parentPath, file.path);
-    }
+  if (direction === "parent" && adjacentNotes.parentDate !== undefined) {
+    // Unresolved link
+    return false;
+  }
+  if (adjacentNotes.paths[direction] === undefined) {
+    return false;
+  }
+
+  if (!checking) {
+    void plugin.app.workspace.openLinkText(adjacentNotes.paths[direction], file.path);
   }
 
   return true;
 }
 
 /**
- * Opens the previous, next, or parent note specified by folder settings
- * (helper function for `addCommands`).
+ * Opens the previous, next, or parent folder link (helper function for `addCommands`).
  * @param plugin The plugin instance.
  * @param file The active file.
  * @param direction The direction to open.
@@ -333,7 +295,7 @@ function openPeriodicNote(
 function openFolderLink(
   plugin: NavLinkHeader,
   file: TFile,
-  direction: "previous" | "next" | "parent",
+  direction: ThreeWayDirection,
   checking: boolean
 ): boolean {
   const folderLinksManager = plugin.findComponent(FolderLinksManager)!;
@@ -342,34 +304,16 @@ function openFolderLink(
   }
 
   for (const adjacentFiles of folderLinksManager.getAdjacentFiles(file)) {
-    if (direction === "previous") {
-      if (adjacentFiles.previous.length === 0) {
-        continue;
-      }
-      if (!checking) {
-        void plugin.app.workspace.openLinkText(
-          adjacentFiles.previous[adjacentFiles.previous.length - 1],
-          file.path
-        );
-      }
-      return true;
-    } else if (direction === "next") {
-      if (adjacentFiles.next.length === 0) {
-        continue;
-      }
-      if (!checking) {
-        void plugin.app.workspace.openLinkText(adjacentFiles.next[0], file.path);
-      }
-      return true;
-    } else if (direction === "parent") {
-      if (adjacentFiles.parent.length === 0) {
-        continue;
-      }
-      if (!checking) {
-        void plugin.app.workspace.openLinkText(adjacentFiles.parent[0], file.path);
-      }
-      return true;
+    const filePaths = adjacentFiles.filePaths[direction];
+    if (filePaths.length === 0) {
+      continue;
     }
+
+    if (!checking) {
+      const index = direction === "previous" ? filePaths.length - 1 : 0;
+      void plugin.app.workspace.openLinkText(filePaths[index], file.path);
+    }
+    return true;
   }
 
   return false;

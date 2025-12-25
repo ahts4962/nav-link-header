@@ -1,25 +1,16 @@
 import type { TFile } from "obsidian";
 import type NavLinkHeader from "./main";
+import type { PrefixedLinkInfo, ThreeWayDirection } from "./types";
 import { ImplicitPropertyManager } from "./implicitPropertyManager";
 import { getLinksFromFileProperty } from "./utils";
 
 /**
  * Gets links from the frontmatter properties of the specified file.
- * @param plugin The NavLinkHeader plugin instance.
+ * @param plugin The `NavLinkHeader` plugin instance.
  * @param file The file to search in.
- * @returns The array of links. Each link contains the destination (file path for internal links
- *     or URL for external links), whether the link is external, the prefix (typically an emoji),
- *     and the display text (if specified).
+ * @returns The array of links.
  */
-export function getPropertyLinks(
-  plugin: NavLinkHeader,
-  file: TFile
-): {
-  destination: string;
-  isExternal: boolean;
-  prefix: string;
-  displayText?: string;
-}[] {
+export function getPropertyLinks(plugin: NavLinkHeader, file: TFile): PrefixedLinkInfo[] {
   return getPropertyLinksWithMapping(plugin, file, plugin.settings.propertyMappings);
 }
 
@@ -32,11 +23,7 @@ export function getPropertyLinks(
 export function getThreeWayPropertyLink(
   plugin: NavLinkHeader,
   file: TFile
-): {
-  previous: { destination: string; isExternal: boolean; prefix: string; displayText?: string }[];
-  next: { destination: string; isExternal: boolean; prefix: string; displayText?: string }[];
-  parent: { destination: string; isExternal: boolean; prefix: string; displayText?: string }[];
-} {
+): Record<ThreeWayDirection, PrefixedLinkInfo[]> {
   return {
     previous: getPropertyLinksWithMapping(
       plugin,
@@ -53,46 +40,37 @@ export function getThreeWayPropertyLink(
  * @param plugin The NavLinkHeader plugin instance.
  * @param file The file to search in.
  * @param mappings The property mappings to search for links.
- * @returns The array of links. Each link contains the destination (file path for internal links
- *     or URL for external links), whether the link is external, the prefix (typically an emoji),
- *     and the display text (if specified).
+ * @returns The array of links.
  */
 function getPropertyLinksWithMapping(
   plugin: NavLinkHeader,
   file: TFile,
   mappings: { property: string; prefix: string }[]
-): {
-  destination: string;
-  isExternal: boolean;
-  prefix: string;
-  displayText?: string;
-}[] {
-  const result: ReturnType<typeof getPropertyLinks> = [];
+): PrefixedLinkInfo[] {
+  const result: PrefixedLinkInfo[] = [];
   const implicitPropertyManager = plugin.findComponent(ImplicitPropertyManager)!;
 
   for (const { property, prefix } of mappings) {
     const links = getLinksFromFileProperty(plugin.app, file, property);
 
-    const destinations = [];
-    for (const { destination, isExternal, displayText } of links) {
-      result.push({
-        destination,
-        isExternal,
-        prefix,
-        displayText,
-      });
-      destinations.push(destination);
+    const destinations = new Set<string>();
+    for (const link of links) {
+      result.push({ prefix, link });
+      destinations.add(link.destination);
     }
 
     if (implicitPropertyManager.isActive) {
       const implicitLinks = implicitPropertyManager.getImplicitPropertyValues(file, property);
       for (const destination of implicitLinks) {
-        if (!destinations.includes(destination)) {
+        if (!destinations.has(destination)) {
           result.push({
-            destination,
-            isExternal: false,
             prefix,
-            displayText: undefined,
+            link: {
+              destination,
+              isExternal: false,
+              isResolved: true,
+              displayText: "",
+            },
           });
         }
       }
