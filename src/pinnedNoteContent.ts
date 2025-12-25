@@ -1,17 +1,7 @@
 import type { App, TFile } from "obsidian";
 import type NavLinkHeader from "./main";
-import type { LinkInfo } from "./types";
+import type { NoteContentInfo } from "./types";
 import { parseMarkdownLink, parseWikiLink, sanitizeRegexInput } from "./utils";
-
-/**
- * The interface representing a pinned note content.
- * Each pinned note content consists of a prefix (e.g., an emoji) and an array of content items.
- * Each content item can be either a string (plain text) or an object representing a link.
- */
-export interface PinnedNoteContentInfo {
-  prefix: string;
-  content: (LinkInfo | string)[];
-}
 
 /**
  * Gets the pinned note contents from the specified file.
@@ -22,7 +12,7 @@ export interface PinnedNoteContentInfo {
 export async function getPinnedNoteContents(
   plugin: NavLinkHeader,
   file: TFile
-): Promise<PinnedNoteContentInfo[]> {
+): Promise<NoteContentInfo[]> {
   const annotationStrings = plugin.settings.annotationStringsForPinning;
   const startMarker = plugin.settings.startMarkerForPinning;
   const endMarker = plugin.settings.endMarkerForPinning;
@@ -30,7 +20,7 @@ export async function getPinnedNoteContents(
   const sanitizedEndMarker = sanitizeRegexInput(endMarker);
 
   const content = await plugin.app.vault.cachedRead(file);
-  const result: { index: number; content: PinnedNoteContentInfo }[] = [];
+  const result: { index: number; content: NoteContentInfo }[] = [];
   for (const annotationString of annotationStrings) {
     const sanitizedAnnotationString = sanitizeRegexInput(annotationString);
 
@@ -39,7 +29,7 @@ export async function getPinnedNoteContents(
       if (startMarker !== "" && endMarker !== "" && match[1].startsWith(startMarker)) {
         continue;
       }
-      const parsed = parsePinnedNoteContent(plugin.app, file, match[1]);
+      const parsed = parseNoteContent(plugin.app, file, match[1]);
       parsed.prefix = annotationString;
       result.push({ index: match.index, content: parsed });
     }
@@ -50,11 +40,7 @@ export async function getPinnedNoteContents(
         "gs"
       );
       for (const match of content.matchAll(blockRegex)) {
-        const parsed = parsePinnedNoteContent(
-          plugin.app,
-          file,
-          match[1].replace(/\n/g, " ").trim()
-        );
+        const parsed = parseNoteContent(plugin.app, file, match[1].replace(/\n/g, " ").trim());
         parsed.prefix = annotationString;
         result.push({ index: match.index, content: parsed });
       }
@@ -65,13 +51,13 @@ export async function getPinnedNoteContents(
 }
 
 /**
- * Parses the pinned note content string into a `PinnedNoteContent` object.
+ * Parses the note content string into a `NoteContentInfo` object.
  * @param app The Obsidian app instance.
- * @param file The file containing the pinned note content.
- * @param content The pinned note content string.
- * @returns The parsed `PinnedNoteContent` object.
+ * @param file The file containing the note content.
+ * @param content The note content string.
+ * @returns The parsed `NoteContentInfo` object.
  */
-function parsePinnedNoteContent(app: App, file: TFile, content: string): PinnedNoteContentInfo {
+function parseNoteContent(app: App, file: TFile, content: string): NoteContentInfo {
   const matchInfos: {
     index: number;
     length: number;
@@ -108,7 +94,7 @@ function parsePinnedNoteContent(app: App, file: TFile, content: string): PinnedN
 
   matchInfos.sort((a, b) => a.index - b.index);
 
-  const result: PinnedNoteContentInfo = { prefix: "", content: [] };
+  const result: NoteContentInfo = { prefix: "", content: [] };
   let cursor = 0;
   let matchIndex = 0;
   while (true) {

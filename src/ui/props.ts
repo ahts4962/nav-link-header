@@ -5,7 +5,7 @@ export type PrefixEventHandler = (target: PrefixProps) => void;
 export type NavigationItemProps =
   | PrefixedLinkProps
   | ThreeWayLinkProps
-  | PinnedNoteContentProps
+  | NoteContentProps
   | CollapsedItemProps;
 export type NavigationItemPropsWithoutCollapsed = Exclude<NavigationItemProps, CollapsedItemProps>;
 
@@ -56,12 +56,12 @@ export interface ThreeWayLinkProps {
 }
 
 /**
- * The properties of a `PinnedNoteContent` component.
- * @param prefix The prefix placed before the pinned note content.
- * @param content The content of the pinned note, which can include links and strings.
+ * The properties of a `NoteContent` component.
+ * @param prefix The prefix placed before the note content.
+ * @param content The content of the note, which can include links and strings.
  */
-export interface PinnedNoteContentProps {
-  type: "pinned-note-content";
+export interface NoteContentProps {
+  type: "note-content";
   prefix: PrefixProps;
   content: (LinkProps | string)[];
 }

@@ -1,7 +1,7 @@
 <script lang="ts">
   import type { NavigationItemProps } from "./props";
   import CollapsedItem from "./CollapsedItem.svelte";
-  import PinnedNoteContent from "./PinnedNoteContent.svelte";
+  import NoteContent from "./NoteContent.svelte";
   import PrefixedLink from "./PrefixedLink.svelte";
   import ThreeWayLink from "./ThreeWayLink.svelte";
 
@@ -53,8 +53,8 @@
           <PrefixedLink props={item} />
         {:else if item.type === "three-way-link"}
           <ThreeWayLink props={item} />
-        {:else if item.type === "pinned-note-content"}
-          <PinnedNoteContent props={item} />
+        {:else if item.type === "note-content"}
+          <NoteContent props={item} />
         {:else if item.type === "collapsed-item"}
           <CollapsedItem props={item} />
         {/if}

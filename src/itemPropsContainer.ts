@@ -184,7 +184,7 @@ export class ItemPropsContainer {
 function getSortTag(item: NavigationItemProps): string {
   switch (item.type) {
     case "prefixed-link":
-    case "pinned-note-content":
+    case "note-content":
     case "collapsed-item":
       return item.prefix.label;
     case "three-way-link":
@@ -216,7 +216,7 @@ function getLinkTypeOrder(item: NavigationItemProps): number {
       return 0;
     case "prefixed-link":
       return 1;
-    case "pinned-note-content":
+    case "note-content":
       return 2;
     case "collapsed-item":
       return 3;

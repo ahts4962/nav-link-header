@@ -1,9 +1,9 @@
 <script lang="ts">
-  import type { PinnedNoteContentProps } from "./props";
+  import type { NoteContentProps } from "./props";
   import Link from "./Link.svelte";
   import Prefix from "./Prefix.svelte";
 
-  const { props }: { props: PinnedNoteContentProps } = $props();
+  const { props }: { props: NoteContentProps } = $props();
 </script>
 
 <!--

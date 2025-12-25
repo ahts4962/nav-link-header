@@ -25,3 +25,13 @@ export interface PrefixedLinkInfo {
   prefix: string;
   link: LinkInfo;
 }
+
+/**
+ * The interface representing a part of note content including links and text.
+ * Each note content consists of a prefix (e.g., an emoji) and an array of content items.
+ * Each content item can be either a string (plain text) or an object representing a link.
+ */
+export interface NoteContentInfo {
+  prefix: string;
+  content: (LinkInfo | string)[];
+}

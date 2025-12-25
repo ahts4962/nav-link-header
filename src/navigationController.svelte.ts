@@ -5,7 +5,7 @@ import type { LinkInfo, ThreeWayDirection } from "./types";
 import type {
   LinkEventHandler,
   NavigationItemProps,
-  PinnedNoteContentProps,
+  NoteContentProps,
   PrefixedLinkProps,
   PrefixEventHandler,
   ThreeWayLinkProps,
@@ -459,14 +459,14 @@ export class NavigationController implements HoverParent {
   private async constructPinnedNoteContentProps(
     file: TFile,
     defaultHandlers: EventHandlersForProps
-  ): Promise<PinnedNoteContentProps[]> {
+  ): Promise<NoteContentProps[]> {
     if (this.plugin.settings.annotationStringsForPinning.length === 0) {
       return [];
     }
 
     return (await getPinnedNoteContents(this.plugin, file)).map((pinnedNoteContent) => {
       return {
-        type: "pinned-note-content",
+        type: "note-content",
         prefix: {
           label: pinnedNoteContent.prefix,
           clickHandler: defaultHandlers.prefixClickHandler,
