@@ -5,7 +5,12 @@ import type { PrefixedLinkInfo } from "./types";
 import { PluginComponent } from "./pluginComponent";
 import type { NavLinkHeaderSettings } from "./settings";
 import { PluginError } from "./pluginError";
-import { deepEqual, sanitizeRegexInput } from "./utils";
+import {
+  deepEqual,
+  parseMarkdownLinkWithValidation,
+  parseWikiLinkWithValidation,
+  sanitizeRegexInput,
+} from "./utils";
 
 export const exportedForTesting = {
   constructAnnotationRegex,
@@ -166,18 +171,21 @@ export class AnnotatedLinksManager extends PluginComponent {
       for (const mapping of annotationMappings) {
         const annotationRegex = constructAnnotationRegex(mapping.regex, ignoreVariationSelectors);
 
-        const matchedAnnotations = this.searchAnnotatedLinksInContent(
+        const links = this.searchAnnotatedLinksInContent(
           content,
           backlink,
-          file.path,
           annotationRegex,
           allowSpace
         );
 
-        matchedAnnotations.forEach((annotation) => {
-          prefixes.add(
-            mapping.prefix === MATCHED_ANNOTATION_PLACEHOLDER ? annotation : mapping.prefix
-          );
+        links.forEach((link) => {
+          if (link.link.destination === file.path) {
+            if (mapping.prefix === MATCHED_ANNOTATION_PLACEHOLDER) {
+              prefixes.add(link.prefix);
+            } else {
+              prefixes.add(mapping.prefix);
+            }
+          }
         });
       }
 
@@ -196,75 +204,79 @@ export class AnnotatedLinksManager extends PluginComponent {
   }
 
   /**
-   * Helper function for `searchAnnotatedLinks`.
+   * Searches for annotated links in the given content.
    * @param content The content to search in.
-   * @param backlinkFilePath The path of the backlink file (the file containing `content`).
-   * @param filePath The path of the file (searches for links to this file in `content`).
+   * @param filePath The path of the file containing the content.
    * @param annotationRegex The regex pattern of the annotation string.
    * @param allowSpace Whether to allow space after the annotation string.
-   * @returns A set of matched annotation strings.
-   *     If no matches are found or `annotationRegex` is invalid, an empty set is returned.
+   * @returns An array of matched annotated links.
+   *     If no matches are found or `annotationRegex` is invalid, an empty array is returned.
    */
   private searchAnnotatedLinksInContent(
     content: string,
-    backlinkFilePath: string,
     filePath: string,
     annotationRegex: string,
     allowSpace: boolean
-  ): Set<string> {
+  ): PrefixedLinkInfo[] {
     const optionalSpace = allowSpace ? " ?" : "";
-    let wikiRegex: RegExp | undefined = undefined;
-    let markdownRegex: RegExp | undefined = undefined;
+    let wikiRegex;
+    let markdownRegex;
     try {
-      // Wiki style links with annotation.
       wikiRegex = new RegExp(
-        String.raw`(${annotationRegex})${optionalSpace}!?\[\[([^\[\]]+)\]\]`,
+        String.raw`(${annotationRegex})${optionalSpace}!?(\[\[[^[\]]+\]\])`,
         "gu"
       );
-
-      // Markdown style links with annotation.
       markdownRegex = new RegExp(
-        String.raw`(${annotationRegex})${optionalSpace}!?\[[^\[\]]+\]\(([^\(\)]+)\)`,
+        String.raw`(${annotationRegex})${optionalSpace}!?(\[[^[\]]+\]\([^()]+\))`,
         "gu"
       );
     } catch {
-      return new Set();
+      return [];
     }
 
-    const searchConfigs = [
-      {
-        regex: wikiRegex,
-        extractor: (matchString: string) => {
-          return matchString.split(/[|#]/)[0]; // Remove the heading and the display text
-        },
-      },
-      {
-        regex: markdownRegex,
-        extractor: (matchString: string) => {
-          matchString = matchString.split("#")[0]; // Remove the heading
-          try {
-            return decodeURIComponent(matchString);
-          } catch {
-            return matchString; // Fallback to raw string if decoding fails.
-          }
-        },
-      },
-    ];
+    const result: PrefixedLinkInfo[] = [];
 
-    const matchedAnnotations: Set<string> = new Set();
-    for (const { regex, extractor } of searchConfigs) {
-      for (const match of content.matchAll(regex)) {
-        const matchedPath = this.plugin.app.metadataCache.getFirstLinkpathDest(
-          extractor(match[match.length - 1]),
-          backlinkFilePath
-        )?.path;
-        if (matchedPath === filePath) {
-          matchedAnnotations.add(match[1]);
-        }
+    for (const match of content.matchAll(wikiRegex)) {
+      const { path, displayText } = parseWikiLinkWithValidation(
+        this.plugin.app,
+        filePath,
+        match[match.length - 1]
+      );
+      if (path === undefined) {
+        continue;
       }
+      result.push({
+        prefix: match[1],
+        link: {
+          destination: path,
+          isExternal: false,
+          isResolved: true,
+          displayText: displayText ?? "",
+        },
+      });
     }
 
-    return matchedAnnotations;
+    for (const match of content.matchAll(markdownRegex)) {
+      const { destination, isValidExternalLink, displayText } = parseMarkdownLinkWithValidation(
+        this.plugin.app,
+        filePath,
+        match[match.length - 1]
+      );
+      if (destination === undefined) {
+        continue;
+      }
+      result.push({
+        prefix: match[1],
+        link: {
+          destination,
+          isExternal: isValidExternalLink,
+          isResolved: true,
+          displayText: displayText ?? "",
+        },
+      });
+    }
+
+    return result;
   }
 }
 
