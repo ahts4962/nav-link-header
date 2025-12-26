@@ -17,6 +17,10 @@ export async function getPinnedNoteContents(
   plugin: NavLinkHeader,
   file: TFile
 ): Promise<NoteContentInfo[]> {
+  if (!file.path.endsWith(".md")) {
+    return [];
+  }
+
   const annotationStrings = plugin.settings.annotationStringsForPinning;
   const startMarker = plugin.settings.startMarkerForPinning;
   const endMarker = plugin.settings.endMarkerForPinning;
