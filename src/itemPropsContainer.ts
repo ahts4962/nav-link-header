@@ -67,43 +67,62 @@ export class ItemPropsContainer {
    * @param item The item to add.
    */
   public addItem(item: NavigationItemPropsWithoutCollapsed): void {
-    // Filter out any prefixed links that have the same destination.
-    if (this.plugin.settings.filterDuplicateNotes && item.type === "prefixed-link") {
-      const i = this.items.findIndex((l) => {
-        return (
-          l.type === "prefixed-link" &&
-          l.link.linkInfo.destination === item.link.linkInfo.destination
-        );
-      });
-      if (i !== -1) {
-        // If the link is already in the list
-        const existingPrefix = (this.items[i] as PrefixedLinkProps).prefix.label;
-        const newPrefix = item.prefix.label;
-        const priority = this.plugin.settings.duplicateNoteFilteringPriority;
-        const existingIndex = priority.indexOf(existingPrefix);
-        const newIndex = priority.indexOf(newPrefix);
-        if (existingIndex === -1 && newIndex === -1) {
-          if (existingPrefix.localeCompare(newPrefix, undefined, { numeric: true }) > 0) {
-            this.items[i] = item;
-          } else {
-            return;
-          }
-        } else if (existingIndex === -1) {
-          this.items[i] = item;
-        } else if (newIndex === -1) {
-          return;
-        } else {
-          if (newIndex < existingIndex) {
-            this.items[i] = item;
-          } else {
-            return;
-          }
-        }
-      } else {
-        this.items.push(item);
-      }
-    } else {
+    if (item.type !== "prefixed-link") {
       this.items.push(item);
+      return;
+    }
+
+    // Filter out any prefixed links that are exactly the same.
+    const i = this.items.findIndex((l) => {
+      return (
+        l.type === "prefixed-link" &&
+        l.prefix.label === item.prefix.label &&
+        l.link.linkInfo.destination === item.link.linkInfo.destination &&
+        l.link.linkInfo.displayText === item.link.linkInfo.displayText
+      );
+    });
+    if (i !== -1) {
+      return;
+    }
+
+    if (!this.plugin.settings.filterDuplicateNotes) {
+      this.items.push(item);
+      return;
+    }
+
+    // Filter out any prefixed links that have the same destination.
+    const j = this.items.findIndex((l) => {
+      return (
+        l.type === "prefixed-link" && l.link.linkInfo.destination === item.link.linkInfo.destination
+      );
+    });
+    if (j === -1) {
+      this.items.push(item);
+      return;
+    }
+
+    // If the link is already in the list
+    const existingPrefix = (this.items[j] as PrefixedLinkProps).prefix.label;
+    const newPrefix = item.prefix.label;
+    const priority = this.plugin.settings.duplicateNoteFilteringPriority;
+    const existingIndex = priority.indexOf(existingPrefix);
+    const newIndex = priority.indexOf(newPrefix);
+    if (existingIndex === -1 && newIndex === -1) {
+      if (existingPrefix.localeCompare(newPrefix, undefined, { numeric: true }) > 0) {
+        this.items[j] = item;
+      } else {
+        return;
+      }
+    } else if (existingIndex === -1) {
+      this.items[j] = item;
+    } else if (newIndex === -1) {
+      return;
+    } else {
+      if (newIndex < existingIndex) {
+        this.items[j] = item;
+      } else {
+        return;
+      }
     }
   }
 
