@@ -1,7 +1,11 @@
 import type { App, TFile } from "obsidian";
 import type NavLinkHeader from "./main";
 import type { NoteContentInfo } from "./types";
-import { parseMarkdownLink, parseWikiLink, sanitizeRegexInput } from "./utils";
+import {
+  parseMarkdownLinkWithValidation,
+  parseWikiLinkWithValidation,
+  sanitizeRegexInput,
+} from "./utils";
 
 /**
  * Gets the pinned note contents from the specified file.
@@ -115,16 +119,16 @@ function parseNoteContent(app: App, file: TFile, content: string): NoteContentIn
       continue;
     }
 
-    let destination: string | undefined = undefined;
-    let isExternal: boolean = false;
-    let displayText: string | undefined = undefined;
+    let destination;
+    let isExternal;
+    let displayText;
     if (matchInfo.type === "wiki") {
-      const parsed = parseWikiLink(matchInfo.text);
+      const parsed = parseWikiLinkWithValidation(app, file.path, matchInfo.text);
       destination = parsed.path;
       isExternal = false;
       displayText = parsed.displayText;
     } else if (matchInfo.type === "markdown") {
-      const parsed = parseMarkdownLink(matchInfo.text);
+      const parsed = parseMarkdownLinkWithValidation(app, file.path, matchInfo.text);
       destination = parsed.destination;
       isExternal = parsed.isValidExternalLink;
       displayText = parsed.displayText;
@@ -133,15 +137,10 @@ function parseNoteContent(app: App, file: TFile, content: string): NoteContentIn
         destination = matchInfo.text;
         isExternal = true;
         displayText = matchInfo.text;
-      }
-    }
-
-    if (!isExternal && destination !== undefined) {
-      const linkedFile = app.metadataCache.getFirstLinkpathDest(destination, file.path);
-      if (linkedFile) {
-        destination = linkedFile.path;
       } else {
         destination = undefined;
+        isExternal = false;
+        displayText = undefined;
       }
     }
 
