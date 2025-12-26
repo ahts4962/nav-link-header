@@ -105,7 +105,7 @@ export function sanitizeRegexInput(text: string): string {
 }
 
 /**
- * Parses a single Obsidian-style wiki link of the form [[path#header|display]] and
+ * Parses a single Obsidian-style wiki link of the form `[[path#header|display]]` and
  * extracts the target file path (without the header fragment) and optional display (alias) text.
  * @param text Raw text potentially containing a wiki link
  *     (must be exactly the link, no surrounding text).
@@ -115,10 +115,7 @@ export function sanitizeRegexInput(text: string): string {
  *     - displayText?: string — The trimmed alias text, or `undefined`
  *       if not present or not a wiki link.
  */
-export function parseWikiLink(text: string): {
-  path?: string;
-  displayText?: string;
-} {
+export function parseWikiLink(text: string): { path?: string; displayText?: string } {
   text = text.trim();
   const re = /^\[\[([^[\]]+)\]\]$/;
   const match = text.match(re);
@@ -145,10 +142,41 @@ export function parseWikiLink(text: string): {
 }
 
 /**
- * Parses a single Markdown-style link of the canonical form: [display](destination).
- *
+ * Parses a single Obsidian-style wiki link of the form `[[path#header|display]]`
+ * and validates that the target file exists in the vault.
+ * @param app The Obsidian app instance.
+ * @param filePath The path to the file containing the wiki link.
+ * @param text Raw text potentially containing a wiki link
+ *     (must be exactly the link, no surrounding text).
+ * @returns An object with:
+ *     - path?: string — The trimmed target path without any header fragment,
+ *       or `undefined` if not a wiki link or if the target file does not exist.
+ *     - displayText?: string — The trimmed alias text, or `undefined`
+ *       if not present or not a wiki link.
+ */
+export function parseWikiLinkWithValidation(
+  app: App,
+  filePath: string,
+  text: string
+): {
+  path?: string;
+  displayText?: string;
+} {
+  const { path, displayText } = parseWikiLink(text);
+  if (path === undefined) {
+    return { path, displayText };
+  }
+  const linkedFile = app.metadataCache.getFirstLinkpathDest(path, filePath);
+  if (!linkedFile) {
+    return { path: undefined, displayText: undefined };
+  }
+  return { path: linkedFile.path, displayText };
+}
+
+/**
+ * Parses a single Markdown-style link of the canonical form: `[display](destination)`.
  * Supports:
- * - External links (e.g. https://, http://, etc.)
+ * - External links (e.g., https://, http://, etc.)
  * - Internal links (relative Obsidian vault paths), optionally with a header fragment (#section)
  * External links are validated via `URL.canParse()`, and if validation fails,
  * the link is treated as an internal link.
@@ -200,6 +228,53 @@ export function parseMarkdownLink(text: string): {
 }
 
 /**
+ * Parses a single Markdown-style link of the canonical form: `[display](destination)`
+ * and validates that the target file exists in the vault for internal links.
+ * Supports:
+ * - External links (e.g., https://, http://, etc.)
+ * - Internal links (relative Obsidian vault paths), optionally with a header fragment (#section)
+ * External links are validated via `URL.canParse()`, and if validation fails,
+ * the link is treated as an internal link.
+ * @param app The Obsidian app instance.
+ * @param filePath The path to the file containing the markdown link.
+ * @param text Raw text potentially containing a Markdown-style link
+ *     (must be exactly the link, no surrounding text).
+ * @returns An object with:
+ *     - destination?: string — For external links: the trimmed URL as written.
+ *     For internal links: the decoded and normalized target path.
+ *     `undefined` if not a markdown link or if an internal link fails to decode
+ *     or if the target file does not exist.
+ *     - isValidExternalLink: boolean — `true` only when destination was recognized as a valid URL.
+ *     - displayText?: string — Trimmed display portion. `undefined` if not a markdown link or
+ *     if the target file does not exist.
+ */
+export function parseMarkdownLinkWithValidation(
+  app: App,
+  filePath: string,
+  text: string
+): {
+  destination?: string;
+  isValidExternalLink: boolean;
+  displayText?: string;
+} {
+  const { destination, isValidExternalLink, displayText } = parseMarkdownLink(text);
+  if (destination === undefined || isValidExternalLink) {
+    return { destination, isValidExternalLink, displayText };
+  }
+
+  const linkedFile = app.metadataCache.getFirstLinkpathDest(destination, filePath);
+  if (!linkedFile) {
+    return {
+      destination: undefined,
+      isValidExternalLink,
+      displayText: undefined,
+    };
+  }
+
+  return { destination: linkedFile.path, isValidExternalLink, displayText };
+}
+
+/**
  * Retrieves the string values of a specified property from the front matter of a file.
  * @param app The application instance.
  * @param file The file to retrieve the property from.
@@ -213,7 +288,7 @@ export function getStringValuesFromFileProperty(
   propertyName: string
 ): string[] {
   const propertyValues = getValuesFromFileProperty(app, file, propertyName);
-  if (propertyValues === undefined) {
+  if (!propertyValues) {
     return [];
   }
 
@@ -234,7 +309,7 @@ export function getFirstValueFromFileProperty(
   propertyName: string
 ): string | number | boolean | null | undefined {
   const propertyValues = getValuesFromFileProperty(app, file, propertyName);
-  if (propertyValues === undefined) {
+  if (!propertyValues) {
     return undefined;
   }
 
@@ -290,22 +365,25 @@ export function getLinksFromFileProperty(app: App, file: TFile, propertyName: st
   const propertyValues = getStringValuesFromFileProperty(app, file, propertyName);
 
   for (const value of propertyValues) {
-    let destination = value;
-    let isExternal = false;
-    let displayText: string | undefined = undefined;
+    let destination;
+    let isExternal;
+    let displayText;
 
     const parsedWikiLink = parseWikiLink(value);
-    if (parsedWikiLink.path) {
+    if (parsedWikiLink.path !== undefined) {
       destination = parsedWikiLink.path;
+      isExternal = false;
       displayText = parsedWikiLink.displayText;
     } else {
       const parsedMarkdownLink = parseMarkdownLink(value);
-      if (parsedMarkdownLink.destination) {
+      if (parsedMarkdownLink.destination !== undefined) {
         destination = parsedMarkdownLink.destination;
         isExternal = parsedMarkdownLink.isValidExternalLink;
         displayText = parsedMarkdownLink.displayText;
       } else {
+        destination = value;
         isExternal = URL.canParse(value);
+        displayText = undefined;
       }
     }
 
