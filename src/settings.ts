@@ -56,6 +56,7 @@ export interface NavLinkHeaderSettings {
   annotationStringsForPinning: string[];
   startMarkerForPinning: string;
   endMarkerForPinning: string;
+  ignoreCodeBlocksInPinning: boolean;
   folderLinksSettingsArray: FolderLinksSettings[];
 }
 
@@ -123,6 +124,7 @@ export const DEFAULT_SETTINGS: NavLinkHeaderSettings = {
   annotationStringsForPinning: [],
   startMarkerForPinning: "",
   endMarkerForPinning: "",
+  ignoreCodeBlocksInPinning: false,
   folderLinksSettingsArray: [],
 };
 
@@ -1177,6 +1179,18 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
         })
         .setPlaceholder(")");
     });
+
+    new Setting(containerEl)
+      .setName("Ignore code blocks")
+      .setDesc("If enabled, code blocks will be ignored when searching for pinned content.")
+      .addToggle((toggle) => {
+        toggle
+          .setValue(this.plugin.settingsUnderChange.ignoreCodeBlocksInPinning)
+          .onChange((value) => {
+            this.plugin.settingsUnderChange.ignoreCodeBlocksInPinning = value;
+            this.plugin.triggerSettingsChangedDebounced();
+          });
+      });
 
     new Setting(containerEl).setName("Folder links").setHeading();
 

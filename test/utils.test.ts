@@ -1,5 +1,14 @@
 import { expect, test } from "vitest";
-import { deepEqual, isFileInFolder, parseMarkdownLink, parseWikiLink } from "src/utils";
+import {
+  deepEqual,
+  isFileInFolder,
+  parseMarkdownLink,
+  parseWikiLink,
+  removeCode,
+  removeCodeBlocks,
+  removeFrontMatter,
+  removeInlineCode,
+} from "src/utils";
 
 test("deep equal", () => {
   expect(deepEqual(1, 1)).toBe(true);
@@ -55,6 +64,216 @@ test("check if the file is included in the folder", () => {
   expect(isFileInFolder("fol/der/file", "fol", false)).toBe(false);
   expect(isFileInFolder("fol/der/file", "fol/der")).toBe(true);
   expect(isFileInFolder("fol/der/file", "fol/der", false)).toBe(true);
+});
+
+test("remove YAML front matter", () => {
+  let content;
+  let expected;
+
+  content = '---\nnum: 1\nstring: "string"\nlist:\n  - 1\n  - 2\n---\ncontent';
+  expected = "content";
+  expect(removeFrontMatter(content)).toBe(expected);
+
+  content = " ---\nfront matter\n---\n";
+  expected = " ---\nfront matter\n---\n";
+  expect(removeFrontMatter(content)).toBe(expected);
+
+  content = "--- \nfront matter\n---\n";
+  expected = "--- \nfront matter\n---\n";
+  expect(removeFrontMatter(content)).toBe(expected);
+
+  content = "---\n---\n";
+  expected = "";
+  expect(removeFrontMatter(content)).toBe(expected);
+
+  content = "------\n";
+  expected = "------\n";
+  expect(removeFrontMatter(content)).toBe(expected);
+
+  content = "---\nfront matter\n ---\n";
+  expected = "---\nfront matter\n ---\n";
+  expect(removeFrontMatter(content)).toBe(expected);
+
+  content = "---\nfront matter\n--- \n";
+  expected = "---\nfront matter\n--- \n";
+  expect(removeFrontMatter(content)).toBe(expected);
+
+  content = "---\nfront matter\n---";
+  expected = "";
+  expect(removeFrontMatter(content)).toBe(expected);
+
+  content = "---\n\n---\n";
+  expected = "";
+  expect(removeFrontMatter(content)).toBe(expected);
+
+  content = "---\nfront matter\n---\n---\nfront matter\n---\n";
+  expected = "---\nfront matter\n---\n";
+  expect(removeFrontMatter(content)).toBe(expected);
+});
+
+test("remove code blocks", () => {
+  let content;
+  let expected;
+
+  // First step
+  content = "```ts\ncode\n```\n";
+  expected = "\n";
+  expect(removeCodeBlocks(content)).toBe(expected);
+
+  content = "text\n```\ncode\n```\n";
+  expected = "text\n\n";
+  expect(removeCodeBlocks(content)).toBe(expected);
+
+  content = " ```\ncode\n```\n";
+  expected = "\n";
+  expect(removeCodeBlocks(content)).toBe(expected);
+
+  content = "````\ncode\n````\n";
+  expected = "\n";
+  expect(removeCodeBlocks(content)).toBe(expected);
+
+  content = "```ts\ncode\ntext```\n";
+  expected = "";
+  expect(removeCodeBlocks(content)).toBe(expected);
+
+  content = "```\n```\n";
+  expected = "\n";
+  expect(removeCodeBlocks(content)).toBe(expected);
+
+  content = "```\ncode\n````\n";
+  expected = "\n";
+  expect(removeCodeBlocks(content)).toBe(expected);
+
+  content = "```\ncode\n ```\n";
+  expected = "\n";
+  expect(removeCodeBlocks(content)).toBe(expected);
+
+  content = "```\ncode\n``` \n";
+  expected = "\n";
+  expect(removeCodeBlocks(content)).toBe(expected);
+
+  content = "```\ncode\n```text\n";
+  expected = "";
+  expect(removeCodeBlocks(content)).toBe(expected);
+
+  content = "```\ncode\n`` `\n";
+  expected = "";
+  expect(removeCodeBlocks(content)).toBe(expected);
+
+  content = "`` `\ncode\n```\n";
+  expected = "`` `\ncode\n";
+  expect(removeCodeBlocks(content)).toBe(expected);
+
+  content = "```\n`code`\n```\n";
+  expected = "\n";
+  expect(removeCodeBlocks(content)).toBe(expected);
+
+  content = "````\n```\ncode\n```\n````\n";
+  expected = "\n";
+  expect(removeCodeBlocks(content)).toBe(expected);
+
+  content = "```\ncode\n```\ntext\n`````\ncode\n`````\n";
+  expected = "\ntext\n\n";
+  expect(removeCodeBlocks(content)).toBe(expected);
+
+  // Second step
+  content = "```\ncode";
+  expected = "";
+  expect(removeCodeBlocks(content)).toBe(expected);
+
+  content = " ```\ncode";
+  expected = "";
+  expect(removeCodeBlocks(content)).toBe(expected);
+
+  content = "````\ncode";
+  expected = "";
+  expect(removeCodeBlocks(content)).toBe(expected);
+
+  content = "````\ncode\n```";
+  expected = "";
+  expect(removeCodeBlocks(content)).toBe(expected);
+
+  content = "```ts\ncode";
+  expected = "";
+  expect(removeCodeBlocks(content)).toBe(expected);
+
+  content = "```ts";
+  expected = "";
+  expect(removeCodeBlocks(content)).toBe(expected);
+
+  content = "\n```ts";
+  expected = "\n";
+  expect(removeCodeBlocks(content)).toBe(expected);
+
+  content = "```ts`";
+  expected = "```ts`";
+  expect(removeCodeBlocks(content)).toBe(expected);
+
+  content = "````\ncode\n```\ncode\n```";
+  expected = "";
+  expect(removeCodeBlocks(content)).toBe(expected);
+});
+
+test("remove inline codes", () => {
+  let content;
+  let expected;
+
+  content = "text`code`text";
+  expected = "texttext";
+  expect(removeInlineCode(content)).toBe(expected);
+
+  content = "text``code``text";
+  expected = "texttext";
+  expect(removeInlineCode(content)).toBe(expected);
+
+  content = "text`code``text";
+  expected = "text`code``text";
+  expect(removeInlineCode(content)).toBe(expected);
+
+  content = "text``code`text";
+  expected = "text`text";
+  expect(removeInlineCode(content)).toBe(expected);
+
+  content = "text`code\ncode`text";
+  expected = "texttext";
+  expect(removeInlineCode(content)).toBe(expected);
+
+  content = "text`code\n\ncode`text";
+  expected = "text`code\n\ncode`text";
+  expect(removeInlineCode(content)).toBe(expected);
+
+  content = "text```code```text";
+  expected = "texttext";
+  expect(removeInlineCode(content)).toBe(expected);
+
+  content = "text`code`";
+  expected = "text";
+  expect(removeInlineCode(content)).toBe(expected);
+
+  content = "text`code` text`code`text";
+  expected = "text texttext";
+  expect(removeInlineCode(content)).toBe(expected);
+
+  content = "text`code```text```code`text";
+  expected = "texttext";
+  expect(removeInlineCode(content)).toBe(expected);
+});
+
+test("remove all codes", () => {
+  let content;
+  let expected;
+
+  content =
+    '---\nnum: 1\nstring: "string"\nlist:\n  - 1\n  - 2\n---\n' +
+    "text\n" +
+    "```ts\ncode\n```\n" +
+    "text`code`text\n";
+  expected = "text\n\ntexttext\n";
+  expect(removeCode(content)).toBe(expected);
+
+  content = "\n---\na: a\n---\n" + "text`text\n" + "```\ncode\n```\n" + "text`text\n";
+  expected = "\n---\na: a\n---\ntext`text\n\ntext`text\n";
+  expect(removeCode(content)).toBe(expected);
 });
 
 test("parse wiki style link", () => {

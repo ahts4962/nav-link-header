@@ -105,6 +105,49 @@ export function sanitizeRegexInput(text: string): string {
 }
 
 /**
+ * Removes YAML front matter from the text.
+ * @param text The text to remove front matter from.
+ * @returns The text without front matter.
+ */
+export function removeFrontMatter(text: string): string {
+  return text.replace(/^---\n(?:.*?\n)?---(?:$|\n)/s, "");
+}
+
+/**
+ * Removes code blocks from the text.
+ * The final line break is intentionally preserved to ensure proper processing of inline code.
+ * @param text The text to remove code blocks from.
+ * @returns The text without code blocks.
+ */
+export function removeCodeBlocks(text: string): string {
+  // Removes code blocks ().
+  return text
+    .replace(/^ *(```+)[^`\n]*\n(?:.*?\n)? *\1`* *$/gms, "")
+    .replace(/(^|\n) *```+[^`\n]*(?:$|\n.*$)/s, "$1");
+}
+
+/**
+ * Removes inline code from the text.
+ * Assumption:
+ * This function assumes that code blocks have already been removed from the input text by
+ * `removeCodeBlocks`.
+ * @param text The text to remove inline code from.
+ * @returns The text without inline code.
+ */
+export function removeInlineCode(text: string): string {
+  return text.replace(/(`+)(?=[^`])(?:[^\n]|\n[^\n])*?[^`]\1(?=(?:$|[^`]))/gs, "");
+}
+
+/**
+ * Removes YAML front matter, code blocks, and inline code from the text.
+ * @param text The text to remove code from.
+ * @returns The text without code.
+ */
+export function removeCode(text: string): string {
+  return removeInlineCode(removeCodeBlocks(removeFrontMatter(text)));
+}
+
+/**
  * Parses a single Obsidian-style wiki link of the form `[[path#header|display]]` and
  * extracts the target file path (without the header fragment) and optional display (alias) text.
  * @param text Raw text potentially containing a wiki link

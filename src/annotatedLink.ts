@@ -9,13 +9,11 @@ import {
   deepEqual,
   parseMarkdownLinkWithValidation,
   parseWikiLinkWithValidation,
+  removeCode,
   sanitizeRegexInput,
 } from "./utils";
 
-export const exportedForTesting = {
-  constructAnnotationRegex,
-  removeCode,
-};
+export const exportedForTesting = { constructAnnotationRegex };
 
 export const EMOJI_ANNOTATION_PLACEHOLDER: string = "[[E]]";
 const MATCHED_ANNOTATION_PLACEHOLDER: string = "__MATCHED_ANNOTATION__";
@@ -389,24 +387,6 @@ export class AnnotatedLinksManager extends PluginComponent {
 
     return result;
   }
-}
-
-/**
- * Removes YAML front matter, code blocks, and inline code from the text.
- * @param text The text to remove code from.
- * @returns The text without code.
- */
-function removeCode(text: string): string {
-  return (
-    text
-      // Removes YAML front matter.
-      .replace(/^---\n(?:.*?\n)?---(?:$|\n)/s, "")
-      // Removes code blocks (leaves the last line break for the processing of inline code).
-      .replace(/^ *(```+)[^`\n]*\n(?:.*?\n)? *\1`* *$/gms, "")
-      .replace(/(^|\n) *```+[^`\n]*(?:$|\n.*$)/s, "$1")
-      // Removes inline code.
-      .replace(/(`+)(?=[^`])(?:[^\n]|\n[^\n])*?[^`]\1(?=(?:$|[^`]))/gs, "")
-  );
 }
 
 /**

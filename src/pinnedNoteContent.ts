@@ -4,6 +4,8 @@ import type { NoteContentInfo } from "./types";
 import {
   parseMarkdownLinkWithValidation,
   parseWikiLinkWithValidation,
+  removeCodeBlocks,
+  removeFrontMatter,
   sanitizeRegexInput,
 } from "./utils";
 
@@ -27,7 +29,11 @@ export async function getPinnedNoteContents(
   const sanitizedStartMarker = sanitizeRegexInput(startMarker);
   const sanitizedEndMarker = sanitizeRegexInput(endMarker);
 
-  const content = await plugin.app.vault.cachedRead(file);
+  let content = removeFrontMatter(await plugin.app.vault.cachedRead(file));
+  if (plugin.settings.ignoreCodeBlocksInPinning) {
+    content = removeCodeBlocks(content);
+  }
+
   const result: { index: number; content: NoteContentInfo }[] = [];
   for (const annotationString of annotationStrings) {
     const sanitizedAnnotationString = sanitizeRegexInput(annotationString);
