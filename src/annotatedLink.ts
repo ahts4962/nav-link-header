@@ -25,7 +25,7 @@ const MATCHED_ANNOTATION_PLACEHOLDER: string = "__MATCHED_ANNOTATION__";
  * This class is used to search annotated links and cache the search results.
  */
 export class AnnotatedLinksManager extends PluginComponent {
-  // The cache object that stores the result of annotated links search.
+  // The cache object that stores the result of annotated links search (for backlinks only).
   // Cache structure: cache[backlinkFilePath][currentFilePath] = {prefix1, prefix2, ...}
   private cache: Map<string, Map<string, Set<string>>> = new Map();
 
@@ -48,7 +48,12 @@ export class AnnotatedLinksManager extends PluginComponent {
     super();
 
     const settings = this.plugin.settings;
-    if (settings.annotationStrings.length > 0 || settings.advancedAnnotationStrings.length > 0) {
+    if (
+      settings.annotationStringsForBacklinks.length > 0 ||
+      settings.annotationStringsForCurrentNote.length > 0 ||
+      settings.advancedAnnotationStringsForBacklinks.length > 0 ||
+      settings.advancedAnnotationStringsForCurrentNote.length > 0
+    ) {
       this.isActive = true;
     }
   }
@@ -71,7 +76,7 @@ export class AnnotatedLinksManager extends PluginComponent {
     if (!this.isActive || !(file instanceof TFile)) {
       return;
     }
-    this.removeFileFromCache(file.path);
+    this.cache.delete(file.path);
   }
 
   public override onSettingsChanged(
@@ -80,20 +85,25 @@ export class AnnotatedLinksManager extends PluginComponent {
   ): void {
     if (
       !this.isActive &&
-      (current.annotationStrings.length > 0 || current.advancedAnnotationStrings.length > 0)
+      (current.annotationStringsForBacklinks.length > 0 ||
+        current.annotationStringsForCurrentNote.length > 0 ||
+        current.advancedAnnotationStringsForBacklinks.length > 0 ||
+        current.advancedAnnotationStringsForCurrentNote.length > 0)
     ) {
       this.isActive = true;
     } else if (
       this.isActive &&
-      current.annotationStrings.length === 0 &&
-      current.advancedAnnotationStrings.length === 0
+      current.annotationStringsForBacklinks.length === 0 &&
+      current.annotationStringsForCurrentNote.length === 0 &&
+      current.advancedAnnotationStringsForBacklinks.length === 0 &&
+      current.advancedAnnotationStringsForCurrentNote.length === 0
     ) {
       this.isActive = false;
     } else if (this.isActive) {
       const keys: (keyof NavLinkHeaderSettings)[] = [
-        "annotationStrings",
+        "annotationStringsForBacklinks",
         "hideAnnotatedLinkPrefix",
-        "advancedAnnotationStrings",
+        "advancedAnnotationStringsForBacklinks",
         "allowSpaceAfterAnnotationString",
         "ignoreVariationSelectors",
       ];
@@ -108,14 +118,15 @@ export class AnnotatedLinksManager extends PluginComponent {
   }
 
   private removeFileFromCache(filePath: string): void {
-    if (this.cache.has(filePath)) {
-      this.cache.delete(filePath);
+    this.cache.delete(filePath);
+    for (const m of this.cache.values()) {
+      m.delete(filePath);
     }
   }
 
   /**
-   * Searches for annotated links in the content of the backlinks of the specified file.
-   * @param file Annotated links are searched from the backlinks of this file.
+   * Searches for annotated links in the content of the backlinks and the current file.
+   * @param file The current file to search annotated links for.
    * @returns Returns annotated links asynchronously.
    * @throws {PluginError} Throws if `AnnotatedLinksManager` is deactivated or reset
    *     during the asynchronous operation.
@@ -125,82 +136,182 @@ export class AnnotatedLinksManager extends PluginComponent {
       return;
     }
 
+    const buildAnnotationMappings = (
+      annotations: string[],
+      advanced: { regex: string; prefix: string }[]
+    ): { regex: string; prefix: string }[] => [
+      ...advanced,
+      ...annotations.map((annotation) => ({
+        regex: sanitizeRegexInput(annotation),
+        prefix: this.plugin.settings.hideAnnotatedLinkPrefix ? "" : MATCHED_ANNOTATION_PLACEHOLDER,
+      })),
+    ];
+    const annotationMappingsForBacklinks = buildAnnotationMappings(
+      this.plugin.settings.annotationStringsForBacklinks,
+      this.plugin.settings.advancedAnnotationStringsForBacklinks
+    );
+    const annotationMappingsForCurrentNote = buildAnnotationMappings(
+      this.plugin.settings.annotationStringsForCurrentNote,
+      this.plugin.settings.advancedAnnotationStringsForCurrentNote
+    );
+
+    const allowSpace = this.plugin.settings.allowSpaceAfterAnnotationString;
+    const ignoreVariationSelectors = this.plugin.settings.ignoreVariationSelectors;
+    const filePath = file.path;
     const backlinks = Object.entries(this.plugin.app.metadataCache.resolvedLinks)
       .filter(([, destinations]) => Object.keys(destinations).includes(file.path))
       .map(([source]) => source);
-
-    const annotationMappings = [...this.plugin.settings.advancedAnnotationStrings];
-    this.plugin.settings.annotationStrings.forEach((annotation) => {
-      const sanitized = sanitizeRegexInput(annotation);
-      if (this.plugin.settings.hideAnnotatedLinkPrefix) {
-        annotationMappings.push({ regex: sanitized, prefix: "" });
-      } else {
-        // Use the matched string as the prefix.
-        annotationMappings.push({ regex: sanitized, prefix: MATCHED_ANNOTATION_PLACEHOLDER });
-      }
-    });
-    const allowSpace = this.plugin.settings.allowSpaceAfterAnnotationString;
-    const ignoreVariationSelectors = this.plugin.settings.ignoreVariationSelectors;
-
     const cache = this.cache;
 
-    for (const backlink of backlinks) {
-      const cachedResult = cache.get(backlink)?.get(file.path);
-      if (cachedResult) {
-        yield Array.from(cachedResult, (prefix) => {
-          return {
-            prefix,
-            link: { destination: backlink, isExternal: false, isResolved: true, displayText: "" },
-          };
-        });
-        continue;
-      }
-
-      const backlinkFile = this.plugin.app.vault.getFileByPath(backlink);
-      if (!backlinkFile) {
-        continue;
-      }
-
-      const content = removeCode(await this.plugin.app.vault.cachedRead(backlinkFile));
+    if (annotationMappingsForCurrentNote.length > 0) {
+      const links = await this.searchAnnotatedLinksInCurrentNote(
+        file,
+        annotationMappingsForCurrentNote,
+        allowSpace,
+        ignoreVariationSelectors
+      );
       if (cache !== this.cache) {
         // The cache has been reset during the asynchronous operation.
         throw new PluginError("AnnotatedLinksManager was reset during operation.");
       }
+      if (links.length > 0) {
+        yield links;
+      }
+    }
 
-      const prefixes: Set<string> = new Set();
-      for (const mapping of annotationMappings) {
-        const annotationRegex = constructAnnotationRegex(mapping.regex, ignoreVariationSelectors);
-
-        const links = this.searchAnnotatedLinksInContent(
-          content,
+    if (annotationMappingsForBacklinks.length > 0) {
+      for (const backlink of backlinks) {
+        const links = await this.searchAnnotatedLinksInBacklink(
           backlink,
-          annotationRegex,
-          allowSpace
+          filePath,
+          annotationMappingsForBacklinks,
+          cache,
+          allowSpace,
+          ignoreVariationSelectors
         );
+        if (cache !== this.cache) {
+          // The cache has been reset during the asynchronous operation.
+          throw new PluginError("AnnotatedLinksManager was reset during operation.");
+        }
+        if (links.length > 0) {
+          yield links;
+        }
+      }
+    }
+  }
 
-        links.forEach((link) => {
-          if (link.link.destination === file.path) {
-            if (mapping.prefix === MATCHED_ANNOTATION_PLACEHOLDER) {
-              prefixes.add(link.prefix);
-            } else {
-              prefixes.add(mapping.prefix);
-            }
-          }
+  /**
+   * Searches for annotated links in the current note.
+   * @param file The current file to search annotated links for.
+   * @param annotationMappings The annotation mappings to use for searching.
+   * @param allowSpace Whether to allow space after the annotation string.
+   * @param ignoreVariationSelectors Whether to ignore variation selectors in emoji.
+   * @returns An array of matched annotated links.
+   *     If no matches are found, an empty array is returned.
+   */
+  private async searchAnnotatedLinksInCurrentNote(
+    file: TFile,
+    annotationMappings: { regex: string; prefix: string }[],
+    allowSpace: boolean,
+    ignoreVariationSelectors: boolean
+  ): Promise<PrefixedLinkInfo[]> {
+    const filePath = file.path;
+    if (!filePath.endsWith(".md")) {
+      return [];
+    }
+
+    const content = removeCode(await this.plugin.app.vault.cachedRead(file));
+
+    const result: PrefixedLinkInfo[] = [];
+    for (const mapping of annotationMappings) {
+      const annotationRegex = constructAnnotationRegex(mapping.regex, ignoreVariationSelectors);
+
+      let links = this.searchAnnotatedLinksInContent(
+        content,
+        filePath,
+        annotationRegex,
+        allowSpace
+      );
+      if (mapping.prefix !== MATCHED_ANNOTATION_PLACEHOLDER) {
+        links = links.map((link) => {
+          return { ...link, prefix: mapping.prefix };
         });
       }
+      result.push(...links);
+    }
 
-      if (!cache.has(backlink)) {
-        cache.set(backlink, new Map());
-      }
-      cache.get(backlink)!.set(file.path, prefixes);
+    return result;
+  }
 
-      yield Array.from(prefixes, (prefix) => {
+  /**
+   * Searches for annotated links in the specified backlink file.
+   * @param backlinkPath The path of the backlink file.
+   * @param filePath The path of the current file.
+   * @param annotationMappings The annotation mappings to use for searching.
+   * @param cache The cache to use for storing search results.
+   * @param allowSpace Whether to allow space after the annotation string.
+   * @param ignoreVariationSelectors Whether to ignore variation selectors in emoji.
+   * @returns An array of matched annotated links.
+   *     If no matches are found, an empty array is returned.
+   */
+  private async searchAnnotatedLinksInBacklink(
+    backlinkPath: string,
+    filePath: string,
+    annotationMappings: { regex: string; prefix: string }[],
+    cache: Map<string, Map<string, Set<string>>>,
+    allowSpace: boolean,
+    ignoreVariationSelectors: boolean
+  ): Promise<PrefixedLinkInfo[]> {
+    const cachedResult = cache.get(backlinkPath)?.get(filePath);
+    if (cachedResult) {
+      return Array.from(cachedResult, (prefix) => {
         return {
           prefix,
-          link: { destination: backlink, isExternal: false, isResolved: true, displayText: "" },
+          link: { destination: backlinkPath, isExternal: false, isResolved: true, displayText: "" },
         };
       });
     }
+
+    const backlinkFile = this.plugin.app.vault.getFileByPath(backlinkPath);
+    if (!backlinkFile) {
+      return [];
+    }
+
+    const content = removeCode(await this.plugin.app.vault.cachedRead(backlinkFile));
+
+    const prefixes: Set<string> = new Set();
+    for (const mapping of annotationMappings) {
+      const annotationRegex = constructAnnotationRegex(mapping.regex, ignoreVariationSelectors);
+
+      const links = this.searchAnnotatedLinksInContent(
+        content,
+        backlinkPath,
+        annotationRegex,
+        allowSpace
+      );
+
+      links.forEach((link) => {
+        if (link.link.destination === filePath) {
+          if (mapping.prefix === MATCHED_ANNOTATION_PLACEHOLDER) {
+            prefixes.add(link.prefix);
+          } else {
+            prefixes.add(mapping.prefix);
+          }
+        }
+      });
+    }
+
+    if (!cache.has(backlinkPath)) {
+      cache.set(backlinkPath, new Map());
+    }
+    cache.get(backlinkPath)!.set(filePath, prefixes);
+
+    return Array.from(prefixes, (prefix) => {
+      return {
+        prefix,
+        link: { destination: backlinkPath, isExternal: false, isResolved: true, displayText: "" },
+      };
+    });
   }
 
   /**
