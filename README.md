@@ -23,7 +23,7 @@ To enable this feature, specify the annotation strings in the **Annotation strin
 
 This is useful for creating links to an MOC (Map of Contents). In the screenshot above, "📌,🔗" is configured
 in the **Annotation strings for backlinks** field on the settings page. One of these annotation strings is placed
-immediately before links in the "MOC1" note (for example, 📌[[Note 1]]). As a result, a link to "MOC1" appears
+immediately before links in the "MOC1" note (for example, `📌[[Note 1]]`). As a result, a link to "MOC1" appears
 at the top of the destination (for example, 📌MOC1 in "Note 1"). This feature allows you to create navigation links
 back to an MOC simply by adding an annotation string to the MOC.
 
