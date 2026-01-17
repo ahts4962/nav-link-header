@@ -533,7 +533,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       .setName("Display placeholder")
       .setDesc(
         `
-          Display a placeholder("No links") when there is nothing to display.
+          Display a placeholder ("No links") when there is nothing to display.
         `
       )
       .addToggle((toggle) => {
@@ -1519,7 +1519,7 @@ function parsePrefixStrings(prefixes: string, trim: boolean, allowEmpty: boolean
  * Parses the string with multiple lines of "regex:prefix",
  * and returns an array of advanced annotation mappings.
  * If `trim` is true, leading and trailing whitespace is removed from prefixes.
- * `\c` can be used to escape colons in prefixes.
+ * `\:` can be used to escape colons in prefixes.
  * The regex and prefix are split at the last unescaped colon.
  */
 function parseAdvancedAnnotationStrings(

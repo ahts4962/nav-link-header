@@ -120,7 +120,6 @@ export function removeFrontMatter(text: string): string {
  * @returns The text without code blocks.
  */
 export function removeCodeBlocks(text: string): string {
-  // Removes code blocks ().
   return text
     .replace(/^ *(```+)[^`\n]*\n(?:.*?\n)? *\1`* *$/gms, "")
     .replace(/(^|\n) *```+[^`\n]*(?:$|\n.*$)/s, "$1");
