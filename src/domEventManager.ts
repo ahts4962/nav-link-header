@@ -51,7 +51,7 @@ export class DomEventManager extends PluginComponent {
     for (const navigationElement of navigationElements) {
       this.plugin.app.workspace.trigger(
         "nav-link-header:navigation-element-removed",
-        navigationElement
+        navigationElement,
       );
     }
     this.navigationElements.delete(body);
@@ -115,7 +115,7 @@ export class DomEventManager extends PluginComponent {
           }
           this.plugin.app.workspace.trigger(
             "nav-link-header:navigation-element-removed",
-            navigationElement
+            navigationElement,
           );
         }
       }

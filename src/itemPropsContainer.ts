@@ -131,7 +131,7 @@ export class ItemPropsContainer {
    */
   private getCollapsedItemProps(): NavigationItemProps[] {
     const itemCollapsePrefixes = [...new Set(this.plugin.settings.itemCollapsePrefixes)].filter(
-      (prefix) => prefix.length > 0
+      (prefix) => prefix.length > 0,
     );
     if (itemCollapsePrefixes.length === 0) {
       return [...this.items];

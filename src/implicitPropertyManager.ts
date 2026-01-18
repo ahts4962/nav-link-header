@@ -81,7 +81,7 @@ export class ImplicitPropertyManager extends PluginComponent {
 
   public override onSettingsChanged(
     previous: NavLinkHeaderSettings,
-    current: NavLinkHeaderSettings
+    current: NavLinkHeaderSettings,
   ): void {
     if (this.isActive && current.implicitReciprocalPropertyPairs.length === 0) {
       this.isActive = false;

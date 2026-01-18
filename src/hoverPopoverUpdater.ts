@@ -56,7 +56,7 @@ export class HoverPopoverUpdater extends PluginComponent {
 
   public override onSettingsChanged(
     previous: NavLinkHeaderSettings,
-    current: NavLinkHeaderSettings
+    current: NavLinkHeaderSettings,
   ): void {
     if (previous.displayInHoverPopovers !== current.displayInHoverPopovers) {
       this.isActive = current.displayInHoverPopovers;

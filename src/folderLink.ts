@@ -79,7 +79,7 @@ export class FolderLinksManager extends PluginComponent {
 
   public override onSettingsChanged(
     previous: NavLinkHeaderSettings,
-    current: NavLinkHeaderSettings
+    current: NavLinkHeaderSettings,
   ): void {
     const previousLength = previous.folderLinksSettingsArray.length;
     const currentLength = current.folderLinksSettingsArray.length;
@@ -116,7 +116,7 @@ export class FolderLinksManager extends PluginComponent {
    *     (if available), as well as the index of the folder group entry.
    */
   public getAdjacentFiles(
-    file: TFile
+    file: TFile,
   ): { index: number; filePaths: Record<ThreeWayDirection, string[]> }[] {
     if (!this.isActive) {
       return [];
@@ -142,7 +142,10 @@ export class FolderLinksManager extends PluginComponent {
 class FolderGroupEntry {
   private folderEntries: FolderEntry[] = [];
 
-  constructor(private plugin: NavLinkHeader, private folderGroupIndex: number) {
+  constructor(
+    private plugin: NavLinkHeader,
+    private folderGroupIndex: number,
+  ) {
     const settings = this.plugin.settings.folderLinksSettingsArray[this.folderGroupIndex];
     if (settings.folderPaths.length === 0) {
       return;
@@ -278,7 +281,7 @@ class FolderEntry {
   constructor(
     private plugin: NavLinkHeader,
     private folderGroupIndex: number,
-    public folderPath: string
+    public folderPath: string,
   ) {
     const folder = this.plugin.app.vault.getFolderByPath(this.folderPath)!;
     if (!folder) {
@@ -355,7 +358,7 @@ class FolderEntry {
         const propertyValue = getFirstValueFromFileProperty(
           this.plugin.app,
           file,
-          settings.sortPropertyName
+          settings.sortPropertyName,
         );
         if (propertyValue !== undefined && propertyValue !== null) {
           if (typeof propertyValue === "boolean") {
@@ -402,14 +405,14 @@ class FolderEntry {
   private isFileMatchingPatterns(
     file: TFile,
     patterns: string[],
-    settings: FolderLinksSettings
+    settings: FolderLinksSettings,
   ): boolean {
     let valueToTest = file.name;
     if (settings.filterBy === "property" && settings.filterPropertyName.length > 0) {
       const propertyValue = getFirstValueFromFileProperty(
         this.plugin.app,
         file,
-        settings.filterPropertyName
+        settings.filterPropertyName,
       );
       if (propertyValue === undefined || propertyValue === null) {
         return false;

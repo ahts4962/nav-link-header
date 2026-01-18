@@ -220,7 +220,7 @@ function openThreeWayPropertyLink(
   plugin: NavLinkHeader,
   file: TFile,
   direction: ThreeWayDirection,
-  checking: boolean
+  checking: boolean,
 ): boolean {
   if (
     plugin.settings.previousLinkPropertyMappings.length === 0 &&
@@ -259,7 +259,7 @@ function openPeriodicNote(
   plugin: NavLinkHeader,
   file: TFile,
   direction: ThreeWayDirection,
-  checking: boolean
+  checking: boolean,
 ): boolean {
   const periodicNotesManager = plugin.findComponent(PeriodicNotesManager)!;
   periodicNotesManager.syncActiveState();
@@ -296,7 +296,7 @@ function openFolderLink(
   plugin: NavLinkHeader,
   file: TFile,
   direction: ThreeWayDirection,
-  checking: boolean
+  checking: boolean,
 ): boolean {
   const folderLinksManager = plugin.findComponent(FolderLinksManager)!;
   if (!folderLinksManager.isActive) {

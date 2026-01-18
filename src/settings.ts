@@ -177,7 +177,7 @@ export async function loadSettings(plugin: NavLinkHeader): Promise<NavLinkHeader
             const subResult = {} as Record<keyof FolderLinksSettings, unknown>;
             const loadedFolderLinksSettings = loadedData[key][i] as Record<string, unknown>;
             for (const subKey of Object.keys(
-              DEFAULT_FOLDER_LINKS_SETTINGS
+              DEFAULT_FOLDER_LINKS_SETTINGS,
             ) as (keyof FolderLinksSettings)[]) {
               if (!(subKey in loadedFolderLinksSettings)) {
                 subResult[subKey] = deepCopy(DEFAULT_FOLDER_LINKS_SETTINGS[subKey]);
@@ -222,12 +222,12 @@ function convertOldSettings(loadedData: Record<string, unknown>): Record<string,
       loadedData["displayOrderOfLinks"] = parsePrefixStrings(
         loadedData["annotationStrings"],
         true,
-        false
+        false,
       );
       loadedData["annotationStrings"] = parsePrefixStrings(
         loadedData["annotationStrings"],
         true,
-        false
+        false,
       );
     }
 
@@ -402,7 +402,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           If enabled, the width of the navigation header will match the line length of the note.
           Here, "line length" refers to the width defined when Obsidian's "Readable line length"
           option is enabled.
-        `
+        `,
       )
       .addToggle((toggle) => {
         toggle
@@ -425,7 +425,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           "${DISPLAY_ORDER_PLACEHOLDER_PERIODIC}", "${DISPLAY_ORDER_PLACEHOLDER_PROPERTY}",
           and "${DISPLAY_ORDER_PLACEHOLDER_FOLDER}" are special strings that represent
           periodic note links, previous/next/parent property links, and folder links, respectively.
-        `
+        `,
       )
       .addText((text) => {
         const order = this.plugin.settingsUnderChange.displayOrderOfLinks.join(",");
@@ -433,7 +433,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           this.plugin.settingsUnderChange.displayOrderOfLinks = parsePrefixStrings(
             value,
             this.plugin.settings.trimStringsInSettings,
-            true
+            true,
           );
           this.plugin.triggerSettingsChangedDebounced();
         });
@@ -445,7 +445,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
         `
           If you want to use file properties to specify the note's display text, set the property
           name to this field. Leave this field blank if you are not using this feature.
-        `
+        `,
       )
       .addText((text) => {
         text
@@ -463,7 +463,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
         `
           Filter out duplicates when multiple links with the same destination are detected.
           This setting does not apply to prev/next/parent-type links and pinned note contents.
-        `
+        `,
       )
       .addToggle((toggle) => {
         toggle.setValue(this.plugin.settingsUnderChange.filterDuplicateNotes).onChange((value) => {
@@ -479,7 +479,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           Specify the filtering priority.
           For example, if you specify 🏠,⬆️,📌,🔗 here,
           links with "🏠" will be displayed with the highest priority.
-        `
+        `,
       )
       .addText((text) => {
         const priority = this.plugin.settingsUnderChange.duplicateNoteFilteringPriority.join(",");
@@ -487,7 +487,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           this.plugin.settingsUnderChange.duplicateNoteFilteringPriority = parsePrefixStrings(
             value,
             this.plugin.settings.trimStringsInSettings,
-            true
+            true,
           );
           this.plugin.triggerSettingsChangedDebounced();
         });
@@ -500,7 +500,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           Items whose prefix (e.g., an emoji) matches any of these strings will be collapsed into
           a single entry.
           Prefixes can also be added or removed by clicking them in the navigation header.
-        `
+        `,
       )
       .addText((text) => {
         const prefixes = this.plugin.settingsUnderChange.itemCollapsePrefixes.join(",");
@@ -508,7 +508,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           this.plugin.settingsUnderChange.itemCollapsePrefixes = parsePrefixStrings(
             value,
             this.plugin.settings.trimStringsInSettings,
-            false
+            false,
           );
           this.plugin.triggerSettingsChangedDebounced();
         });
@@ -520,7 +520,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
         `
           Display a loading message ("Loading...") in the navigation header
           while links are being loaded.
-        `
+        `,
       )
       .addToggle((toggle) => {
         toggle.setValue(this.plugin.settingsUnderChange.displayLoadingMessage).onChange((value) => {
@@ -534,7 +534,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       .setDesc(
         `
           Display a placeholder ("No links") when there is nothing to display.
-        `
+        `,
       )
       .addToggle((toggle) => {
         toggle.setValue(this.plugin.settingsUnderChange.displayPlaceholder).onChange((value) => {
@@ -549,7 +549,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
         `
           Display a confirmation dialog when a new file is created.
           This option is currently only used for periodic notes.
-        `
+        `,
       )
       .addToggle((toggle) => {
         toggle.setValue(this.plugin.settingsUnderChange.confirmFileCreation).onChange((value) => {
@@ -586,7 +586,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           entered in the settings below.
           Disable this option if you want to include spaces intentionally.
           Affected settings: ${affectedSettings}.
-        `
+        `,
       )
       .addToggle((toggle) => {
         toggle.setValue(this.plugin.settingsUnderChange.trimStringsInSettings).onChange((value) => {
@@ -604,7 +604,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           Show navigation header when notes are opened in panes.
           This setting applies to note containers (panes). To show the navigation header,
           also enable view-specific options below.
-        `
+        `,
       )
       .addToggle((toggle) => {
         toggle.setValue(this.plugin.settingsUnderChange.displayInLeaves).onChange((value) => {
@@ -620,7 +620,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           Show navigation header when notes are shown in page previews.
           This setting applies to note containers (page previews).
           To show the navigation header, also enable view-specific options below.
-        `
+        `,
       )
       .addToggle((toggle) => {
         toggle
@@ -709,7 +709,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
         `
           Show navigation header in other views (such as views introduced by community plugins).
           This may not work depending on the view type.
-        `
+        `,
       )
       .addToggle((toggle) => {
         toggle.setValue(this.plugin.settingsUnderChange.displayInOtherViews).onChange((value) => {
@@ -736,7 +736,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           ${EMOJI_ANNOTATION_PLACEHOLDER}, all links preceded by an emoji will be matched.
           It can also be mixed with other entries, e.g., ${EMOJI_ANNOTATION_PLACEHOLDER}📌,🔗.
           Leave this field blank if you are not using this feature.
-        `
+        `,
       )
       .addText((text) => {
         const annotations = this.plugin.settingsUnderChange.annotationStringsForBacklinks.join(",");
@@ -744,7 +744,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           this.plugin.settingsUnderChange.annotationStringsForBacklinks = parsePrefixStrings(
             value,
             this.plugin.settings.trimStringsInSettings,
-            false
+            false,
           );
           this.plugin.triggerSettingsChangedDebounced();
         });
@@ -757,7 +757,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           Define the annotation strings for links in the current note.
           This setting works the same way as "Annotation strings for backlinks",
           but applies to links in the current note.
-        `
+        `,
       )
       .addText((text) => {
         const annotations =
@@ -766,7 +766,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           this.plugin.settingsUnderChange.annotationStringsForCurrentNote = parsePrefixStrings(
             value,
             this.plugin.settings.trimStringsInSettings,
-            false
+            false,
           );
           this.plugin.triggerSettingsChangedDebounced();
         });
@@ -795,7 +795,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           Enter one mapping per line using the format regex:prefix.
           To include a colon in the prefix, escape it as "\\:".
           An empty string is also acceptable as a prefix.
-        `
+        `,
       )
       .addTextArea((text) => {
         const annotations = this.plugin.settingsUnderChange.advancedAnnotationStringsForBacklinks
@@ -817,7 +817,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
         `
           An advanced version of "Annotation strings for current note".
           The syntax is the same as that of "Advanced annotation strings for backlinks".
-        `
+        `,
       )
       .addTextArea((text) => {
         const annotations = this.plugin.settingsUnderChange.advancedAnnotationStringsForCurrentNote
@@ -836,7 +836,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
         `
           If enabled, a link will still be recognized as an annotated link even if there is a
           space between the annotation string and the link.
-        `
+        `,
       )
       .addToggle((toggle) => {
         toggle
@@ -876,7 +876,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           To include a colon in the prefix, escape it as \\:.
           An empty string is also acceptable as a prefix.
           Leave this field blank if you are not using this feature.
-        `
+        `,
       )
       .addTextArea((text) => {
         const mappings = this.plugin.settingsUnderChange.propertyMappings
@@ -888,7 +888,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           .onChange((value) => {
             this.plugin.settingsUnderChange.propertyMappings = parsePropertyMappings(
               value,
-              this.plugin.settings.trimStringsInSettings
+              this.plugin.settings.trimStringsInSettings,
             );
             this.plugin.triggerSettingsChangedDebounced();
           });
@@ -901,7 +901,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           Enter the mapping that specifies the previous note. The note specified here will appear
           in the navigation header as < previous | parent | next >.
           The syntax is the same as "Property mappings".
-        `
+        `,
       )
       .addTextArea((text) => {
         const mappings = this.plugin.settingsUnderChange.previousLinkPropertyMappings
@@ -913,7 +913,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           .onChange((value) => {
             this.plugin.settingsUnderChange.previousLinkPropertyMappings = parsePropertyMappings(
               value,
-              this.plugin.settings.trimStringsInSettings
+              this.plugin.settings.trimStringsInSettings,
             );
             this.plugin.triggerSettingsChangedDebounced();
           });
@@ -926,7 +926,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           Enter the mapping that specifies the next note. The note specified here will appear
           in the navigation header as < previous | parent | next >.
           The syntax is the same as "Property mappings".
-        `
+        `,
       )
       .addTextArea((text) => {
         const mappings = this.plugin.settingsUnderChange.nextLinkPropertyMappings
@@ -938,7 +938,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           .onChange((value) => {
             this.plugin.settingsUnderChange.nextLinkPropertyMappings = parsePropertyMappings(
               value,
-              this.plugin.settings.trimStringsInSettings
+              this.plugin.settings.trimStringsInSettings,
             );
             this.plugin.triggerSettingsChangedDebounced();
           });
@@ -951,7 +951,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           Enter the mapping that specifies the parent note. The note specified here will appear
           in the navigation header as < previous | parent | next >.
           The syntax is the same as "Property mappings".
-        `
+        `,
       )
       .addTextArea((text) => {
         const mappings = this.plugin.settingsUnderChange.parentLinkPropertyMappings
@@ -963,7 +963,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           .onChange((value) => {
             this.plugin.settingsUnderChange.parentLinkPropertyMappings = parsePropertyMappings(
               value,
-              this.plugin.settings.trimStringsInSettings
+              this.plugin.settings.trimStringsInSettings,
             );
             this.plugin.triggerSettingsChangedDebounced();
           });
@@ -978,7 +978,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           when Note A has a property "next: [[Note B]]", Note B will be treated as if
           it also had "prev: [[Note A]]" even if it isn't explicitly set.
           Enter one pair per line.
-        `
+        `,
       )
       .addTextArea((text) => {
         const pairs = this.plugin.settingsUnderChange.implicitReciprocalPropertyPairs
@@ -1002,7 +1002,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
         `
           To use this option, daily notes must be enabled
           in Daily Notes plugin or Periodic Notes plugin.
-        `
+        `,
       )
       .addToggle((toggle) => {
         toggle
@@ -1137,7 +1137,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           Example: 📌[[note 1]]/[[note 2]](end of line) → 📌[[note 1]]/[[note 2]],
           📌([[note 1]]/[[note 2]])[[note 3]] → 📌[[note 1]]/[[note 2]].
           To specify multiple annotations, separate them with commas.
-        `
+        `,
       )
       .addText((text) => {
         const annotations = this.plugin.settingsUnderChange.annotationStringsForPinning.join(",");
@@ -1147,7 +1147,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
             this.plugin.settingsUnderChange.annotationStringsForPinning = parsePrefixStrings(
               value,
               this.plugin.settings.trimStringsInSettings,
-              false
+              false,
             );
             this.plugin.triggerSettingsChangedDebounced();
           })
@@ -1210,7 +1210,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
             (enter one path per line). Glob patterns are supported
             (e.g., **: all folders; *: all folders directly under root;
             folder/*: all folders directly under "folder").
-          `
+          `,
         )
         .addTextArea((text) => {
           text
@@ -1228,7 +1228,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           `
             Specify the folder paths to exclude. Multiple folders can be specified
             (enter one path per line). Glob patterns are supported.
-          `
+          `,
         )
         .addTextArea((text) => {
           text
@@ -1256,7 +1256,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           `
             Include files that match these patterns partially. Enter one per line.
             Leave empty for all files.
-          `
+          `,
         )
         .addTextArea((text) => {
           text
@@ -1265,7 +1265,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
             .onChange((value) => {
               folderLinkSettings.includePatterns = parseMultiLineInput(
                 value,
-                this.plugin.settings.trimStringsInSettings
+                this.plugin.settings.trimStringsInSettings,
               );
               this.plugin.triggerSettingsChangedDebounced();
             });
@@ -1281,7 +1281,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
             .onChange((value) => {
               folderLinkSettings.excludePatterns = parseMultiLineInput(
                 value,
-                this.plugin.settings.trimStringsInSettings
+                this.plugin.settings.trimStringsInSettings,
               );
               this.plugin.triggerSettingsChangedDebounced();
             });
@@ -1300,7 +1300,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       new Setting(containerEl)
         .setName("Filter by")
         .setDesc(
-          "Specify whether to use file names or property values for include/exclude patterns."
+          "Specify whether to use file names or property values for include/exclude patterns.",
         )
         .addDropdown((dropdown) => {
           dropdown
@@ -1321,7 +1321,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           `
             The name of the property to filter by.
             This is required when "Filter by" is set to "Property".
-          `
+          `,
         )
         .addText((text) => {
           text.setValue(folderLinkSettings.filterPropertyName).onChange((value) => {
@@ -1364,7 +1364,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           `
             The name of the property to sort by.
             This is required when "Sort by" is set to "Property".
-          `
+          `,
         )
         .addText((text) => {
           text.setValue(folderLinkSettings.sortPropertyName).onChange((value) => {
@@ -1380,7 +1380,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
             The maximum number of folder links to display.
             For example, if set to 3, the display would look like
             <prev3 prev2 prev1 | parent | next1 next2 next3>.
-          `
+          `,
         )
         .addText((text) => {
           text.inputEl.type = "number";
@@ -1412,7 +1412,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
             Specify the display style of prev/next/parent links in the navigation header.
             Full: < previous | parent | next >, Separator: previous | parent | next,
             None: previous parent next.
-          `
+          `,
         )
         .addDropdown((dropdown) => {
           dropdown
@@ -1474,7 +1474,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
         .setCta()
         .onClick(() => {
           this.plugin.settingsUnderChange.folderLinksSettingsArray.push(
-            deepCopy(DEFAULT_FOLDER_LINKS_SETTINGS)
+            deepCopy(DEFAULT_FOLDER_LINKS_SETTINGS),
           );
           this.plugin.triggerSettingsChangedDebounced();
           this.display(); // Force re-render.
@@ -1524,7 +1524,7 @@ function parsePrefixStrings(prefixes: string, trim: boolean, allowEmpty: boolean
  */
 function parseAdvancedAnnotationStrings(
   annotations: string,
-  trim: boolean
+  trim: boolean,
 ): { regex: string; prefix: string }[] {
   return annotations
     .split("\n")
@@ -1551,7 +1551,7 @@ function parseAdvancedAnnotationStrings(
  */
 function parsePropertyMappings(
   mappings: string,
-  trim: boolean
+  trim: boolean,
 ): { property: string; prefix: string }[] {
   return mappings
     .split("\n")

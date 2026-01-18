@@ -79,7 +79,7 @@ export class AnnotatedLinksManager extends PluginComponent {
 
   public override onSettingsChanged(
     previous: NavLinkHeaderSettings,
-    current: NavLinkHeaderSettings
+    current: NavLinkHeaderSettings,
   ): void {
     if (
       !this.isActive &&
@@ -136,7 +136,7 @@ export class AnnotatedLinksManager extends PluginComponent {
 
     const buildAnnotationMappings = (
       annotations: string[],
-      advanced: { regex: string; prefix: string }[]
+      advanced: { regex: string; prefix: string }[],
     ): { regex: string; prefix: string }[] => [
       ...advanced,
       ...annotations.map((annotation) => ({
@@ -146,11 +146,11 @@ export class AnnotatedLinksManager extends PluginComponent {
     ];
     const annotationMappingsForBacklinks = buildAnnotationMappings(
       this.plugin.settings.annotationStringsForBacklinks,
-      this.plugin.settings.advancedAnnotationStringsForBacklinks
+      this.plugin.settings.advancedAnnotationStringsForBacklinks,
     );
     const annotationMappingsForCurrentNote = buildAnnotationMappings(
       this.plugin.settings.annotationStringsForCurrentNote,
-      this.plugin.settings.advancedAnnotationStringsForCurrentNote
+      this.plugin.settings.advancedAnnotationStringsForCurrentNote,
     );
 
     const allowSpace = this.plugin.settings.allowSpaceAfterAnnotationString;
@@ -166,7 +166,7 @@ export class AnnotatedLinksManager extends PluginComponent {
         file,
         annotationMappingsForCurrentNote,
         allowSpace,
-        ignoreVariationSelectors
+        ignoreVariationSelectors,
       );
       if (cache !== this.cache) {
         // The cache has been reset during the asynchronous operation.
@@ -185,7 +185,7 @@ export class AnnotatedLinksManager extends PluginComponent {
           annotationMappingsForBacklinks,
           cache,
           allowSpace,
-          ignoreVariationSelectors
+          ignoreVariationSelectors,
         );
         if (cache !== this.cache) {
           // The cache has been reset during the asynchronous operation.
@@ -211,7 +211,7 @@ export class AnnotatedLinksManager extends PluginComponent {
     file: TFile,
     annotationMappings: { regex: string; prefix: string }[],
     allowSpace: boolean,
-    ignoreVariationSelectors: boolean
+    ignoreVariationSelectors: boolean,
   ): Promise<PrefixedLinkInfo[]> {
     const filePath = file.path;
     if (!filePath.endsWith(".md")) {
@@ -228,7 +228,7 @@ export class AnnotatedLinksManager extends PluginComponent {
         content,
         filePath,
         annotationRegex,
-        allowSpace
+        allowSpace,
       );
       if (mapping.prefix !== MATCHED_ANNOTATION_PLACEHOLDER) {
         links = links.map((link) => {
@@ -258,7 +258,7 @@ export class AnnotatedLinksManager extends PluginComponent {
     annotationMappings: { regex: string; prefix: string }[],
     cache: Map<string, Map<string, Set<string>>>,
     allowSpace: boolean,
-    ignoreVariationSelectors: boolean
+    ignoreVariationSelectors: boolean,
   ): Promise<PrefixedLinkInfo[]> {
     const cachedResult = cache.get(backlinkPath)?.get(filePath);
     if (cachedResult) {
@@ -285,7 +285,7 @@ export class AnnotatedLinksManager extends PluginComponent {
         content,
         backlinkPath,
         annotationRegex,
-        allowSpace
+        allowSpace,
       );
 
       links.forEach((link) => {
@@ -325,7 +325,7 @@ export class AnnotatedLinksManager extends PluginComponent {
     content: string,
     filePath: string,
     annotationRegex: string,
-    allowSpace: boolean
+    allowSpace: boolean,
   ): PrefixedLinkInfo[] {
     const optionalSpace = allowSpace ? " ?" : "";
     let wikiRegex;
@@ -333,11 +333,11 @@ export class AnnotatedLinksManager extends PluginComponent {
     try {
       wikiRegex = new RegExp(
         String.raw`(${annotationRegex})${optionalSpace}!?(\[\[[^[\]]+\]\])`,
-        "gu"
+        "gu",
       );
       markdownRegex = new RegExp(
         String.raw`(${annotationRegex})${optionalSpace}!?(\[[^[\]]+\]\([^()]+\))`,
-        "gu"
+        "gu",
       );
     } catch {
       return [];
@@ -349,7 +349,7 @@ export class AnnotatedLinksManager extends PluginComponent {
       const { path, displayText } = parseWikiLinkWithValidation(
         this.plugin.app,
         filePath,
-        match[match.length - 1]
+        match[match.length - 1],
       );
       if (path === undefined) {
         continue;
@@ -369,7 +369,7 @@ export class AnnotatedLinksManager extends PluginComponent {
       const { destination, isValidExternalLink, displayText } = parseMarkdownLinkWithValidation(
         this.plugin.app,
         filePath,
-        match[match.length - 1]
+        match[match.length - 1],
       );
       if (destination === undefined) {
         continue;

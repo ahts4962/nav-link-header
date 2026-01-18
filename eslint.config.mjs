@@ -44,5 +44,5 @@ export default tsEslint.config(
   },
   {
     ignores: ["main.js", "*.mjs"],
-  }
+  },
 );

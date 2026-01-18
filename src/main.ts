@@ -40,7 +40,7 @@ export default class NavLinkHeader extends Plugin {
   }
 
   public findComponent<T extends PluginComponent>(
-    ctor: new (...args: never[]) => T
+    ctor: new (...args: never[]) => T,
   ): T | undefined {
     return this.components.find((component): component is T => component instanceof ctor);
   }
@@ -84,7 +84,7 @@ export default class NavLinkHeader extends Plugin {
           component.onFileCreated(file);
         }
         this.triggerForcedNavigationUpdateRequiredDebounced();
-      })
+      }),
     );
 
     this.registerEvent(
@@ -93,7 +93,7 @@ export default class NavLinkHeader extends Plugin {
           component.onFileDeleted(file);
         }
         this.triggerForcedNavigationUpdateRequiredDebounced();
-      })
+      }),
     );
 
     this.registerEvent(
@@ -102,7 +102,7 @@ export default class NavLinkHeader extends Plugin {
           component.onFileRenamed(file, oldPath);
         }
         this.triggerForcedNavigationUpdateRequiredDebounced();
-      })
+      }),
     );
 
     this.registerEvent(
@@ -111,7 +111,7 @@ export default class NavLinkHeader extends Plugin {
           component.onFileModified(file);
         }
         this.triggerForcedNavigationUpdateRequiredDebounced();
-      })
+      }),
     );
 
     this.registerEvent(
@@ -124,7 +124,7 @@ export default class NavLinkHeader extends Plugin {
           component.onMetadataResolved();
         }
         this.triggerForcedNavigationUpdateRequiredDebounced();
-      })
+      }),
     );
 
     this.registerEvent(
@@ -136,7 +136,7 @@ export default class NavLinkHeader extends Plugin {
           component.onMetadataChanged(file, data, cache);
         }
         this.triggerForcedNavigationUpdateRequiredDebounced();
-      })
+      }),
     );
 
     this.registerEvent(
@@ -144,7 +144,7 @@ export default class NavLinkHeader extends Plugin {
         for (const component of this.components) {
           component.onWindowOpen(window);
         }
-      })
+      }),
     );
 
     this.registerEvent(
@@ -152,7 +152,7 @@ export default class NavLinkHeader extends Plugin {
         for (const component of this.components) {
           component.onWindowClose(window);
         }
-      })
+      }),
     );
 
     this.registerEvent(
@@ -161,7 +161,7 @@ export default class NavLinkHeader extends Plugin {
         for (const component of this.components) {
           component.onHoverLink(hoverParent as HoverParent);
         }
-      })
+      }),
     );
 
     this.registerEvent(
@@ -169,7 +169,7 @@ export default class NavLinkHeader extends Plugin {
         for (const component of this.components) {
           component.onNavigationUpdateRequired();
         }
-      })
+      }),
     );
 
     this.registerEvent(
@@ -178,7 +178,7 @@ export default class NavLinkHeader extends Plugin {
         for (const component of this.components) {
           component.onForcedNavigationUpdateRequired();
         }
-      })
+      }),
     );
 
     this.registerEvent(
@@ -189,8 +189,8 @@ export default class NavLinkHeader extends Plugin {
           for (const component of this.components) {
             component.onNavigationElementRemoved(element);
           }
-        }
-      )
+        },
+      ),
     );
 
     this.registerEvent(
@@ -201,8 +201,8 @@ export default class NavLinkHeader extends Plugin {
           for (const component of this.components) {
             component.onHoverPopoverCreated(hoverParent);
           }
-        }
-      )
+        },
+      ),
     );
 
     this.registerEvent(
@@ -220,8 +220,8 @@ export default class NavLinkHeader extends Plugin {
           this.triggerForcedNavigationUpdateRequired();
 
           void this.saveData(this.settings);
-        }
-      )
+        },
+      ),
     );
 
     this.registerEvent(
@@ -231,8 +231,8 @@ export default class NavLinkHeader extends Plugin {
         () => {
           this.findComponent(PeriodicNotesManager)?.onPeriodicNoteSettingsChanged();
           this.triggerForcedNavigationUpdateRequired();
-        }
-      )
+        },
+      ),
     );
 
     this.registerEvent(
@@ -241,8 +241,8 @@ export default class NavLinkHeader extends Plugin {
         "periodic-notes:settings-updated",
         () => {
           this.triggerPeriodicNoteSettingsChangedDebounced();
-        }
-      )
+        },
+      ),
     );
   }
 
@@ -255,7 +255,7 @@ export default class NavLinkHeader extends Plugin {
       this.triggerForcedNavigationUpdateRequired();
     },
     500,
-    true
+    true,
   );
 
   public triggerSettingsChanged(): void {
@@ -267,7 +267,7 @@ export default class NavLinkHeader extends Plugin {
       this.triggerSettingsChanged();
     },
     500,
-    true
+    true,
   );
 
   private triggerPeriodicNoteSettingsChangedDebounced = debounce(
@@ -275,7 +275,7 @@ export default class NavLinkHeader extends Plugin {
       this.app.workspace.trigger("nav-link-header:periodic-notes-settings-changed");
     },
     500,
-    true
+    true,
   );
 
   /**

@@ -86,7 +86,7 @@ export class PeriodicNotesManager extends PluginComponent {
 
   public override onSettingsChanged(
     previous: NavLinkHeaderSettings,
-    current: NavLinkHeaderSettings
+    current: NavLinkHeaderSettings,
   ): void {
     const isCurrentlyActive = this.getActiveGranularities(false).length > 0;
     if (isCurrentlyActive !== this.isActive) {
@@ -320,7 +320,7 @@ export class PeriodicNotesManager extends PluginComponent {
         settings.parentLinkGranularityInWeeklyNotes,
         settings.parentLinkGranularityInMonthlyNotes,
         settings.parentLinkGranularityInQuarterlyNotes,
-      ].filter((value) => value !== "none")
+      ].filter((value) => value !== "none"),
     );
 
     if (cacheRequiredOnly) {

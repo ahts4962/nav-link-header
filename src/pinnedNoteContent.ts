@@ -17,7 +17,7 @@ import {
  */
 export async function getPinnedNoteContents(
   plugin: NavLinkHeader,
-  file: TFile
+  file: TFile,
 ): Promise<NoteContentInfo[]> {
   if (!file.path.endsWith(".md")) {
     return [];
@@ -51,7 +51,7 @@ export async function getPinnedNoteContents(
     if (startMarker !== "" && endMarker !== "") {
       const blockRegex = new RegExp(
         `${sanitizedAnnotationString}${sanitizedStartMarker}(.+?)${sanitizedEndMarker}`,
-        "gs"
+        "gs",
       );
       for (const match of content.matchAll(blockRegex)) {
         const parsed = parseNoteContent(plugin.app, file, match[1].replace(/\n/g, " ").trim());

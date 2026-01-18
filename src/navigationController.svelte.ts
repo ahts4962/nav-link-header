@@ -53,7 +53,10 @@ export class NavigationController implements HoverParent {
    * @param plugin The plugin instance.
    * @param containerEl The container element to add the navigation header.
    */
-  constructor(private plugin: NavLinkHeader, private containerEl: Element) {
+  constructor(
+    private plugin: NavLinkHeader,
+    private containerEl: Element,
+  ) {
     this.navigationProps = $state({
       items: [],
       isLoading: false,
@@ -108,7 +111,7 @@ export class NavigationController implements HoverParent {
           void this.plugin.app.workspace.openLinkText(
             target.linkInfo.destination,
             filePath,
-            e.ctrlKey || e.button === 1
+            e.ctrlKey || e.button === 1,
           );
         }
       },
@@ -139,7 +142,7 @@ export class NavigationController implements HoverParent {
 
     const threeWayPropertyLinkProps = this.constructThreeWayPropertyLinkProps(
       file,
-      defaultHandlers
+      defaultHandlers,
     );
     if (threeWayPropertyLinkProps) {
       itemPropsContainer.addItem(threeWayPropertyLinkProps);
@@ -159,7 +162,7 @@ export class NavigationController implements HoverParent {
 
     const pinnedNoteContentProps = await this.constructPinnedNoteContentProps(
       file,
-      defaultHandlers
+      defaultHandlers,
     );
     if (this.disposed) {
       return;
@@ -209,7 +212,7 @@ export class NavigationController implements HoverParent {
    */
   private constructPropertyLinkProps(
     file: TFile,
-    defaultHandlers: EventHandlersForProps
+    defaultHandlers: EventHandlersForProps,
   ): PrefixedLinkProps[] {
     if (this.plugin.settings.propertyMappings.length === 0) {
       return [];
@@ -235,7 +238,7 @@ export class NavigationController implements HoverParent {
    */
   private constructThreeWayPropertyLinkProps(
     file: TFile,
-    defaultHandlers: EventHandlersForProps
+    defaultHandlers: EventHandlersForProps,
   ): ThreeWayLinkProps | undefined {
     const directions = ["previous", "next", "parent"] as const;
     const propertyMappings = {
@@ -257,28 +260,31 @@ export class NavigationController implements HoverParent {
       type: "three-way-link",
       source: "property",
       index: 0,
-      links: directions.reduce((acc, dir) => {
-        if (propertyMappings[dir].length === 0) {
-          acc[dir] = { links: [], hidden: true };
-          return acc;
-        }
+      links: directions.reduce(
+        (acc, dir) => {
+          if (propertyMappings[dir].length === 0) {
+            acc[dir] = { links: [], hidden: true };
+            return acc;
+          }
 
-        acc[dir] = {
-          links: threeWayPropertyLink[dir].map((link) => {
-            return {
-              type: "prefixed-link",
-              prefix: { label: link.prefix, clickHandler: defaultHandlers.prefixClickHandler },
-              link: {
-                linkInfo: this.resolveDisplayText(link.link),
-                clickHandler: defaultHandlers.clickHandler,
-                mouseOverHandler: defaultHandlers.mouseOverHandler,
-              },
-            };
-          }),
-          hidden: false,
-        };
-        return acc;
-      }, {} as Record<ThreeWayDirection, { links: PrefixedLinkProps[]; hidden: boolean }>),
+          acc[dir] = {
+            links: threeWayPropertyLink[dir].map((link) => {
+              return {
+                type: "prefixed-link",
+                prefix: { label: link.prefix, clickHandler: defaultHandlers.prefixClickHandler },
+                link: {
+                  linkInfo: this.resolveDisplayText(link.link),
+                  clickHandler: defaultHandlers.clickHandler,
+                  mouseOverHandler: defaultHandlers.mouseOverHandler,
+                },
+              };
+            }),
+            hidden: false,
+          };
+          return acc;
+        },
+        {} as Record<ThreeWayDirection, { links: PrefixedLinkProps[]; hidden: boolean }>,
+      ),
       delimiters: "full",
     };
   }
@@ -290,7 +296,7 @@ export class NavigationController implements HoverParent {
    */
   private constructPeriodicNoteLinkProps(
     file: TFile,
-    defaultHandlers: EventHandlersForProps
+    defaultHandlers: EventHandlersForProps,
   ): ThreeWayLinkProps | undefined {
     const periodicNotesManager = this.plugin.findComponent(PeriodicNotesManager)!;
     periodicNotesManager.syncActiveState();
@@ -315,75 +321,80 @@ export class NavigationController implements HoverParent {
       type: "three-way-link",
       source: "periodic",
       index: 0,
-      links: directions.reduce((acc, dir) => {
-        const linkInfo: LinkInfo = {
-          destination: periodicNoteLinks.paths[dir] ?? "",
-          isExternal: false,
-          isResolved: true,
-          displayText: "",
-        };
-
-        if (dir === "parent") {
-          if (!periodicNoteLinks.parentGranularity) {
-            acc[dir] = { links: [], hidden: true };
-            return acc;
-          }
-        } else {
-          if (!periodicNotesManager.isPrevNextLinkEnabled(periodicNoteLinks.currentGranularity!)) {
-            acc[dir] = { links: [], hidden: true };
-            return acc;
-          }
-        }
-
-        if (linkInfo.destination.length === 0) {
-          acc[dir] = { links: [], hidden: false };
-          return acc;
-        }
-
-        let clickHandler = defaultHandlers.clickHandler;
-        let mouseOverHandler = defaultHandlers.mouseOverHandler;
-
-        if (dir === "parent" && periodicNoteLinks.parentDate !== undefined) {
-          // Make unresolved link.
-          linkInfo.isResolved = false;
-          clickHandler = (target, e) => {
-            if (this.plugin.settings.confirmFileCreation) {
-              new FileCreationModal(
-                this.plugin,
-                getFileStemFromPath(target.linkInfo.destination),
-                () => {
-                  void createPeriodicNote(
-                    periodicNoteLinks.parentGranularity!,
-                    periodicNoteLinks.parentDate!
-                  );
-                }
-              ).open();
-            } else {
-              void createPeriodicNote(
-                periodicNoteLinks.parentGranularity!,
-                periodicNoteLinks.parentDate!
-              );
-            }
+      links: directions.reduce(
+        (acc, dir) => {
+          const linkInfo: LinkInfo = {
+            destination: periodicNoteLinks.paths[dir] ?? "",
+            isExternal: false,
+            isResolved: true,
+            displayText: "",
           };
-          mouseOverHandler = () => {};
-        }
 
-        acc[dir] = {
-          links: [
-            {
-              type: "prefixed-link",
-              prefix: { label: "", clickHandler: defaultHandlers.prefixClickHandler },
-              link: {
-                linkInfo: this.resolveDisplayText(linkInfo),
-                clickHandler,
-                mouseOverHandler,
+          if (dir === "parent") {
+            if (!periodicNoteLinks.parentGranularity) {
+              acc[dir] = { links: [], hidden: true };
+              return acc;
+            }
+          } else {
+            if (
+              !periodicNotesManager.isPrevNextLinkEnabled(periodicNoteLinks.currentGranularity!)
+            ) {
+              acc[dir] = { links: [], hidden: true };
+              return acc;
+            }
+          }
+
+          if (linkInfo.destination.length === 0) {
+            acc[dir] = { links: [], hidden: false };
+            return acc;
+          }
+
+          let clickHandler = defaultHandlers.clickHandler;
+          let mouseOverHandler = defaultHandlers.mouseOverHandler;
+
+          if (dir === "parent" && periodicNoteLinks.parentDate !== undefined) {
+            // Make unresolved link.
+            linkInfo.isResolved = false;
+            clickHandler = (target, e) => {
+              if (this.plugin.settings.confirmFileCreation) {
+                new FileCreationModal(
+                  this.plugin,
+                  getFileStemFromPath(target.linkInfo.destination),
+                  () => {
+                    void createPeriodicNote(
+                      periodicNoteLinks.parentGranularity!,
+                      periodicNoteLinks.parentDate!,
+                    );
+                  },
+                ).open();
+              } else {
+                void createPeriodicNote(
+                  periodicNoteLinks.parentGranularity!,
+                  periodicNoteLinks.parentDate!,
+                );
+              }
+            };
+            mouseOverHandler = () => {};
+          }
+
+          acc[dir] = {
+            links: [
+              {
+                type: "prefixed-link",
+                prefix: { label: "", clickHandler: defaultHandlers.prefixClickHandler },
+                link: {
+                  linkInfo: this.resolveDisplayText(linkInfo),
+                  clickHandler,
+                  mouseOverHandler,
+                },
               },
-            },
-          ],
-          hidden: false,
-        };
-        return acc;
-      }, {} as Record<ThreeWayDirection, { links: PrefixedLinkProps[]; hidden: boolean }>),
+            ],
+            hidden: false,
+          };
+          return acc;
+        },
+        {} as Record<ThreeWayDirection, { links: PrefixedLinkProps[]; hidden: boolean }>,
+      ),
       delimiters: "full",
     };
   }
@@ -395,7 +406,7 @@ export class NavigationController implements HoverParent {
    */
   private constructFolderLinkProps(
     file: TFile,
-    defaultHandlers: EventHandlersForProps
+    defaultHandlers: EventHandlersForProps,
   ): ThreeWayLinkProps[] {
     const result: ThreeWayLinkProps[] = [];
 
@@ -412,38 +423,41 @@ export class NavigationController implements HoverParent {
         type: "three-way-link",
         source: "folder",
         index: adjacentFiles.index,
-        links: directions.reduce((acc, dir) => {
-          if (dir === "parent" && settings.parentPath.length === 0) {
-            acc[dir] = { links: [], hidden: true };
+        links: directions.reduce(
+          (acc, dir) => {
+            if (dir === "parent" && settings.parentPath.length === 0) {
+              acc[dir] = { links: [], hidden: true };
+              return acc;
+            }
+
+            acc[dir] = {
+              links: adjacentFiles.filePaths[dir].map((path) => {
+                const linkInfo: LinkInfo = {
+                  destination: path,
+                  isExternal: false,
+                  isResolved: true,
+                  displayText: "",
+                };
+
+                return {
+                  type: "prefixed-link",
+                  prefix: {
+                    label: settings.linkPrefix,
+                    clickHandler: defaultHandlers.prefixClickHandler,
+                  },
+                  link: {
+                    linkInfo: this.resolveDisplayText(linkInfo),
+                    clickHandler: defaultHandlers.clickHandler,
+                    mouseOverHandler: defaultHandlers.mouseOverHandler,
+                  },
+                };
+              }),
+              hidden: false,
+            };
             return acc;
-          }
-
-          acc[dir] = {
-            links: adjacentFiles.filePaths[dir].map((path) => {
-              const linkInfo: LinkInfo = {
-                destination: path,
-                isExternal: false,
-                isResolved: true,
-                displayText: "",
-              };
-
-              return {
-                type: "prefixed-link",
-                prefix: {
-                  label: settings.linkPrefix,
-                  clickHandler: defaultHandlers.prefixClickHandler,
-                },
-                link: {
-                  linkInfo: this.resolveDisplayText(linkInfo),
-                  clickHandler: defaultHandlers.clickHandler,
-                  mouseOverHandler: defaultHandlers.mouseOverHandler,
-                },
-              };
-            }),
-            hidden: false,
-          };
-          return acc;
-        }, {} as Record<ThreeWayDirection, { links: PrefixedLinkProps[]; hidden: boolean }>),
+          },
+          {} as Record<ThreeWayDirection, { links: PrefixedLinkProps[]; hidden: boolean }>,
+        ),
         delimiters: settings.displayStyle,
       });
     }
@@ -458,7 +472,7 @@ export class NavigationController implements HoverParent {
    */
   private async constructPinnedNoteContentProps(
     file: TFile,
-    defaultHandlers: EventHandlersForProps
+    defaultHandlers: EventHandlersForProps,
   ): Promise<NoteContentProps[]> {
     if (this.plugin.settings.annotationStringsForPinning.length === 0) {
       return [];
@@ -495,7 +509,7 @@ export class NavigationController implements HoverParent {
    */
   private async *constructAnnotatedLinkProps(
     file: TFile,
-    defaultHandlers: EventHandlersForProps
+    defaultHandlers: EventHandlersForProps,
   ): AsyncGenerator<PrefixedLinkProps[]> {
     const annotatedLinksManager = this.plugin.findComponent(AnnotatedLinksManager)!;
     if (!annotatedLinksManager.isActive) {

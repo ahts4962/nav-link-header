@@ -22,13 +22,13 @@ export function getPropertyLinks(plugin: NavLinkHeader, file: TFile): PrefixedLi
  */
 export function getThreeWayPropertyLink(
   plugin: NavLinkHeader,
-  file: TFile
+  file: TFile,
 ): Record<ThreeWayDirection, PrefixedLinkInfo[]> {
   return {
     previous: getPropertyLinksWithMapping(
       plugin,
       file,
-      plugin.settings.previousLinkPropertyMappings
+      plugin.settings.previousLinkPropertyMappings,
     ),
     next: getPropertyLinksWithMapping(plugin, file, plugin.settings.nextLinkPropertyMappings),
     parent: getPropertyLinksWithMapping(plugin, file, plugin.settings.parentLinkPropertyMappings),
@@ -45,7 +45,7 @@ export function getThreeWayPropertyLink(
 function getPropertyLinksWithMapping(
   plugin: NavLinkHeader,
   file: TFile,
-  mappings: { property: string; prefix: string }[]
+  mappings: { property: string; prefix: string }[],
 ): PrefixedLinkInfo[] {
   const result: PrefixedLinkInfo[] = [];
   const implicitPropertyManager = plugin.findComponent(ImplicitPropertyManager)!;

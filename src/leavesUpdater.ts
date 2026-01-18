@@ -54,7 +54,7 @@ export class LeavesUpdater extends PluginComponent {
 
   public override onSettingsChanged(
     previous: NavLinkHeaderSettings,
-    current: NavLinkHeaderSettings
+    current: NavLinkHeaderSettings,
   ): void {
     if (previous.displayInLeaves !== current.displayInLeaves) {
       this.isActive = current.displayInLeaves;
@@ -149,7 +149,7 @@ export class LeavesUpdater extends PluginComponent {
 
         this.navigationControllers.set(
           navigationElement,
-          new NavigationController(this.plugin, navigationElement)
+          new NavigationController(this.plugin, navigationElement),
         );
       }
 

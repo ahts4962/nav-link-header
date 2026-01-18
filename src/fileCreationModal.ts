@@ -12,7 +12,7 @@ export class FileCreationModal extends Modal {
   constructor(
     private plugin: NavLinkHeader,
     private fileTitle: string,
-    private onConfirm: () => void
+    private onConfirm: () => void,
   ) {
     super(plugin.app);
   }

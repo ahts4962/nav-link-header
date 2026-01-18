@@ -35,7 +35,7 @@ export function deepEqual(a: unknown, b: unknown): boolean {
   return keysA.every(
     (key) =>
       keysB.includes(key) &&
-      deepEqual((a as Record<string, unknown>)[key], (b as Record<string, unknown>)[key])
+      deepEqual((a as Record<string, unknown>)[key], (b as Record<string, unknown>)[key]),
   );
 }
 
@@ -64,7 +64,7 @@ export function getFileStemFromPath(path: string): string {
 export function isFileInFolder(
   filePath: string,
   folderPath: string,
-  recursive: boolean = true
+  recursive: boolean = true,
 ): boolean {
   if (recursive) {
     if (folderPath === "/") {
@@ -199,7 +199,7 @@ export function parseWikiLink(text: string): { path?: string; displayText?: stri
 export function parseWikiLinkWithValidation(
   app: App,
   filePath: string,
-  text: string
+  text: string,
 ): {
   path?: string;
   displayText?: string;
@@ -293,7 +293,7 @@ export function parseMarkdownLink(text: string): {
 export function parseMarkdownLinkWithValidation(
   app: App,
   filePath: string,
-  text: string
+  text: string,
 ): {
   destination?: string;
   isValidExternalLink: boolean;
@@ -327,7 +327,7 @@ export function parseMarkdownLinkWithValidation(
 export function getStringValuesFromFileProperty(
   app: App,
   file: TFile,
-  propertyName: string
+  propertyName: string,
 ): string[] {
   const propertyValues = getValuesFromFileProperty(app, file, propertyName);
   if (!propertyValues) {
@@ -348,7 +348,7 @@ export function getStringValuesFromFileProperty(
 export function getFirstValueFromFileProperty(
   app: App,
   file: TFile,
-  propertyName: string
+  propertyName: string,
 ): string | number | boolean | null | undefined {
   const propertyValues = getValuesFromFileProperty(app, file, propertyName);
   if (!propertyValues) {
@@ -374,7 +374,7 @@ export function getFirstValueFromFileProperty(
 function getValuesFromFileProperty(
   app: App,
   file: TFile,
-  propertyName: string
+  propertyName: string,
 ): (string | number | boolean | null)[] | undefined {
   const fileCache = app.metadataCache.getFileCache(file);
   if (!fileCache?.frontmatter) {
