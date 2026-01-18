@@ -87,3 +87,9 @@ and each option can be enabled or disabled individually.
 # Usage
 
 After installing the plugin, configure the options you need in the plugin settings page.
+
+# Support
+
+Thanks for checking out this project! If you like it, you can buy me a coffee ☕
+
+<a href="https://www.buymeacoffee.com/ahts4962" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" style="height: 60px !important;width: 217px !important;" ></a>
