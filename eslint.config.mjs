@@ -1,11 +1,12 @@
 import globals from "globals";
+import { defineConfig } from "eslint/config";
 import jsEslint from "@eslint/js";
 import tsEslint from "typescript-eslint";
 import tsEslintParser from "@typescript-eslint/parser";
 import eslintPluginSvelte from "eslint-plugin-svelte";
 import svelteEslintParser from "svelte-eslint-parser";
 
-export default tsEslint.config(
+export default defineConfig(
   jsEslint.configs.recommended,
   {
     files: ["**/*.ts", "**/*.svelte"],
