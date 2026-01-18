@@ -2,7 +2,53 @@
   z-index: 1;
 }
 
-/* Styles for the parent element of the navigation in the hover popover */
+.is-phone {
+  /* Navigation header styles for Markdown panes on phones */
+  .workspace-leaf-content
+    .nav-link-header-navigation:has(
+      + .view-content :is(.markdown-source-view, .markdown-reading-view)
+    ) {
+    position: absolute;
+    width: 100%;
+    top: 0;
+    transform: translateY(calc(var(--safe-area-inset-top) + var(--view-header-height)));
+    transition: transform 0.3s ease-in-out;
+  }
+
+  &.is-hidden-nav
+    .workspace-leaf-content
+    .nav-link-header-navigation:has(
+      + .view-content :is(.markdown-source-view, .markdown-reading-view)
+    ) {
+    transform: translateY(-100%);
+  }
+
+  /* Adjust the top padding of the Markdown content to account for the navigation header */
+  .mod-root
+    .workspace-leaf-content
+    .nav-link-header-navigation
+    + .view-content
+    :is(.markdown-source-view, .markdown-reading-view)
+    :is(.cm-scroller, .markdown-preview-view) {
+    padding-top: calc(
+      var(--view-top-spacing-markdown) + var(--nav-link-header-markdown-additional-offset, 0)
+    );
+  }
+
+  /* Navigation header styles for non-Markdown panes on phones */
+  .workspace-leaf-content
+    .nav-link-header-navigation:not(
+      :has(+ .view-content :is(.markdown-source-view, .markdown-reading-view))
+    ) {
+    margin-top: calc(var(--safe-area-inset-top) + var(--view-header-height));
+
+    + .view-content {
+      margin-top: 0;
+    }
+  }
+}
+
+/* Styles for the parent element of the navigation header in the hover popover */
 .popover.hover-popover > .markdown-embed:has(> .nav-link-header-navigation) {
   display: flex;
   flex-direction: column;

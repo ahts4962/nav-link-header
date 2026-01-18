@@ -40,6 +40,7 @@ export class NavigationController implements HoverParent {
     matchWidthToLineLength: boolean;
     displayLoadingMessage: boolean;
     displayPlaceholder: boolean;
+    onHeightChange?: (height: number) => void;
   };
 
   public hoverPopover: HoverPopover | null = null;
@@ -63,6 +64,7 @@ export class NavigationController implements HoverParent {
       matchWidthToLineLength: false,
       displayLoadingMessage: false,
       displayPlaceholder: false,
+      onHeightChange: undefined,
     });
 
     this.navigation = mount(Navigation, {
@@ -100,6 +102,19 @@ export class NavigationController implements HoverParent {
       this.plugin.settings.matchNavigationWidthToLineLength;
     this.navigationProps.displayLoadingMessage = this.plugin.settings.displayLoadingMessage;
     this.navigationProps.displayPlaceholder = this.plugin.settings.displayPlaceholder;
+
+    // Set additional offset of markdown content for phone layout.
+    this.navigationProps.onHeightChange = (height: number) => {
+      const viewContent = this.containerEl.parentElement?.querySelector(
+        ".is-phone .view-content:has(.markdown-source-view, .markdown-reading-view)",
+      );
+      if (viewContent instanceof HTMLElement) {
+        viewContent.style.setProperty(
+          "--nav-link-header-markdown-additional-offset",
+          `${height}px`,
+        );
+      }
+    };
 
     const filePath = this.filePath;
     const itemPropsContainer = new ItemPropsContainer(this.plugin);
@@ -198,9 +213,15 @@ export class NavigationController implements HoverParent {
    */
   public dispose(): void {
     if (this.navigation) {
-      void unmount(this.navigation);
+      void unmount(this.navigation).then(() => {
+        const viewContent = this.containerEl.parentElement?.querySelector(".view-content");
+        if (viewContent instanceof HTMLElement) {
+          viewContent.style.removeProperty("--nav-link-header-markdown-additional-offset");
+        }
+      });
       this.navigation = undefined;
     }
+
     this.filePath = undefined;
     this.disposed = true;
   }
