@@ -55,6 +55,7 @@ export interface NavLinkHeaderSettings {
   prevNextLinksEnabledInQuarterlyNotes: boolean;
   parentLinkGranularityInQuarterlyNotes: IGranularity | "none";
   prevNextLinksEnabledInYearlyNotes: boolean;
+  periodicNoteLinkDisplayStyle: ThreeWayDelimiters;
   annotationStringsForPinning: string[];
   startMarkerForPinning: string;
   endMarkerForPinning: string;
@@ -124,6 +125,7 @@ export const DEFAULT_SETTINGS: NavLinkHeaderSettings = {
   prevNextLinksEnabledInQuarterlyNotes: false,
   parentLinkGranularityInQuarterlyNotes: "none",
   prevNextLinksEnabledInYearlyNotes: false,
+  periodicNoteLinkDisplayStyle: "full",
   annotationStringsForPinning: [],
   startMarkerForPinning: "",
   endMarkerForPinning: "",
@@ -1233,6 +1235,30 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
               .setValue(this.plugin.settingsUnderChange.prevNextLinksEnabledInYearlyNotes)
               .onChange((value) => {
                 this.plugin.settingsUnderChange.prevNextLinksEnabledInYearlyNotes = value;
+                this.plugin.triggerSettingsChangedDebounced();
+              });
+          });
+      })
+      .addSetting((setting) => {
+        setting
+          .setName("Link display style")
+          .setDesc(
+            `
+              Specify the display style of links in the navigation header.
+              Full: < previous | parent | next >,
+              Full (double separator): < previous || parent || next >,
+              Separator: previous | parent | next,
+              Double separator: previous || parent || next,
+              None: previous parent next.
+            `,
+          )
+          .addDropdown((dropdown) => {
+            dropdown
+              .addOptions(threeWayDelimiterOptions)
+              .setValue(this.plugin.settingsUnderChange.periodicNoteLinkDisplayStyle)
+              .onChange((value) => {
+                this.plugin.settingsUnderChange.periodicNoteLinkDisplayStyle =
+                  value as ThreeWayDelimiters;
                 this.plugin.triggerSettingsChangedDebounced();
               });
           });

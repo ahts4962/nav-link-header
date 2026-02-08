@@ -416,7 +416,7 @@ export class NavigationController implements HoverParent {
         },
         {} as Record<ThreeWayDirection, { links: PrefixedLinkProps[]; hidden: boolean }>,
       ),
-      delimiters: "full",
+      delimiters: this.plugin.settings.periodicNoteLinkDisplayStyle,
     };
   }
 
