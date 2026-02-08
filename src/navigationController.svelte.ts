@@ -402,7 +402,10 @@ export class NavigationController implements HoverParent {
             links: [
               {
                 type: "prefixed-link",
-                prefix: { label: "", clickHandler: defaultHandlers.prefixClickHandler },
+                prefix: {
+                  label: this.plugin.settings.periodicNoteLinkPrefix,
+                  clickHandler: defaultHandlers.prefixClickHandler,
+                },
                 link: {
                   linkInfo: this.resolveDisplayText(linkInfo),
                   clickHandler,

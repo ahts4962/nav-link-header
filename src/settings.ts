@@ -56,6 +56,7 @@ export interface NavLinkHeaderSettings {
   parentLinkGranularityInQuarterlyNotes: IGranularity | "none";
   prevNextLinksEnabledInYearlyNotes: boolean;
   periodicNoteLinkDisplayStyle: ThreeWayDelimiters;
+  periodicNoteLinkPrefix: string;
   annotationStringsForPinning: string[];
   startMarkerForPinning: string;
   endMarkerForPinning: string;
@@ -126,6 +127,7 @@ export const DEFAULT_SETTINGS: NavLinkHeaderSettings = {
   parentLinkGranularityInQuarterlyNotes: "none",
   prevNextLinksEnabledInYearlyNotes: false,
   periodicNoteLinkDisplayStyle: "full",
+  periodicNoteLinkPrefix: "",
   annotationStringsForPinning: [],
   startMarkerForPinning: "",
   endMarkerForPinning: "",
@@ -602,12 +604,13 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           "Previous note property mappings",
           "Next note property mappings",
           "Parent note property mappings",
+          "Link prefix (Periodic note links)",
           "Annotation strings (Pinned note content)",
           "Start marker",
           "End marker",
           "Include patterns",
           "Exclude patterns",
-          "Link prefix",
+          "Link prefix (Folder links)",
         ]
           .map((s) => `"${s}"`)
           .join(", ");
@@ -1259,6 +1262,22 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
               .onChange((value) => {
                 this.plugin.settingsUnderChange.periodicNoteLinkDisplayStyle =
                   value as ThreeWayDelimiters;
+                this.plugin.triggerSettingsChangedDebounced();
+              });
+          });
+      })
+      .addSetting((setting) => {
+        setting
+          .setName("Link prefix")
+          .setDesc("The string to display before each link (e.g., an emoji).")
+          .addText((text) => {
+            text
+              .setValue(this.plugin.settingsUnderChange.periodicNoteLinkPrefix)
+              .onChange((value) => {
+                this.plugin.settingsUnderChange.periodicNoteLinkPrefix = this.plugin.settings
+                  .trimStringsInSettings
+                  ? value.trim()
+                  : value;
                 this.plugin.triggerSettingsChangedDebounced();
               });
           });
