@@ -44,6 +44,7 @@ export interface NavLinkHeaderSettings {
   previousLinkPropertyMappings: { property: string; prefix: string }[];
   nextLinkPropertyMappings: { property: string; prefix: string }[];
   parentLinkPropertyMappings: { property: string; prefix: string }[];
+  propertyLinkDisplayStyle: ThreeWayDelimiters;
   implicitReciprocalPropertyPairs: { propertyA: string; propertyB: string }[];
   prevNextLinksEnabledInDailyNotes: boolean;
   parentLinkGranularityInDailyNotes: IGranularity | "none";
@@ -112,6 +113,7 @@ export const DEFAULT_SETTINGS: NavLinkHeaderSettings = {
   previousLinkPropertyMappings: [],
   nextLinkPropertyMappings: [],
   parentLinkPropertyMappings: [],
+  propertyLinkDisplayStyle: "full",
   implicitReciprocalPropertyPairs: [],
   prevNextLinksEnabledInDailyNotes: false,
   parentLinkGranularityInDailyNotes: "none",
@@ -395,6 +397,14 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
   public display(): void {
     const { containerEl } = this;
     containerEl.empty();
+
+    const threeWayDelimiterOptions = {
+      "full": "Full",
+      "full-double-separator": "Full (double separator)",
+      "separator": "Separator",
+      "double-separator": "Double separator",
+      "none": "None",
+    } satisfies Record<ThreeWayDelimiters, string>;
 
     new SettingGroup(containerEl)
       .addSetting((setting) => {
@@ -1038,6 +1048,30 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       })
       .addSetting((setting) => {
         setting
+          .setName("Link display style")
+          .setDesc(
+            `
+              Specify the display style of prev/next/parent links in the navigation header.
+              Full: < previous | parent | next >,
+              Full (double separator): < previous || parent || next >,
+              Separator: previous | parent | next,
+              Double separator: previous || parent || next,
+              None: previous parent next.
+            `,
+          )
+          .addDropdown((dropdown) => {
+            dropdown
+              .addOptions(threeWayDelimiterOptions)
+              .setValue(this.plugin.settingsUnderChange.propertyLinkDisplayStyle)
+              .onChange((value) => {
+                this.plugin.settingsUnderChange.propertyLinkDisplayStyle =
+                  value as ThreeWayDelimiters;
+                this.plugin.triggerSettingsChangedDebounced();
+              });
+          });
+      })
+      .addSetting((setting) => {
+        setting
           .setName("Implicit reciprocal property pairs")
           .setDesc(
             `
@@ -1524,15 +1558,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
               `,
             )
             .addDropdown((dropdown) => {
-              const options = {
-                "full": "Full",
-                "full-double-separator": "Full (double separator)",
-                "separator": "Separator",
-                "double-separator": "Double separator",
-                "none": "None",
-              } satisfies Record<ThreeWayDelimiters, string>;
               dropdown
-                .addOptions(options)
+                .addOptions(threeWayDelimiterOptions)
                 .setValue(folderLinkSettings.displayStyle)
                 .onChange((value) => {
                   folderLinkSettings.displayStyle = value as ThreeWayDelimiters;
