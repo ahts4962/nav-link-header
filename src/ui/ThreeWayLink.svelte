@@ -7,6 +7,14 @@
   const isPreviousHidden = $derived(props.links.previous.hidden);
   const isNextHidden = $derived(props.links.next.hidden);
   const isParentHidden = $derived(props.links.parent.hidden);
+
+  const separator = $derived(
+    props.delimiters === "full-double-separator" || props.delimiters === "double-separator"
+      ? "||"
+      : props.delimiters !== "none"
+        ? "|"
+        : "",
+  );
 </script>
 
 <!--
@@ -17,7 +25,7 @@
   and `hidden` is `false`, a placeholder is shown. If `hidden` is `true`, nothing is displayed.
 -->
 <div class="nav-link-header-link-container nav-link-header-three-way">
-  {#if props.delimiters === "full"}
+  {#if props.delimiters === "full" || props.delimiters === "full-double-separator"}
     <Icon iconId="chevrons-left" />
   {/if}
 
@@ -31,10 +39,8 @@
     {/if}
   {/if}
 
-  {#if props.delimiters !== "none"}
-    {#if !isParentHidden && !isPreviousHidden}
-      <div class="nav-link-header-separator">|</div>
-    {/if}
+  {#if !isParentHidden && !isPreviousHidden}
+    <div class="nav-link-header-separator">{separator}</div>
   {/if}
 
   {#if !isParentHidden}
@@ -47,10 +53,8 @@
     {/if}
   {/if}
 
-  {#if props.delimiters !== "none"}
-    {#if !isNextHidden && (!isPreviousHidden || !isParentHidden)}
-      <div class="nav-link-header-separator">|</div>
-    {/if}
+  {#if !isNextHidden && (!isPreviousHidden || !isParentHidden)}
+    <div class="nav-link-header-separator">{separator}</div>
   {/if}
 
   {#if !isNextHidden}
@@ -63,7 +67,7 @@
     {/if}
   {/if}
 
-  {#if props.delimiters === "full"}
+  {#if props.delimiters === "full" || props.delimiters === "full-double-separator"}
     <Icon iconId="chevrons-right" />
   {/if}
 </div>

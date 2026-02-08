@@ -8,6 +8,7 @@ import {
   DISPLAY_ORDER_PLACEHOLDER_PROPERTY,
 } from "./itemPropsContainer";
 import { EMOJI_ANNOTATION_PLACEHOLDER } from "./annotatedLink";
+import type { ThreeWayDelimiters } from "./ui/props";
 import { deepCopy } from "./utils";
 
 export interface NavLinkHeaderSettings {
@@ -74,7 +75,7 @@ export interface FolderLinksSettings {
   sortPropertyName: string;
   maxLinks: number;
   parentPath: string;
-  displayStyle: "full" | "separator" | "none";
+  displayStyle: ThreeWayDelimiters;
   linkPrefix: string;
 }
 
@@ -1515,20 +1516,26 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
             .setDesc(
               `
                 Specify the display style of prev/next/parent links in the navigation header.
-                Full: < previous | parent | next >, Separator: previous | parent | next,
+                Full: < previous | parent | next >,
+                Full (double separator): < previous || parent || next >,
+                Separator: previous | parent | next,
+                Double separator: previous || parent || next,
                 None: previous parent next.
               `,
             )
             .addDropdown((dropdown) => {
+              const options = {
+                "full": "Full",
+                "full-double-separator": "Full (double separator)",
+                "separator": "Separator",
+                "double-separator": "Double separator",
+                "none": "None",
+              } satisfies Record<ThreeWayDelimiters, string>;
               dropdown
-                .addOptions({
-                  full: "Full",
-                  separator: "Separator",
-                  none: "None",
-                })
+                .addOptions(options)
                 .setValue(folderLinkSettings.displayStyle)
                 .onChange((value) => {
-                  folderLinkSettings.displayStyle = value as "full" | "separator" | "none";
+                  folderLinkSettings.displayStyle = value as ThreeWayDelimiters;
                   this.plugin.triggerSettingsChangedDebounced();
                 });
             });

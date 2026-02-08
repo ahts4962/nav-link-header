@@ -10,6 +10,21 @@ export type NavigationItemProps =
 export type NavigationItemPropsWithoutCollapsed = Exclude<NavigationItemProps, CollapsedItemProps>;
 
 /**
+ * The styles of delimiters for three-way links.
+ *   - "full": `< previous | parent | next >`
+ *   - "full-double-separator": `< previous || parent || next >`
+ *   - "separator": `previous | parent | next`
+ *   - "double-separator": `previous || parent || next`
+ *   - "none": `previous parent next`
+ */
+export type ThreeWayDelimiters =
+  | "full"
+  | "full-double-separator"
+  | "separator"
+  | "double-separator"
+  | "none";
+
+/**
  * The properties of a `Link` component.
  */
 export interface LinkProps {
@@ -43,16 +58,13 @@ export interface PrefixedLinkProps {
  *     It is possible that `links` is empty and `hidden` is `false`
  *     (e.g., displaying a placeholder).
  * @param delimiters The style of delimiters to use.
- *     - "full": `< previous | parent | next >`
- *     - "separator": `previous | parent | next`
- *     - "none": `previous parent next`
  */
 export interface ThreeWayLinkProps {
   type: "three-way-link";
   source: "periodic" | "property" | "folder";
   index: number;
   links: Record<ThreeWayDirection, { links: PrefixedLinkProps[]; hidden: boolean }>;
-  delimiters: "full" | "separator" | "none";
+  delimiters: ThreeWayDelimiters;
 }
 
 /**
