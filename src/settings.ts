@@ -19,6 +19,7 @@ export interface NavLinkHeaderSettings {
   filterDuplicateNotes: boolean;
   duplicateNoteFilteringPriority: string[];
   itemCollapsePrefixes: string[];
+  mergePrefixes: string[];
   displayLoadingMessage: boolean;
   displayPlaceholder: boolean;
   confirmFileCreation: boolean;
@@ -90,6 +91,7 @@ export const DEFAULT_SETTINGS: NavLinkHeaderSettings = {
   filterDuplicateNotes: true,
   duplicateNoteFilteringPriority: [],
   itemCollapsePrefixes: [],
+  mergePrefixes: [],
   displayLoadingMessage: true,
   displayPlaceholder: false,
   confirmFileCreation: true,
@@ -541,6 +543,29 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       })
       .addSetting((setting) => {
         setting
+          .setName("Merge prefixes")
+          .setDesc(
+            `
+              Specify the prefixes to merge. For example, setting 🔗 will merge links like
+              🔗[[Note 1]] 🔗[[Note 2]] 🔗[[Note 3]] into 🔗[[Note 1]] [[Note 2]] [[Note 3]]
+              in the navigation header.
+              Multiple prefixes can be specified by separating them with commas.
+            `,
+          )
+          .addText((text) => {
+            const prefixes = this.plugin.settingsUnderChange.mergePrefixes.join(",");
+            text.setValue(prefixes).onChange((value) => {
+              this.plugin.settingsUnderChange.mergePrefixes = parsePrefixStrings(
+                value,
+                this.plugin.settings.trimStringsInSettings,
+                false,
+              );
+              this.plugin.triggerSettingsChangedDebounced();
+            });
+          });
+      })
+      .addSetting((setting) => {
+        setting
           .setName("Display loading message")
           .setDesc(
             `
@@ -597,6 +622,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           "Display order of links",
           "Duplicate link filtering priority",
           "Item collapse prefixes",
+          "Merge prefixes",
           "Annotation strings for backlinks",
           "Annotation strings for current note",
           "Advanced annotation strings for backlinks",
