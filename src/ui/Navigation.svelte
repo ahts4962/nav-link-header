@@ -59,7 +59,7 @@
         {#if item.type === "prefixed-link"}
           <PrefixedLink props={item} />
         {:else if item.type === "prefixed-multi-link"}
-          <PrefixedMultiLink props={item} />
+          <PrefixedMultiLink props={item} wrapWithContainer />
         {:else if item.type === "three-way-link"}
           <ThreeWayLink props={item} />
         {:else if item.type === "note-content"}

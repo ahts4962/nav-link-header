@@ -2,6 +2,7 @@
   import type { ThreeWayLinkProps } from "./props";
   import PrefixedLink from "./PrefixedLink.svelte";
   import Icon from "./Icon.svelte";
+  import PrefixedMultiLink from "./PrefixedMultiLink.svelte";
 
   const { props }: { props: ThreeWayLinkProps } = $props();
   const isPreviousHidden = $derived(props.links.previous.hidden);
@@ -32,7 +33,11 @@
   {#if !isPreviousHidden}
     {#if props.links.previous.links.length > 0}
       {#each props.links.previous.links as link (link)}
-        <PrefixedLink props={link} />
+        {#if link.type === "prefixed-link"}
+          <PrefixedLink props={link} />
+        {:else}
+          <PrefixedMultiLink props={link} />
+        {/if}
       {/each}
     {:else}
       <Icon iconId="minus" muted />
@@ -46,7 +51,11 @@
   {#if !isParentHidden}
     {#if props.links.parent.links.length > 0}
       {#each props.links.parent.links as link (link)}
-        <PrefixedLink props={link} />
+        {#if link.type === "prefixed-link"}
+          <PrefixedLink props={link} />
+        {:else}
+          <PrefixedMultiLink props={link} />
+        {/if}
       {/each}
     {:else}
       <Icon iconId="minus" muted />
@@ -60,7 +69,11 @@
   {#if !isNextHidden}
     {#if props.links.next.links.length > 0}
       {#each props.links.next.links as link (link)}
-        <PrefixedLink props={link} />
+        {#if link.type === "prefixed-link"}
+          <PrefixedLink props={link} />
+        {:else}
+          <PrefixedMultiLink props={link} />
+        {/if}
       {/each}
     {:else}
       <Icon iconId="minus" muted />

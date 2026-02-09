@@ -9,6 +9,7 @@ export type NavigationItemProps =
   | ThreeWayLinkProps
   | NoteContentProps
   | CollapsedItemProps;
+export type ThreeWayContentProps = PrefixedLinkProps | PrefixedMultiLinkProps;
 
 /**
  * The styles of delimiters for three-way links.
@@ -73,7 +74,7 @@ export interface ThreeWayLinkProps {
   type: "three-way-link";
   source: "periodic" | "property" | "folder";
   index: number;
-  links: Record<ThreeWayDirection, { links: PrefixedLinkProps[]; hidden: boolean }>;
+  links: Record<ThreeWayDirection, { links: ThreeWayContentProps[]; hidden: boolean }>;
   delimiters: ThreeWayDelimiters;
 }
 

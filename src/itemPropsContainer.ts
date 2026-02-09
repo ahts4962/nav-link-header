@@ -1,10 +1,13 @@
 import type NavLinkHeader from "./main";
+import type { ThreeWayDirection } from "./types";
 import type {
   CollapsedItemProps,
   NavigationItemProps,
   PrefixedLinkProps,
+  PrefixedMultiLinkProps,
   PrefixEventHandler,
   RawNavigationItemProps,
+  ThreeWayContentProps,
   ThreeWayLinkProps,
 } from "./ui/props";
 
@@ -30,19 +33,42 @@ export class ItemPropsContainer {
    * @return The sorted and collapsed items. The returned array is a new array.
    */
   public getItems(): NavigationItemProps[] {
+    const directions = ["previous", "next", "parent"] as const;
+
     let items = this.collapseItemProps(this.items);
 
     // Remove any three-way links that have no links after collapsing.
     items = items.filter((item) => {
       if (
         item.type === "three-way-link" &&
-        item.links.previous.links.length === 0 &&
-        item.links.next.links.length === 0 &&
-        item.links.parent.links.length === 0
+        directions.every((dir) => item.links[dir].links.length === 0)
       ) {
         return false;
       }
       return true;
+    });
+
+    items = this.mergeItemProps(items, true);
+
+    // Merge links within three-way links.
+    items = items.map((item) => {
+      if (item.type === "three-way-link") {
+        const links = directions.reduce(
+          (acc, dir) => {
+            acc[dir] = {
+              ...item.links[dir],
+              links: this.mergeItemProps(item.links[dir].links, false) as ThreeWayContentProps[],
+            };
+            return acc;
+          },
+          {} as Record<ThreeWayDirection, { links: ThreeWayContentProps[]; hidden: boolean }>,
+        );
+        return {
+          ...item,
+          links,
+        };
+      }
+      return item;
     });
 
     this.sortItemProps(items);
@@ -174,6 +200,58 @@ export class ItemPropsContainer {
     }
 
     return [...items, ...collapsedItems];
+  }
+
+  /**
+   * Merges the item props according to the plugin settings.
+   * This method merges prefixed links with the same prefix into a single
+   * `PrefixedMultiLinkProps` item.
+   * @param items The items to merge.
+   * @param sortLinks Whether to sort the links within `PrefixedMultiLinkProps`
+   *     according to their display text.
+   * @return The merged items. The returned array is a new array.
+   */
+  private mergeItemProps(items: NavigationItemProps[], sortLinks: boolean): NavigationItemProps[] {
+    const mergePrefixes = [...new Set(this.plugin.settings.mergePrefixes)].filter(
+      (prefix) => prefix.length > 0,
+    );
+    if (mergePrefixes.length === 0) {
+      return [...items];
+    }
+
+    const mergedItems = items.filter(
+      (item) => item.type !== "prefixed-link" || !mergePrefixes.includes(item.prefix.label),
+    );
+    for (const prefix of mergePrefixes) {
+      const itemsToMerge = items.filter(
+        (item) => item.type === "prefixed-link" && item.prefix.label === prefix,
+      ) as PrefixedLinkProps[];
+
+      if (itemsToMerge.length === 0) {
+        continue;
+      }
+
+      if (itemsToMerge.length === 1) {
+        mergedItems.push(itemsToMerge[0]);
+        continue;
+      }
+
+      const links = itemsToMerge.map((item) => item.link);
+      if (sortLinks) {
+        links.sort((a, b) => {
+          return a.linkInfo.displayText.localeCompare(b.linkInfo.displayText, undefined, {
+            numeric: true,
+          });
+        });
+      }
+      const mergedItem: PrefixedMultiLinkProps = {
+        type: "prefixed-multi-link",
+        prefix: itemsToMerge[0].prefix,
+        links,
+      };
+      mergedItems.push(mergedItem);
+    }
+    return mergedItems;
   }
 
   /**
