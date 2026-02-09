@@ -3,6 +3,7 @@
   import CollapsedItem from "./CollapsedItem.svelte";
   import NoteContent from "./NoteContent.svelte";
   import PrefixedLink from "./PrefixedLink.svelte";
+  import PrefixedMultiLink from "./PrefixedMultiLink.svelte";
   import ThreeWayLink from "./ThreeWayLink.svelte";
 
   const {
@@ -57,6 +58,8 @@
       {#each items as item (item)}
         {#if item.type === "prefixed-link"}
           <PrefixedLink props={item} />
+        {:else if item.type === "prefixed-multi-link"}
+          <PrefixedMultiLink props={item} />
         {:else if item.type === "three-way-link"}
           <ThreeWayLink props={item} />
         {:else if item.type === "note-content"}

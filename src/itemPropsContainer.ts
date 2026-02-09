@@ -2,9 +2,9 @@ import type NavLinkHeader from "./main";
 import type {
   CollapsedItemProps,
   NavigationItemProps,
-  NavigationItemPropsWithoutCollapsed,
   PrefixedLinkProps,
   PrefixEventHandler,
+  RawNavigationItemProps,
   ThreeWayLinkProps,
 } from "./ui/props";
 
@@ -17,7 +17,7 @@ export const DISPLAY_ORDER_PLACEHOLDER_FOLDER = "[[f]]";
  * This class is used to store, sort, and filter item props.
  */
 export class ItemPropsContainer {
-  private items: NavigationItemPropsWithoutCollapsed[] = [];
+  private items: RawNavigationItemProps[] = [];
 
   constructor(private plugin: NavLinkHeader) {}
 
@@ -66,7 +66,7 @@ export class ItemPropsContainer {
    * The item is filtered according to the plugin settings.
    * @param item The item to add.
    */
-  public addItem(item: NavigationItemPropsWithoutCollapsed): void {
+  public addItem(item: RawNavigationItemProps): void {
     if (item.type !== "prefixed-link") {
       this.items.push(item);
       return;
@@ -203,6 +203,7 @@ export class ItemPropsContainer {
 function getSortTag(item: NavigationItemProps): string {
   switch (item.type) {
     case "prefixed-link":
+    case "prefixed-multi-link":
     case "note-content":
     case "collapsed-item":
       return item.prefix.label;
@@ -233,12 +234,14 @@ function getLinkTypeOrder(item: NavigationItemProps): number {
   switch (item.type) {
     case "three-way-link":
       return 0;
-    case "prefixed-link":
+    case "prefixed-multi-link":
       return 1;
-    case "note-content":
+    case "prefixed-link":
       return 2;
-    case "collapsed-item":
+    case "note-content":
       return 3;
+    case "collapsed-item":
+      return 4;
     default: {
       const _exhaustiveCheck: never = item;
       return _exhaustiveCheck;

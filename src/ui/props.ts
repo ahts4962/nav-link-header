@@ -2,12 +2,13 @@ import type { LinkInfo, ThreeWayDirection } from "src/types";
 
 export type LinkEventHandler = (target: LinkProps, e: MouseEvent) => void;
 export type PrefixEventHandler = (target: PrefixProps) => void;
+export type RawNavigationItemProps = PrefixedLinkProps | ThreeWayLinkProps | NoteContentProps;
 export type NavigationItemProps =
   | PrefixedLinkProps
+  | PrefixedMultiLinkProps
   | ThreeWayLinkProps
   | NoteContentProps
   | CollapsedItemProps;
-export type NavigationItemPropsWithoutCollapsed = Exclude<NavigationItemProps, CollapsedItemProps>;
 
 /**
  * The styles of delimiters for three-way links.
@@ -48,6 +49,15 @@ export interface PrefixedLinkProps {
   type: "prefixed-link";
   prefix: PrefixProps;
   link: LinkProps;
+}
+
+/**
+ * The properties of a `PrefixedMultiLink` component.
+ */
+export interface PrefixedMultiLinkProps {
+  type: "prefixed-multi-link";
+  prefix: PrefixProps;
+  links: LinkProps[];
 }
 
 /**
