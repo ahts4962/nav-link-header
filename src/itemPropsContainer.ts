@@ -19,7 +19,10 @@ export const DISPLAY_ORDER_PLACEHOLDER_FOLDER = "[[f]]";
 export class ItemPropsContainer {
   private items: RawNavigationItemProps[] = [];
 
-  constructor(private plugin: NavLinkHeader) {}
+  constructor(
+    private plugin: NavLinkHeader,
+    private prefixClickHandlerForCollapsedItems: PrefixEventHandler,
+  ) {}
 
   /**
    * Returns the items added so far.
@@ -138,16 +141,8 @@ export class ItemPropsContainer {
         return item;
       }
     });
-    const collapsedItems: CollapsedItemProps[] = [];
-    const prefixClickHandler: PrefixEventHandler = (target) => {
-      const label = target.label;
-      const prefixes = this.plugin.settingsUnderChange.itemCollapsePrefixes;
-      if (prefixes.includes(label)) {
-        this.plugin.settingsUnderChange.itemCollapsePrefixes = prefixes.filter((p) => p !== label);
-        this.plugin.triggerSettingsChanged();
-      }
-    };
 
+    const collapsedItems: CollapsedItemProps[] = [];
     for (const prefix of itemCollapsePrefixes) {
       let count = 0;
       for (let i = items.length - 1; i >= 0; i--) {
@@ -172,7 +167,7 @@ export class ItemPropsContainer {
       if (count > 0) {
         collapsedItems.push({
           type: "collapsed-item",
-          prefix: { label: prefix, clickHandler: prefixClickHandler },
+          prefix: { label: prefix, clickHandler: this.prefixClickHandlerForCollapsedItems },
           itemCount: count,
         });
       }

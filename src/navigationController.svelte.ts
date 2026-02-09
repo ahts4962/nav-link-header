@@ -117,7 +117,14 @@ export class NavigationController implements HoverParent {
     };
 
     const filePath = this.filePath;
-    const itemPropsContainer = new ItemPropsContainer(this.plugin);
+    const itemPropsContainer = new ItemPropsContainer(this.plugin, (target) => {
+      const label = target.label;
+      const prefixes = this.plugin.settingsUnderChange.itemCollapsePrefixes;
+      if (prefixes.includes(label)) {
+        this.plugin.settingsUnderChange.itemCollapsePrefixes = prefixes.filter((p) => p !== label);
+        this.plugin.triggerSettingsChanged();
+      }
+    });
     const defaultHandlers: EventHandlersForProps = {
       clickHandler: (target, e) => {
         if (target.linkInfo.isExternal) {
