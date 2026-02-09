@@ -27,36 +27,22 @@ export class ItemPropsContainer {
    * @return The sorted and collapsed items. The returned array is a new array.
    */
   public getItems(): NavigationItemProps[] {
-    const items = this.getCollapsedItemProps();
-    const order = [...this.plugin.settings.displayOrderOfLinks];
-    const existingSortTags = [...new Set(items.map((link) => getSortTag(link)))];
-    const additionalSortTags = existingSortTags.filter((tag) => !order.includes(tag));
-    additionalSortTags.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
-    order.push(...additionalSortTags);
+    let items = this.collapseItemProps(this.items);
 
-    items.sort((a, b) => {
-      const aSortTag = getSortTag(a);
-      const bSortTag = getSortTag(b);
-      const sortTagComp = order.indexOf(aSortTag) - order.indexOf(bSortTag);
-      if (sortTagComp !== 0) {
-        return sortTagComp;
+    // Remove any three-way links that have no links after collapsing.
+    items = items.filter((item) => {
+      if (
+        item.type === "three-way-link" &&
+        item.links.previous.links.length === 0 &&
+        item.links.next.links.length === 0 &&
+        item.links.parent.links.length === 0
+      ) {
+        return false;
       }
-
-      const typeComp = getLinkTypeOrder(a) - getLinkTypeOrder(b);
-      if (typeComp !== 0) {
-        return typeComp;
-      }
-
-      if (a.type === "three-way-link" && b.type === "three-way-link") {
-        return a.index - b.index;
-      } else if (a.type === "prefixed-link" && b.type === "prefixed-link") {
-        return a.link.linkInfo.displayText.localeCompare(b.link.linkInfo.displayText, undefined, {
-          numeric: true,
-        });
-      } else {
-        return 0;
-      }
+      return true;
     });
+
+    this.sortItemProps(items);
 
     return items;
   }
@@ -129,15 +115,15 @@ export class ItemPropsContainer {
   /**
    * Returns the item props after collapsing items according to the plugin settings.
    */
-  private getCollapsedItemProps(): NavigationItemProps[] {
+  private collapseItemProps(items: RawNavigationItemProps[]): NavigationItemProps[] {
     const itemCollapsePrefixes = [...new Set(this.plugin.settings.itemCollapsePrefixes)].filter(
       (prefix) => prefix.length > 0,
     );
     if (itemCollapsePrefixes.length === 0) {
-      return [...this.items];
+      return [...items];
     }
 
-    const items = this.items.map((item) => {
+    items = items.map((item) => {
       if (item.type === "three-way-link") {
         // Deep copy ThreeWayLinkProps to modify its links array.
         return {
@@ -193,6 +179,43 @@ export class ItemPropsContainer {
     }
 
     return [...items, ...collapsedItems];
+  }
+
+  /**
+   * Sorts the item props according to the plugin settings.
+   * The items are sorted in-place.
+   * @param items The items to sort.
+   */
+  private sortItemProps(items: NavigationItemProps[]): void {
+    const order = [...this.plugin.settings.displayOrderOfLinks];
+    const existingSortTags = [...new Set(items.map((link) => getSortTag(link)))];
+    const additionalSortTags = existingSortTags.filter((tag) => !order.includes(tag));
+    additionalSortTags.sort((a, b) => a.localeCompare(b, undefined, { numeric: true }));
+    order.push(...additionalSortTags);
+
+    items.sort((a, b) => {
+      const aSortTag = getSortTag(a);
+      const bSortTag = getSortTag(b);
+      const sortTagComp = order.indexOf(aSortTag) - order.indexOf(bSortTag);
+      if (sortTagComp !== 0) {
+        return sortTagComp;
+      }
+
+      const typeComp = getLinkTypeOrder(a) - getLinkTypeOrder(b);
+      if (typeComp !== 0) {
+        return typeComp;
+      }
+
+      if (a.type === "three-way-link" && b.type === "three-way-link") {
+        return a.index - b.index;
+      } else if (a.type === "prefixed-link" && b.type === "prefixed-link") {
+        return a.link.linkInfo.displayText.localeCompare(b.link.linkInfo.displayText, undefined, {
+          numeric: true,
+        });
+      } else {
+        return 0;
+      }
+    });
   }
 }
 
