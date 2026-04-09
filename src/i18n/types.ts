@@ -2,28 +2,44 @@ import type { ThreeWayDelimiters } from "../ui/props";
 
 export interface BaseMessage {
   setting: {
+    tabs: {
+      common: string;
+      enabledViews: string;
+      annotatedLinks: string;
+      propertyLinks: string;
+      periodicNotes: string;
+      pinnedContent: string;
+      folderLinks: string;
+    };
+    sections: {
+      display: string;
+      displayPosition: string;
+      enabledViews: string;
+    };
     threeWayDelimiterOptions: Record<ThreeWayDelimiters, string>;
     general: {
+      pluginGuide: { name: string; desc: string; linkLabel: string };
       matchNavigationWidthToLineLength: { name: string; desc: string };
-      displayOrderOfLinks: { name: string; desc: string };
+      displayOrderOfLinks: { name: string; desc: string; descTooltip: string; tip: string };
       propertyNameForDisplayText: { name: string; desc: string; placeholder: string };
       filterDuplicateLinks: { name: string; desc: string };
       duplicateLinkFilteringPriority: { name: string; desc: string };
-      itemCollapsePrefixes: { name: string; desc: string };
-      mergePrefixes: { name: string; desc: string };
+      itemCollapsePrefixes: { name: string; desc: string; tip: string };
+      mergePrefixes: { name: string; desc: string; tip: string };
       displayLoadingMessage: { name: string; desc: string };
       displayPlaceholder: { name: string; desc: string };
       confirmFileCreation: { name: string; desc: string };
       trimWhitespaceInInputFields: {
         name: string;
         desc: string;
+        descTooltip: string;
         affectedSettings: string[];
       };
     };
     displayTargets: {
       heading: string;
-      inPanes: { name: string; desc: string };
-      inPagePreviews: { name: string; desc: string };
+      inPanes: { name: string; desc: string; tip: string };
+      inPagePreviews: { name: string; desc: string; tip: string };
       inMarkdownViews: { name: string; desc: string };
       inImageViews: { name: string; desc: string };
       inVideoViews: { name: string; desc: string };
@@ -35,7 +51,8 @@ export interface BaseMessage {
     };
     annotatedLinks: {
       heading: string;
-      annotationStringsForBacklinks: { name: string; desc: string };
+      annotationStringsForBacklinks: { name: string; desc: string; tip: string };
+      annotationStringsForBacklinksTooltip: string;
       annotationStringsForCurrentNote: { name: string; desc: string };
       hidePrefixes: { name: string; desc: string };
       advancedAnnotationStringsForBacklinks: {
@@ -43,21 +60,43 @@ export interface BaseMessage {
         desc: string;
         placeholder: string;
       };
-      advancedAnnotationStringsForCurrentNote: { name: string; desc: string };
+      advancedAnnotationStringsForCurrentNote: { name: string; desc: string; tip: string };
       allowSpaceAfterAnnotationString: { name: string; desc: string };
       ignoreVariationSelectors: { name: string; desc: string };
     };
     propertyLinks: {
       heading: string;
-      propertyMappings: { name: string; desc: string; placeholder: string };
-      previousNotePropertyMappings: { name: string; desc: string; placeholder: string };
-      nextNotePropertyMappings: { name: string; desc: string; placeholder: string };
-      parentNotePropertyMappings: { name: string; desc: string; placeholder: string };
+      propertyMappings: { name: string; desc: string; tip: string; placeholder: string };
+      previousNotePropertyMappings: {
+        name: string;
+        desc: string;
+        tip: string;
+        placeholder: string;
+      };
+      nextNotePropertyMappings: {
+        name: string;
+        desc: string;
+        tip: string;
+        placeholder: string;
+      };
+      parentNotePropertyMappings: {
+        name: string;
+        desc: string;
+        tip: string;
+        placeholder: string;
+      };
       linkDisplayStyle: { name: string; desc: string };
       implicitReciprocalPropertyPairs: { name: string; desc: string; placeholder: string };
     };
     periodicNotes: {
       heading: string;
+      sections: {
+        daily: string;
+        weekly: string;
+        monthly: string;
+        quarterly: string;
+        yearly: string;
+      };
       displayPrevNextInDailyNotes: { name: string; desc: string };
       parentForDailyNotes: { name: string };
       displayPrevNextInWeeklyNotes: { name: string; desc: string };
@@ -79,7 +118,7 @@ export interface BaseMessage {
     };
     pinnedContent: {
       heading: string;
-      annotationStrings: { name: string; desc: string; placeholder: string };
+      annotationStrings: { name: string; desc: string; tip: string; placeholder: string };
       startMarker: { name: string; placeholder: string };
       endMarker: { name: string; placeholder: string };
       ignoreCodeBlocks: { name: string; desc: string };
@@ -110,6 +149,10 @@ export interface BaseMessage {
       linkDisplayStyle: { name: string; desc: string };
       linkPrefix: { name: string; desc: string };
       controls: {
+        rename: string;
+        expand: string;
+        collapse: string;
+        pinToTop: string;
         moveUp: string;
         moveDown: string;
         remove: string;

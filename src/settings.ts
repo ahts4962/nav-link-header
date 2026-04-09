@@ -1,4 +1,12 @@
-import { normalizePath, PluginSettingTab, SettingGroup } from "obsidian";
+import {
+  Modal,
+  normalizePath,
+  PluginSettingTab,
+  Setting,
+  SettingGroup,
+  setIcon,
+  setTooltip,
+} from "obsidian";
 import type { IGranularity } from "obsidian-daily-notes-interface";
 import { lt } from "semver";
 import type NavLinkHeader from "./main";
@@ -67,6 +75,7 @@ export interface NavLinkHeaderSettings {
 }
 
 export interface FolderLinksSettings {
+  ruleName: string;
   folderPaths: string[];
   excludedFolderPaths: string[];
   recursive: boolean;
@@ -139,6 +148,7 @@ export const DEFAULT_SETTINGS: NavLinkHeaderSettings = {
 };
 
 const DEFAULT_FOLDER_LINKS_SETTINGS: FolderLinksSettings = {
+  ruleName: "",
   folderPaths: [],
   excludedFolderPaths: [],
   recursive: false,
@@ -397,6 +407,9 @@ function convertOldSettings(loadedData: Record<string, unknown>): Record<string,
  * Represents the settings tab for the Nav Link Header plugin in Obsidian.
  */
 export class NavLinkHeaderSettingTab extends PluginSettingTab {
+  private activeTabId: string = "common";
+  private collapsedFolderLinkSettings = new WeakSet<FolderLinksSettings>();
+
   constructor(private plugin: NavLinkHeader) {
     super(plugin.app, plugin);
   }
@@ -410,7 +423,120 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
     const threeWayDelimiterOptions =
       msg.threeWayDelimiterOptions satisfies Record<ThreeWayDelimiters, string>;
 
-    new SettingGroup(containerEl)
+    const tabsEl = containerEl.createDiv();
+    tabsEl.style.display = "flex";
+    tabsEl.style.flexWrap = "wrap";
+    tabsEl.style.gap = "8px";
+    tabsEl.style.marginBottom = "12px";
+
+    const panelsEl = containerEl.createDiv();
+
+    const tabButtons = new Map<string, HTMLButtonElement>();
+    const tabPanels = new Map<string, HTMLDivElement>();
+
+    const createPanel = (id: string, label: string): HTMLDivElement => {
+      const button = tabsEl.createEl("button", { text: label, cls: "mod-muted" });
+      button.setAttr("type", "button");
+      button.style.cursor = "pointer";
+
+      const panel = panelsEl.createDiv();
+      panel.style.display = "none";
+
+      button.addEventListener("click", () => {
+        this.activeTabId = id;
+        for (const [tabId, tabButton] of tabButtons.entries()) {
+          const isActive = tabId === id;
+          tabButton.classList.toggle("mod-cta", isActive);
+          tabButton.classList.toggle("mod-muted", !isActive);
+          tabButton.setAttr("aria-pressed", String(isActive));
+        }
+        for (const [tabId, tabPanel] of tabPanels.entries()) {
+          tabPanel.style.display = tabId === id ? "block" : "none";
+        }
+      });
+
+      tabButtons.set(id, button);
+      tabPanels.set(id, panel);
+      return panel;
+    };
+
+    const commonPanel = createPanel("common", msg.tabs.common);
+    const enabledViewsPanel = createPanel("enabledViews", msg.tabs.enabledViews);
+    const annotatedLinksPanel = createPanel("annotatedLinks", msg.tabs.annotatedLinks);
+    const pinnedContentPanel = createPanel("pinnedContent", msg.tabs.pinnedContent);
+    const propertyLinksPanel = createPanel("propertyLinks", msg.tabs.propertyLinks);
+    const periodicNotesPanel = createPanel("periodicNotes", msg.tabs.periodicNotes);
+    const folderLinksPanel = createPanel("folderLinks", msg.tabs.folderLinks);
+
+    const initialTabId = tabButtons.has(this.activeTabId) ? this.activeTabId : "common";
+    tabButtons.get(initialTabId)?.click();
+
+    new SettingGroup(commonPanel)
+      .addSetting((setting) => {
+        setting
+          .setName(msg.general.pluginGuide.name)
+          .setDesc(msg.general.pluginGuide.desc)
+          .addButton((button) => {
+            button.setButtonText(msg.general.pluginGuide.linkLabel).onClick(() => {
+              window.open("https://github.com/ahts4962/nav-link-header", "_blank");
+            });
+          });
+      })
+      .addSetting((setting) => {
+        const affectedSettings = msg.general.trimWhitespaceInInputFields.affectedSettings
+          .map((s) => `"${s}"`)
+          .join(", ");
+
+        setting
+          .setName(msg.general.trimWhitespaceInInputFields.name)
+          .setDesc(msg.general.trimWhitespaceInInputFields.desc)
+          .addToggle((toggle) => {
+            toggle
+              .setValue(this.plugin.settingsUnderChange.trimStringsInSettings)
+              .onChange((value) => {
+                this.plugin.settingsUnderChange.trimStringsInSettings = value;
+                this.plugin.triggerSettingsChangedDebounced();
+              });
+          });
+
+        this.addTooltipToDescription(
+          setting,
+          msg.general.trimWhitespaceInInputFields.descTooltip.replace(
+            "{affectedSettings}",
+            affectedSettings,
+          ),
+        );
+      })
+      .addSetting((setting) => {
+        setting
+          .setName(msg.general.displayLoadingMessage.name)
+          .setDesc(msg.general.displayLoadingMessage.desc)
+          .addToggle((toggle) => {
+            toggle
+              .setValue(this.plugin.settingsUnderChange.displayLoadingMessage)
+              .onChange((value) => {
+                this.plugin.settingsUnderChange.displayLoadingMessage = value;
+                this.plugin.triggerSettingsChangedDebounced();
+              });
+          });
+      })
+      .addSetting((setting) => {
+        setting
+          .setName(msg.general.displayPlaceholder.name)
+          .setDesc(msg.general.displayPlaceholder.desc)
+          .addToggle((toggle) => {
+            toggle
+              .setValue(this.plugin.settingsUnderChange.displayPlaceholder)
+              .onChange((value) => {
+                this.plugin.settingsUnderChange.displayPlaceholder = value;
+                this.plugin.triggerSettingsChangedDebounced();
+              });
+          });
+      })
+      ;
+
+    new SettingGroup(commonPanel)
+      .setHeading(msg.sections.display)
       .addSetting((setting) => {
         setting
           .setName(msg.general.matchNavigationWidthToLineLength.name)
@@ -444,6 +570,15 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
               this.plugin.triggerSettingsChangedDebounced();
             });
           });
+
+        this.addTooltipToDescription(
+          setting,
+          msg.general.displayOrderOfLinks.descTooltip
+            .replaceAll("{periodic}", DISPLAY_ORDER_PLACEHOLDER_PERIODIC)
+            .replaceAll("{property}", DISPLAY_ORDER_PLACEHOLDER_PROPERTY)
+            .replaceAll("{folder}", DISPLAY_ORDER_PLACEHOLDER_FOLDER),
+        );
+        this.addTipToDescription(setting, msg.general.displayOrderOfLinks.tip);
       })
       .addSetting((setting) => {
         setting
@@ -504,6 +639,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
               this.plugin.triggerSettingsChangedDebounced();
             });
           });
+
+        this.addTipToDescription(setting, msg.general.itemCollapsePrefixes.tip);
       })
       .addSetting((setting) => {
         setting
@@ -520,71 +657,12 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
               this.plugin.triggerSettingsChangedDebounced();
             });
           });
-      })
-      .addSetting((setting) => {
-        setting
-          .setName(msg.general.displayLoadingMessage.name)
-          .setDesc(msg.general.displayLoadingMessage.desc)
-          .addToggle((toggle) => {
-            toggle
-              .setValue(this.plugin.settingsUnderChange.displayLoadingMessage)
-              .onChange((value) => {
-                this.plugin.settingsUnderChange.displayLoadingMessage = value;
-                this.plugin.triggerSettingsChangedDebounced();
-              });
-          });
-      })
-      .addSetting((setting) => {
-        setting
-          .setName(msg.general.displayPlaceholder.name)
-          .setDesc(msg.general.displayPlaceholder.desc)
-          .addToggle((toggle) => {
-            toggle
-              .setValue(this.plugin.settingsUnderChange.displayPlaceholder)
-              .onChange((value) => {
-                this.plugin.settingsUnderChange.displayPlaceholder = value;
-                this.plugin.triggerSettingsChangedDebounced();
-              });
-          });
-      })
-      .addSetting((setting) => {
-        setting
-          .setName(msg.general.confirmFileCreation.name)
-          .setDesc(msg.general.confirmFileCreation.desc)
-          .addToggle((toggle) => {
-            toggle
-              .setValue(this.plugin.settingsUnderChange.confirmFileCreation)
-              .onChange((value) => {
-                this.plugin.settingsUnderChange.confirmFileCreation = value;
-                this.plugin.triggerSettingsChangedDebounced();
-              });
-          });
-      })
-      .addSetting((setting) => {
-        const affectedSettings = msg.general.trimWhitespaceInInputFields.affectedSettings
-          .map((s) => `"${s}"`)
-          .join(", ");
 
-        setting
-          .setName(msg.general.trimWhitespaceInInputFields.name)
-          .setDesc(
-            msg.general.trimWhitespaceInInputFields.desc.replace(
-              "{affectedSettings}",
-              affectedSettings,
-            ),
-          )
-          .addToggle((toggle) => {
-            toggle
-              .setValue(this.plugin.settingsUnderChange.trimStringsInSettings)
-              .onChange((value) => {
-                this.plugin.settingsUnderChange.trimStringsInSettings = value;
-                this.plugin.triggerSettingsChangedDebounced();
-              });
-          });
+        this.addTipToDescription(setting, msg.general.mergePrefixes.tip);
       });
 
-    new SettingGroup(containerEl)
-      .setHeading(msg.displayTargets.heading)
+    new SettingGroup(enabledViewsPanel)
+      .setHeading(msg.sections.displayPosition)
       .addSetting((setting) => {
         setting
           .setName(msg.displayTargets.inPanes.name)
@@ -595,6 +673,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
               this.plugin.triggerSettingsChangedDebounced();
             });
           });
+
+        this.addTipToDescription(setting, msg.displayTargets.inPanes.tip);
       })
       .addSetting((setting) => {
         setting
@@ -608,7 +688,12 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
                 this.plugin.triggerSettingsChangedDebounced();
               });
           });
-      })
+
+        this.addTipToDescription(setting, msg.displayTargets.inPagePreviews.tip);
+      });
+
+    new SettingGroup(enabledViewsPanel)
+      .setHeading(msg.sections.enabledViews)
       .addSetting((setting) => {
         setting
           .setName(msg.displayTargets.inMarkdownViews.name)
@@ -712,8 +797,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           });
       });
 
-    new SettingGroup(containerEl)
-      .setHeading(msg.annotatedLinks.heading)
+    new SettingGroup(annotatedLinksPanel)
       .addSetting((setting) => {
         setting
           .setName(msg.annotatedLinks.annotationStringsForBacklinks.name)
@@ -735,6 +819,15 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
               this.plugin.triggerSettingsChangedDebounced();
             });
           });
+
+        this.addTooltipToDescription(
+          setting,
+          msg.annotatedLinks.annotationStringsForBacklinksTooltip.replaceAll(
+            "{emojiPlaceholder}",
+            EMOJI_ANNOTATION_PLACEHOLDER,
+          ),
+        );
+        this.addTipToDescription(setting, msg.annotatedLinks.annotationStringsForBacklinks.tip);
       })
       .addSetting((setting) => {
         setting
@@ -804,6 +897,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
               this.plugin.triggerSettingsChangedDebounced();
             });
           });
+
+        this.addTipToDescription(setting, msg.annotatedLinks.advancedAnnotationStringsForCurrentNote.tip);
       })
       .addSetting((setting) => {
         setting
@@ -813,7 +908,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
             toggle
               .setValue(this.plugin.settingsUnderChange.allowSpaceAfterAnnotationString)
               .onChange((value) => {
-                this.plugin.settingsUnderChange.allowSpaceAfterAnnotationString = value;
+              this.plugin.settingsUnderChange.allowSpaceAfterAnnotationString = value;
                 this.plugin.triggerSettingsChangedDebounced();
               });
           });
@@ -832,8 +927,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           });
       });
 
-    new SettingGroup(containerEl)
-      .setHeading(msg.propertyLinks.heading)
+    new SettingGroup(propertyLinksPanel)
       .addSetting((setting) => {
         setting
           .setName(msg.propertyLinks.propertyMappings.name)
@@ -853,6 +947,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
                 this.plugin.triggerSettingsChangedDebounced();
               });
           });
+
+        this.addTipToDescription(setting, msg.propertyLinks.propertyMappings.tip);
       })
       .addSetting((setting) => {
         setting
@@ -868,9 +964,11 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
               .onChange((value) => {
                 this.plugin.settingsUnderChange.previousLinkPropertyMappings =
                   parsePropertyMappings(value, this.plugin.settings.trimStringsInSettings);
-                this.plugin.triggerSettingsChangedDebounced();
-              });
+              this.plugin.triggerSettingsChangedDebounced();
+            });
           });
+
+        this.addTipToDescription(setting, msg.propertyLinks.previousNotePropertyMappings.tip);
       })
       .addSetting((setting) => {
         setting
@@ -888,9 +986,11 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
                   value,
                   this.plugin.settings.trimStringsInSettings,
                 );
-                this.plugin.triggerSettingsChangedDebounced();
-              });
+              this.plugin.triggerSettingsChangedDebounced();
+            });
           });
+
+        this.addTipToDescription(setting, msg.propertyLinks.nextNotePropertyMappings.tip);
       })
       .addSetting((setting) => {
         setting
@@ -908,9 +1008,11 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
                   value,
                   this.plugin.settings.trimStringsInSettings,
                 );
-                this.plugin.triggerSettingsChangedDebounced();
-              });
+              this.plugin.triggerSettingsChangedDebounced();
+            });
           });
+
+        this.addTipToDescription(setting, msg.propertyLinks.parentNotePropertyMappings.tip);
       })
       .addSetting((setting) => {
         setting
@@ -946,8 +1048,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           });
       });
 
-    new SettingGroup(containerEl)
-      .setHeading(msg.periodicNotes.heading)
+    new SettingGroup(periodicNotesPanel)
+      .setHeading(msg.periodicNotes.sections.daily)
       .addSetting((setting) => {
         setting
           .setName(msg.periodicNotes.displayPrevNextInDailyNotes.name)
@@ -978,7 +1080,10 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
               this.plugin.triggerSettingsChangedDebounced();
             });
         });
-      })
+      });
+
+    new SettingGroup(periodicNotesPanel)
+      .setHeading(msg.periodicNotes.sections.weekly)
       .addSetting((setting) => {
         setting
           .setName(msg.periodicNotes.displayPrevNextInWeeklyNotes.name)
@@ -1008,7 +1113,10 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
               this.plugin.triggerSettingsChangedDebounced();
             });
         });
-      })
+      });
+
+    new SettingGroup(periodicNotesPanel)
+      .setHeading(msg.periodicNotes.sections.monthly)
       .addSetting((setting) => {
         setting
           .setName(msg.periodicNotes.displayPrevNextInMonthlyNotes.name)
@@ -1037,7 +1145,10 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
               this.plugin.triggerSettingsChangedDebounced();
             });
         });
-      })
+      });
+
+    new SettingGroup(periodicNotesPanel)
+      .setHeading(msg.periodicNotes.sections.quarterly)
       .addSetting((setting) => {
         setting
           .setName(msg.periodicNotes.displayPrevNextInQuarterlyNotes.name)
@@ -1058,16 +1169,17 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
               none: msg.periodicNotes.granularityOptions.none,
               year: msg.periodicNotes.granularityOptions.year,
             })
-            .setValue(
-              this.plugin.settingsUnderChange.parentLinkGranularityInQuarterlyNotes ?? "none",
-            )
+            .setValue(this.plugin.settingsUnderChange.parentLinkGranularityInQuarterlyNotes ?? "none")
             .onChange((value) => {
               this.plugin.settingsUnderChange.parentLinkGranularityInQuarterlyNotes =
                 value !== "none" ? (value as IGranularity) : "none";
               this.plugin.triggerSettingsChangedDebounced();
             });
         });
-      })
+      });
+
+    new SettingGroup(periodicNotesPanel)
+      .setHeading(msg.periodicNotes.sections.yearly)
       .addSetting((setting) => {
         setting
           .setName(msg.periodicNotes.displayPrevNextInYearlyNotes.name)
@@ -1077,6 +1189,19 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
               .setValue(this.plugin.settingsUnderChange.prevNextLinksEnabledInYearlyNotes)
               .onChange((value) => {
                 this.plugin.settingsUnderChange.prevNextLinksEnabledInYearlyNotes = value;
+                this.plugin.triggerSettingsChangedDebounced();
+              });
+          });
+      })
+      .addSetting((setting) => {
+        setting
+          .setName(msg.general.confirmFileCreation.name)
+          .setDesc(msg.general.confirmFileCreation.desc)
+          .addToggle((toggle) => {
+            toggle
+              .setValue(this.plugin.settingsUnderChange.confirmFileCreation)
+              .onChange((value) => {
+                this.plugin.settingsUnderChange.confirmFileCreation = value;
                 this.plugin.triggerSettingsChangedDebounced();
               });
           });
@@ -1113,8 +1238,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           });
       });
 
-    new SettingGroup(containerEl)
-      .setHeading(msg.pinnedContent.heading)
+    new SettingGroup(pinnedContentPanel)
       .addSetting((setting) => {
         setting
           .setName(msg.pinnedContent.annotationStrings.name)
@@ -1127,13 +1251,15 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
               .onChange((value) => {
                 this.plugin.settingsUnderChange.annotationStringsForPinning = parsePrefixStrings(
                   value,
-                  this.plugin.settings.trimStringsInSettings,
-                  false,
-                );
-                this.plugin.triggerSettingsChangedDebounced();
-              })
-              .setPlaceholder(msg.pinnedContent.annotationStrings.placeholder);
+                this.plugin.settings.trimStringsInSettings,
+                false,
+              );
+              this.plugin.triggerSettingsChangedDebounced();
+            })
+            .setPlaceholder(msg.pinnedContent.annotationStrings.placeholder);
           });
+
+        this.addTipToDescription(setting, msg.pinnedContent.annotationStrings.tip);
       })
       .addSetting((setting) => {
         setting.setName(msg.pinnedContent.startMarker.name).addText((text) => {
@@ -1178,15 +1304,124 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       });
 
     const folderLinksSettingsArray = this.plugin.settingsUnderChange.folderLinksSettingsArray;
-    const folderLinksSettingGroup = new SettingGroup(containerEl).setHeading(msg.folderLinks.heading);
+
+    const addFolderSettingRow = folderLinksPanel.createDiv();
+    addFolderSettingRow.style.display = "flex";
+    addFolderSettingRow.style.justifyContent = "flex-end";
+    addFolderSettingRow.style.marginBottom = "10px";
+
+    const addFolderSettingButton = addFolderSettingRow.createEl("button", {
+      text: msg.folderLinks.controls.addFolderSetting,
+      cls: "mod-cta",
+    });
+    addFolderSettingButton.setAttr("type", "button");
+    addFolderSettingButton.addEventListener("click", () => {
+      this.plugin.settingsUnderChange.folderLinksSettingsArray.push(
+        deepCopy(DEFAULT_FOLDER_LINKS_SETTINGS),
+      );
+      this.plugin.triggerSettingsChangedDebounced();
+      this.display();
+    });
+
     for (let i = 0; i < folderLinksSettingsArray.length; i++) {
       const folderLinkSettings = folderLinksSettingsArray[i];
+      const ruleDisplayName =
+        folderLinkSettings.ruleName.trim() || msg.folderLinks.folderSettingHeading(i + 1);
+
+      const isCollapsed = this.collapsedFolderLinkSettings.has(folderLinkSettings);
+
+      const folderLinksSettingGroup = new SettingGroup(folderLinksPanel);
 
       folderLinksSettingGroup
         .addSetting((setting) => {
-          // The actual index will be the number shown here - 1.
-          setting.setName(msg.folderLinks.folderSettingHeading(i + 1)).setHeading();
-        })
+          setting
+            .setName("")
+            .addButton((button) => {
+              button.buttonEl.style.marginLeft = "auto";
+              button.setButtonText(msg.folderLinks.controls.pinToTop).onClick(() => {
+                this.swapFolderLinksSettings(i, 0);
+                this.plugin.triggerSettingsChangedDebounced();
+                this.display();
+              });
+            })
+            .addButton((button) => {
+              button.setButtonText(msg.folderLinks.controls.moveUp).onClick(() => {
+                this.swapFolderLinksSettings(i, i - 1);
+                this.plugin.triggerSettingsChangedDebounced();
+                this.display();
+              });
+            })
+            .addButton((button) => {
+              button.setButtonText(msg.folderLinks.controls.moveDown).onClick(() => {
+                this.swapFolderLinksSettings(i, i + 1);
+                this.plugin.triggerSettingsChangedDebounced();
+                this.display();
+              });
+            })
+            .addButton((button) => {
+              button
+                .setButtonText(msg.folderLinks.controls.remove)
+                .setWarning()
+                .onClick(() => {
+                  folderLinksSettingsArray.splice(i, 1);
+                  this.plugin.triggerSettingsChangedDebounced();
+                  this.display();
+                });
+            });
+
+          const nameEl = setting.nameEl;
+          nameEl.empty();
+          nameEl.style.display = "flex";
+          nameEl.style.alignItems = "center";
+          nameEl.style.gap = "6px";
+
+          const collapseToggleEl = nameEl.createEl("button", {
+            cls: "clickable-icon",
+          });
+          collapseToggleEl.setAttr("type", "button");
+          collapseToggleEl.style.padding = "0";
+          collapseToggleEl.style.minWidth = "16px";
+          collapseToggleEl.style.minHeight = "16px";
+          collapseToggleEl.style.border = "none";
+          collapseToggleEl.style.background = "transparent";
+          collapseToggleEl.style.display = "inline-flex";
+          collapseToggleEl.style.alignItems = "center";
+          collapseToggleEl.style.justifyContent = "center";
+          collapseToggleEl.style.transform = isCollapsed ? "rotate(-90deg)" : "rotate(0deg)";
+          collapseToggleEl.style.transition = "transform 0.2s ease-in-out";
+          setIcon(collapseToggleEl, "chevron-down");
+          collapseToggleEl.addEventListener("click", () => {
+            if (this.collapsedFolderLinkSettings.has(folderLinkSettings)) {
+              this.collapsedFolderLinkSettings.delete(folderLinkSettings);
+            } else {
+              this.collapsedFolderLinkSettings.add(folderLinkSettings);
+            }
+            this.display();
+          });
+
+          const ruleNameEl = nameEl.createEl("span", { text: ruleDisplayName });
+          ruleNameEl.style.cursor = "pointer";
+          ruleNameEl.style.fontWeight = "var(--font-medium)";
+          ruleNameEl.style.userSelect = "none";
+          ruleNameEl.addEventListener("click", () => {
+            new FolderRuleNameModal(
+              this.plugin,
+              msg.folderLinks.controls.rename,
+              ruleDisplayName,
+              (renamed) => {
+                folderLinkSettings.ruleName = renamed.trim();
+                this.plugin.triggerSettingsChangedDebounced();
+                this.display();
+              },
+            ).open();
+          });
+        });
+
+      if (isCollapsed) {
+        continue;
+      }
+
+      folderLinksSettingGroup
         .addSetting((setting) => {
           setting
             .setName(msg.folderLinks.folderPaths.name)
@@ -1399,49 +1634,56 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
               });
             });
         })
-        .addSetting((setting) => {
-          setting
-            .setName("")
-            .addButton((button) => {
-              button.setButtonText(msg.folderLinks.controls.moveUp).onClick(() => {
-                this.swapFolderLinksSettings(i, i - 1);
-                this.plugin.triggerSettingsChangedDebounced();
-                this.display(); // Force re-render.
-              });
-            })
-            .addButton((button) => {
-              button.setButtonText(msg.folderLinks.controls.moveDown).onClick(() => {
-                this.swapFolderLinksSettings(i, i + 1);
-                this.plugin.triggerSettingsChangedDebounced();
-                this.display(); // Force re-render.
-              });
-            })
-            .addButton((button) => {
-              button
-                .setButtonText(msg.folderLinks.controls.remove)
-                .setWarning()
-                .onClick(() => {
-                  folderLinksSettingsArray.splice(i, 1);
-                  this.plugin.triggerSettingsChangedDebounced();
-                  this.display(); // Force re-render.
-                });
-            });
-        });
+        ;
     }
-    folderLinksSettingGroup.addSetting((setting) => {
-      setting.setName("").addButton((button) => {
-        button
-          .setButtonText(msg.folderLinks.controls.addFolderSetting)
-          .setCta()
-          .onClick(() => {
-            this.plugin.settingsUnderChange.folderLinksSettingsArray.push(
-              deepCopy(DEFAULT_FOLDER_LINKS_SETTINGS),
-            );
-            this.plugin.triggerSettingsChangedDebounced();
-            this.display(); // Force re-render.
-          });
-      });
-    });
+
+    this.applyDescriptionLineBreaks(containerEl);
+  }
+
+  private applyDescriptionLineBreaks(root: HTMLElement): void {
+    const descriptionElements = root.querySelectorAll<HTMLElement>(".setting-item-description");
+
+    for (const descEl of descriptionElements) {
+      descEl.style.whiteSpace = "pre-line";
+      descEl.style.lineHeight = "1.45";
+      descEl.style.marginTop = "4px";
+    }
+  }
+
+  private addTipToDescription(setting: { descEl: HTMLElement }, tipText: string): void {
+    const content = tipText.trim();
+    if (content.length === 0) {
+      return;
+    }
+
+    const tipEl = document.createElement("span");
+    tipEl.className = "nav-link-header-tip-text header-tip-etxt";
+    tipEl.textContent = content;
+    setting.descEl.appendChild(document.createElement("br"));
+    setting.descEl.appendChild(tipEl);
+  }
+
+  private addTooltipToDescription(setting: { descEl: HTMLElement }, tooltipText: string): void {
+    const content = tooltipText.trim();
+    if (content.length === 0) {
+      return;
+    }
+
+    const icon = document.createElement("span");
+    icon.style.display = "inline-flex";
+    icon.style.verticalAlign = "text-bottom";
+    icon.style.marginLeft = "4px";
+    icon.style.cursor = "help";
+    icon.style.width = "16px";
+    icon.style.height = "16px";
+    setIcon(icon, "info");
+    const svgEl = icon.querySelector("svg");
+    if (svgEl instanceof SVGElement) {
+      svgEl.style.width = "16px";
+      svgEl.style.height = "16px";
+    }
+    setTooltip(icon, content);
+    setting.descEl.appendChild(icon);
   }
 
   /**
@@ -1461,6 +1703,51 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
     const temp = folderLinksSettingsArray[index1];
     folderLinksSettingsArray[index1] = folderLinksSettingsArray[index2];
     folderLinksSettingsArray[index2] = temp;
+  }
+}
+
+class FolderRuleNameModal extends Modal {
+  private value: string;
+
+  constructor(
+    private plugin: NavLinkHeader,
+    private title: string,
+    initialValue: string,
+    private onSubmit: (value: string) => void,
+  ) {
+    super(plugin.app);
+    this.value = initialValue;
+  }
+
+  public onOpen(): void {
+    const { contentEl } = this;
+    contentEl.empty();
+
+    contentEl.createEl("h2", { text: this.title });
+    new Setting(contentEl).addText((text) => {
+      text.setValue(this.value).onChange((value) => {
+        this.value = value;
+      });
+      text.inputEl.focus();
+      text.inputEl.select();
+    });
+
+    new Setting(contentEl)
+      .addButton((button) => {
+        button.setButtonText("保存").setCta().onClick(() => {
+          this.onSubmit(this.value);
+          this.close();
+        });
+      })
+      .addButton((button) => {
+        button.setButtonText("取消").onClick(() => {
+          this.close();
+        });
+      });
+  }
+
+  public onClose(): void {
+    this.contentEl.empty();
   }
 }
 

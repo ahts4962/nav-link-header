@@ -2,6 +2,20 @@ import type { BaseMessage } from "../types";
 
 const en: BaseMessage = {
   setting: {
+    tabs: {
+      common: "Common",
+      enabledViews: "Displayed views",
+      annotatedLinks: "Annotated links",
+      propertyLinks: "Property links",
+      periodicNotes: "Periodic notes",
+      pinnedContent: "Pinned content",
+      folderLinks: "Folder links",
+    },
+    sections: {
+      display: "Display",
+      displayPosition: "Display positions",
+      enabledViews: "Displayed views",
+    },
     threeWayDelimiterOptions: {
       full: "Full",
       "full-double-separator": "Full (double separator)",
@@ -10,6 +24,11 @@ const en: BaseMessage = {
       none: "None",
     },
     general: {
+      pluginGuide: {
+        name: "How to use",
+        desc: "First, choose target views in \"Displayed views\". Then configure data sources in the feature tabs (Annotated links / Property links / Periodic notes / Folder links). Once configured, open a note view to see the navigation header in action.",
+        linkLabel: "View official docs and examples",
+      },
       matchNavigationWidthToLineLength: {
         name: "Match navigation header width to line length",
         desc: `If enabled, the width of the navigation header will match the line length of the note.
@@ -18,12 +37,10 @@ option is enabled.`,
       },
       displayOrderOfLinks: {
         name: "Display order of links",
-        desc: `Specify the display order of links using prefix strings (e.g., emojis).
-For example:
-{periodic}, {property}, {folder}, 🏠, ⬆️, 📌, 🔗.
-Links are sorted according to the order of the prefix strings listed here.
-"{periodic}", "{property}", and "{folder}" are special strings that represent periodic
-note links, previous/next/parent property links, and folder links, respectively.`,
+        desc: `Specify the display order of links using prefix strings (e.g., emojis). For example: {periodic}, {property}, {folder}, 🏠, ⬆️, 📌, 🔗. Links are sorted according to the order of the prefix strings listed here.`,
+        descTooltip:
+          '"{periodic}", "{property}", and "{folder}" are special placeholders that represent periodic note links, previous/next/parent property links, and folder links, respectively.',
+        tip: "Separate multiple prefixes with commas.",
       },
       propertyNameForDisplayText: {
         name: "Property name to specify display text",
@@ -47,13 +64,15 @@ links with "🏠" will be displayed with the highest priority.`,
         desc: `Items whose prefix (e.g., an emoji) matches any of these strings will be collapsed
 into a single entry.
 Prefixes can also be added or removed by clicking them in the navigation header.`,
+        tip: "Separate multiple prefixes with commas.",
       },
       mergePrefixes: {
         name: "Merge prefixes",
         desc: `Specify the prefixes to merge. For example, setting 🔗 will merge links like
 🔗[[Note 1]] 🔗[[Note 2]] 🔗[[Note 3]] into 🔗[[Note 1]] [[Note 2]] [[Note 3]]
 in the navigation header.
-Multiple prefixes can be specified by separating them with commas.`,
+`,
+        tip: "Separate multiple prefixes with commas.",
       },
       displayLoadingMessage: {
         name: "Display loading message",
@@ -73,8 +92,8 @@ This option is currently only used for periodic notes.`,
         name: "Trim whitespace in input fields",
         desc: `When enabled, leading and trailing whitespace will be trimmed from the strings
 entered in the settings below.
-Disable this option if you want to include spaces intentionally.
-Affected settings: {affectedSettings}.`,
+Disable this option if you want to include spaces intentionally.`,
+        descTooltip: `Affected settings: {affectedSettings}.`,
         affectedSettings: [
           "Display order of links",
           "Duplicate link filtering priority",
@@ -98,18 +117,18 @@ Affected settings: {affectedSettings}.`,
       },
     },
     displayTargets: {
-      heading: "Display targets",
+      heading: "Displayed views",
       inPanes: {
         name: "Display navigation header in panes",
         desc: `Show navigation header when notes are opened in panes.
-This setting applies to note containers (panes). To show the navigation header,
-also enable view-specific options below.`,
+This setting applies to note containers (panes).`,
+        tip: "To show the navigation header, also enable view-specific options below.",
       },
       inPagePreviews: {
         name: "Display navigation header in page previews",
         desc: `Show navigation header when notes are shown in page previews.
-This setting applies to note containers (page previews).
-To show the navigation header, also enable view-specific options below.`,
+This setting applies to note containers (page previews).`,
+        tip: "To show the navigation header, also enable view-specific options below.",
       },
       inMarkdownViews: {
         name: "Display navigation header in Markdown views",
@@ -155,13 +174,13 @@ a link in a note content, the link is recognized as an annotated link.
 Notes with annotated links appear as backlinks in the navigation header of the
 destination note. Any string, including emoji, is acceptable as long as the following
 link is recognized as a link (Wikilink or Markdown link).
-To specify multiple annotations, separate them with commas. e.g., 📌,🔗.
-{emojiPlaceholder} can be used as a special placeholder
+Leave this field blank if you are not using this feature.`,
+        tip: "To specify multiple annotations, separate them with commas. e.g., 📌,🔗.",
+      },
+      annotationStringsForBacklinksTooltip: `{emojiPlaceholder} can be used as a special placeholder
 that represents any single emoji. For example, if you specify only
 {emojiPlaceholder}, all links preceded by an emoji will be matched.
-It can also be mixed with other entries, e.g., {emojiPlaceholder}📌,🔗.
-Leave this field blank if you are not using this feature.`,
-      },
+It can also be mixed with other entries, e.g., {emojiPlaceholder}📌,🔗。`,
       annotationStringsForCurrentNote: {
         name: "Annotation strings for current note",
         desc: `Define the annotation strings for links in the current note.
@@ -185,8 +204,8 @@ An empty string is also acceptable as a prefix.`,
       },
       advancedAnnotationStringsForCurrentNote: {
         name: "Advanced annotation strings for current note",
-        desc: `An advanced version of "Annotation strings for current note".
-The syntax is the same as that of "Advanced annotation strings for backlinks".`,
+        desc: `An advanced version of "Annotation strings for current note".`,
+        tip: 'The syntax is the same as that of "Advanced annotation strings for backlinks".',
       },
       allowSpaceAfterAnnotationString: {
         name: "Allow a space between the annotation string and the link",
@@ -209,8 +228,8 @@ that note will be displayed in the navigation header
 Each mapping consists of a property name and a string that will
 be placed at the beginning of the link when it appears in the navigation header
 (use emojis in this string if you want it to appear like an icon).
-Each line should be in the format property_name:prefix.
-To include a colon in the prefix, escape it as \\:. 
+Each line should be in the format property_name:prefix.`,
+        tip: `To include a colon in the prefix, escape it as \\:. 
 An empty string is also acceptable as a prefix.
 Leave this field blank if you are not using this feature.`,
         placeholder: "up:⬆️\nhome:🏠",
@@ -218,22 +237,22 @@ Leave this field blank if you are not using this feature.`,
       previousNotePropertyMappings: {
         name: "Previous note property mappings",
         desc: `Enter the mapping that specifies the previous note. The note specified here will
-appear in the navigation header as < previous | parent | next >.
-The syntax is the same as "Property mappings".`,
+appear in the navigation header as < previous | parent | next >.`,
+        tip: 'The syntax is the same as "Property mappings".',
         placeholder: "previous:",
       },
       nextNotePropertyMappings: {
         name: "Next note property mappings",
         desc: `Enter the mapping that specifies the next note. The note specified here will appear
-in the navigation header as < previous | parent | next >.
-The syntax is the same as "Property mappings".`,
+in the navigation header as < previous | parent | next >.`,
+        tip: 'The syntax is the same as "Property mappings".',
         placeholder: "next:",
       },
       parentNotePropertyMappings: {
         name: "Parent note property mappings",
         desc: `Enter the mapping that specifies the parent note. The note specified here will appear
-in the navigation header as < previous | parent | next >.
-The syntax is the same as "Property mappings".`,
+in the navigation header as < previous | parent | next >.`,
+        tip: 'The syntax is the same as "Property mappings".',
         placeholder: "parent:\nup:",
       },
       linkDisplayStyle: {
@@ -257,6 +276,13 @@ Enter one pair per line.`,
     },
     periodicNotes: {
       heading: "Periodic note links",
+      sections: {
+        daily: "Daily notes",
+        weekly: "Weekly notes",
+        monthly: "Monthly notes",
+        quarterly: "Quarterly notes",
+        yearly: "Yearly notes",
+      },
       displayPrevNextInDailyNotes: {
         name: "Display previous and next links in daily notes",
         desc: `To use this option, daily notes must be enabled
@@ -313,8 +339,8 @@ continues up to the end of the line.
 If the start and end markers defined below appear immediately after
 the annotation string, only the content between those markers is displayed instead.
 Example: 📌[[note 1]]/[[note 2]](end of line) → 📌[[note 1]]/[[note 2]],
-📌([[note 1]]/[[note 2]])[[note 3]] → 📌[[note 1]]/[[note 2]].
-To specify multiple annotations, separate them with commas.`,
+📌([[note 1]]/[[note 2]])[[note 3]] → 📌[[note 1]]/[[note 2]].`,
+        tip: "To specify multiple annotations, separate them with commas.",
         placeholder: "📌,🔗",
       },
       startMarker: { name: "Start marker", placeholder: "(" },
@@ -419,6 +445,10 @@ None: previous parent next.`,
         desc: "The string to display before each link (e.g., an emoji).",
       },
       controls: {
+        rename: "Rename",
+        expand: "Expand",
+        collapse: "Collapse",
+        pinToTop: "Pin to top",
         moveUp: "Move up",
         moveDown: "Move down",
         remove: "Remove",

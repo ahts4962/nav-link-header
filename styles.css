@@ -142,3 +142,13 @@
     margin-right: 30px;
   }
 }
+
+/* Tip-style helper text in settings descriptions */
+.nav-link-header-tip-text,
+.header-tip-etxt {
+  display: block;
+  margin-top: 4px;
+  padding-left: 8px;
+  color: var(--text-faint);
+  font-style: italic;
+}

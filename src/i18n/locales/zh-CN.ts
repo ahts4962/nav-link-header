@@ -2,6 +2,20 @@ import type { BaseMessage } from "../types";
 
 const zhCN: BaseMessage = {
   setting: {
+    tabs: {
+      common: "通用",
+      enabledViews: "显示视图",
+      annotatedLinks: "注释链接",
+      propertyLinks: "属性链接",
+      periodicNotes: "周期笔记",
+      pinnedContent: "置顶注释",
+      folderLinks: "文件夹链接",
+    },
+    sections: {
+      display: "显示",
+      displayPosition: "显示位置",
+      enabledViews: "显示视图",
+    },
     threeWayDelimiterOptions: {
       full: "完整",
       "full-double-separator": "完整（双分隔符）",
@@ -10,6 +24,11 @@ const zhCN: BaseMessage = {
       none: "无",
     },
     general: {
+      pluginGuide: {
+        name: "插件使用说明",
+        desc: "先在「显示视图」中选择需要显示导航栏的视图，再到各功能标签页（注释链接 / 属性链接 / 周期笔记 / 文件夹链接）配置链接的数据来源。配置完成后，返回笔记视图即可看到导航栏效果。",
+        linkLabel: "查看官方说明与示例",
+      },
       matchNavigationWidthToLineLength: {
         name: "让导航栏宽度匹配行宽",
         desc: `启用后，导航栏的宽度会与笔记内容的行宽一致。
@@ -17,12 +36,10 @@ const zhCN: BaseMessage = {
       },
       displayOrderOfLinks: {
         name: "链接显示顺序",
-        desc: `使用前缀字符串（例如 emoji）指定链接显示顺序。
-例如：
-{periodic}、{property}、{folder}、🏠、⬆️、📌、🔗。
-链接会按这里列出的前缀顺序排序。
-"{periodic}"、"{property}" 和 "{folder}" 是特殊字符串，分别代表
-周期笔记链接、上一条/下一条/父级属性链接，以及文件夹链接。`,
+        desc: `使用前缀字符串（例如 emoji）指定链接显示顺序。例如：{periodic}、{property}、{folder}、🏠、⬆️、📌、🔗。链接会按这里列出的前缀顺序排序。`,
+        descTooltip:
+          '“{periodic}”、“{property}” 和 “{folder}” 是特殊占位符，分别代表周期笔记链接、上一条/下一条/父级属性链接，以及文件夹链接。',
+        tip: "多个前缀请使用英文逗号分隔。",
       },
       propertyNameForDisplayText: {
         name: "作为显示名称的属性名",
@@ -44,20 +61,21 @@ const zhCN: BaseMessage = {
         name: "折叠前缀",
         desc: `带有下列前缀（例如 emoji）的项目会自动折叠。
 你也可以在导航栏中点击前缀来折叠/取消折叠。`,
+        tip: "多个前缀请使用英文逗号分隔。",
       },
       mergePrefixes: {
         name: "合并前缀",
         desc: `指定要合并的前缀。例如设置 🔗 后，导航栏中的
-🔗[[Note 1]] 🔗[[Note 2]] 🔗[[Note 3]] 会合并为 🔗[[Note 1]] [[Note 2]] [[Note 3]]。
-多个前缀请使用英文逗号分隔。`,
+🔗[[Note 1]] 🔗[[Note 2]] 🔗[[Note 3]] 会合并为 🔗[[Note 1]] [[Note 2]] [[Note 3]]。`,
+        tip: "多个前缀请使用英文逗号分隔。",
       },
       displayLoadingMessage: {
         name: "显示加载提示",
-        desc: `链接加载过程中，在导航栏显示加载提示（「Loading...」）。`,
+        desc: `链接加载过程中，在导航栏显示加载提示（加载中……）。`,
       },
       displayPlaceholder: {
         name: "显示占位提示",
-        desc: `当没有可显示内容时，显示占位提示（「No links」）。`,
+        desc: `当没有可显示内容时，显示占位提示（无链接）。`,
       },
       confirmFileCreation: {
         name: "创建新文件时确认",
@@ -67,8 +85,8 @@ const zhCN: BaseMessage = {
       trimWhitespaceInInputFields: {
         name: "裁剪输入字段首尾空白",
         desc: `启用后，会自动去除下方设置中输入字符串的首尾空白。
-如果你需要保留空格，请关闭此选项。
-受影响设置：{affectedSettings}。`,
+如果你需要保留空格，请关闭此选项。`,
+        descTooltip: `受影响设置：{affectedSettings}。`,
         affectedSettings: [
           "链接显示顺序",
           "重复链接过滤优先级",
@@ -92,18 +110,18 @@ const zhCN: BaseMessage = {
       },
     },
     displayTargets: {
-      heading: "显示位置",
+      heading: "显示视图",
       inPanes: {
         name: "窗格",
         desc: `在笔记以窗格形式打开时显示导航栏。
-该设置作用于笔记容器（窗格）。要真正显示导航栏，
-还需要启用下方对应视图类型的选项。`,
+该设置作用于笔记容器（窗格）。`,
+        tip: "要真正显示导航栏，还需要启用下方对应视图类型的选项。",
       },
       inPagePreviews: {
         name: "页面预览",
         desc: `在页面预览中显示笔记时显示导航栏。
-该设置作用于笔记容器（页面预览）。
-要真正显示导航栏，还需要启用下方对应视图类型的选项。`,
+该设置作用于笔记容器（页面预览）。`,
+        tip: "要真正显示导航栏，还需要启用下方对应视图类型的选项。",
       },
       inMarkdownViews: {
         name: "Markdown 视图",
@@ -149,12 +167,12 @@ const zhCN: BaseMessage = {
 包含注释链接的笔记会显示在目标笔记导航栏的反向链接中。
 只要后续内容可被识别为链接（Wikilink 或 Markdown 链接），
 任意字符串（包括 emoji）都可以作为注释字符串。
-多个注释请用英文逗号分隔，例如 📌,🔗。
-{emojiPlaceholder} 可作为特殊占位符，表示任意单个 emoji。
-例如仅填写 {emojiPlaceholder} 时，所有前面带 emoji 的链接都会匹配。
-它也可以与其他条目混用，例如 {emojiPlaceholder}📌,🔗。
 如果不使用此功能，请留空。`,
+        tip: "多个注释请用英文逗号分隔，例如 📌,🔗。",
       },
+      annotationStringsForBacklinksTooltip: `{emojiPlaceholder} 可作为特殊占位符，表示任意单个 emoji。
+例如仅填写 {emojiPlaceholder} 时，所有前面带 emoji 的链接都会匹配。
+它也可以与其他条目混用，例如 {emojiPlaceholder}📌,🔗。`,
       annotationStringsForCurrentNote: {
         name: "当前笔记注释字符串",
         desc: `定义当前笔记中链接使用的注释字符串。
@@ -176,8 +194,8 @@ const zhCN: BaseMessage = {
       },
       advancedAnnotationStringsForCurrentNote: {
         name: "当前笔记高级注释字符串",
-        desc: `「当前笔记注释字符串」的高级版本。
-语法与「反向链接高级注释字符串」一致。`,
+        desc: `「当前笔记注释字符串」的高级版本。`,
+        tip: "语法与「反向链接高级注释字符串」一致。",
       },
       allowSpaceAfterAnnotationString: {
         name: "允许注释字符串与链接之间有空格",
@@ -192,14 +210,11 @@ const zhCN: BaseMessage = {
       heading: "属性链接",
       propertyMappings: {
         name: "属性映射",
-        desc: `定义属性映射。
-如果这里指定的文件属性指向某个笔记，
-该笔记会显示在导航栏中（也支持网站 URL）。
-每条映射由属性名和一个前缀字符串组成，
-当前缀链接出现在导航栏时会显示该字符串
-（如果想作为图标显示，可使用 emoji）。
-每行格式为 property_name:prefix。
-若前缀中需要冒号，请使用 \\: 转义。
+        desc: `定义从属性映射的链接关系。
+如果这里指定的文件属性指向某个笔记，该笔记会显示在导航栏中（也支持网站 URL）。
+每条映射由属性名和一个前缀字符串组成，当前缀链接出现在导航栏时会显示该字符串（如果想作为图标显示，可使用 emoji）。
+每行格式为 property_name:prefix。`,
+        tip: `若前缀中需要冒号，请使用 \\: 转义。
 前缀也可以为空字符串。
 如果不使用此功能，请留空。`,
         placeholder: "up:⬆️\nhome:🏠",
@@ -207,22 +222,22 @@ const zhCN: BaseMessage = {
       previousNotePropertyMappings: {
         name: "上一条笔记属性映射",
         desc: `输入用于指定上一条笔记的映射。这里指定的笔记会在导航栏中显示为
-< previous | parent | next >。
-语法与「属性映射」相同。`,
+< previous | parent | next >。`,
+        tip: "语法与「属性映射」相同。",
         placeholder: "previous:",
       },
       nextNotePropertyMappings: {
         name: "下一条笔记属性映射",
         desc: `输入用于指定下一条笔记的映射。这里指定的笔记会在导航栏中显示为
-< previous | parent | next >。
-语法与「属性映射」相同。`,
+< previous | parent | next >。`,
+        tip: "语法与「属性映射」相同。",
         placeholder: "next:",
       },
       parentNotePropertyMappings: {
         name: "父级笔记属性映射",
         desc: `输入用于指定父级笔记的映射。这里指定的笔记会在导航栏中显示为
-< previous | parent | next >。
-语法与「属性映射」相同。`,
+< previous | parent | next >。`,
+        tip: "语法与「属性映射」相同。",
         placeholder: "parent:\nup:",
       },
       linkDisplayStyle: {
@@ -245,6 +260,13 @@ const zhCN: BaseMessage = {
     },
     periodicNotes: {
       heading: "周期笔记链接",
+      sections: {
+        daily: "日记",
+        weekly: "周记",
+        monthly: "月记",
+        quarterly: "季记",
+        yearly: "年记",
+      },
       displayPrevNextInDailyNotes: {
         name: "在日记中显示上一条和下一条链接",
         desc: `使用此选项前，请先在 Daily Notes 插件或 Periodic Notes 插件中启用日记。`,
@@ -291,17 +313,17 @@ const zhCN: BaseMessage = {
       },
     },
     pinnedContent: {
-      heading: "置顶笔记内容",
+      heading: "置顶注释",
       annotationStrings: {
         name: "注释字符串",
         desc: `在导航栏中显示当前笔记的一部分内容。
-显示文本会从指定注释字符串后立即开始，
-一直持续到该行末尾。
+显示文本会从指定注释字符串后立即开始，一直持续到该行末尾。
 如果注释字符串后紧跟下方定义的起始和结束标记，
 则只显示这两个标记之间的内容。
-示例：📌[[note 1]]/[[note 2]](行末) → 📌[[note 1]]/[[note 2]]，
-📌([[note 1]]/[[note 2]])[[note 3]] → 📌[[note 1]]/[[note 2]]。
-多个注释请用英文逗号分隔。`,
+示例：
+📌[[note 1]]/[[note 2]](行末) → 📌[[note 1]]/[[note 2]]，
+📌([[note 1]]/[[note 2]])[[note 3]] → 📌[[note 1]]/[[note 2]]。`,
+        tip: "多个注释请用英文逗号分隔。",
         placeholder: "📌,🔗",
       },
       startMarker: { name: "起始标记", placeholder: "(" },
@@ -406,6 +428,10 @@ folder/*：folder 下一级所有文件夹）。`,
         desc: "显示在每个链接前的字符串（例如 emoji）。",
       },
       controls: {
+        rename: "重命名",
+        expand: "展开",
+        collapse: "折叠",
+        pinToTop: "置顶",
         moveUp: "上移",
         moveDown: "下移",
         remove: "移除",
@@ -437,7 +463,7 @@ folder/*：folder 下一级所有文件夹）。`,
     cancel: "取消",
   },
   ui: {
-    loading: "加载中...",
+    loading: "加载中……",
     noLinks: "无链接",
     collapsedCount: (itemCount: number) => `（${itemCount} 项）`,
   },
