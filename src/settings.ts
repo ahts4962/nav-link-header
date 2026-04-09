@@ -10,6 +10,7 @@ import {
 import { EMOJI_ANNOTATION_PLACEHOLDER } from "./annotatedLink";
 import type { ThreeWayDelimiters } from "./ui/props";
 import { deepCopy } from "./utils";
+import { t } from "./i18n/i18n";
 
 export interface NavLinkHeaderSettings {
   version: string;
@@ -404,25 +405,16 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
     const { containerEl } = this;
     containerEl.empty();
 
-    const threeWayDelimiterOptions = {
-      "full": "Full",
-      "full-double-separator": "Full (double separator)",
-      "separator": "Separator",
-      "double-separator": "Double separator",
-      "none": "None",
-    } satisfies Record<ThreeWayDelimiters, string>;
+    const msg = t().setting;
+
+    const threeWayDelimiterOptions =
+      msg.threeWayDelimiterOptions satisfies Record<ThreeWayDelimiters, string>;
 
     new SettingGroup(containerEl)
       .addSetting((setting) => {
         setting
-          .setName("Match navigation header width to line length")
-          .setDesc(
-            `
-              If enabled, the width of the navigation header will match the line length of the note.
-              Here, "line length" refers to the width defined when Obsidian's "Readable line length"
-              option is enabled.
-            `,
-          )
+          .setName(msg.general.matchNavigationWidthToLineLength.name)
+          .setDesc(msg.general.matchNavigationWidthToLineLength.desc)
           .addToggle((toggle) => {
             toggle
               .setValue(this.plugin.settingsUnderChange.matchNavigationWidthToLineLength)
@@ -434,18 +426,12 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       })
       .addSetting((setting) => {
         setting
-          .setName("Display order of links")
+          .setName(msg.general.displayOrderOfLinks.name)
           .setDesc(
-            `
-              Specify the display order of links using prefix strings (e.g., emojis).
-              For example:
-              ${DISPLAY_ORDER_PLACEHOLDER_PERIODIC}, ${DISPLAY_ORDER_PLACEHOLDER_PROPERTY},
-              ${DISPLAY_ORDER_PLACEHOLDER_FOLDER}, 🏠, ⬆️, 📌, 🔗.
-              Links are sorted according to the order of the prefix strings listed here.
-              "${DISPLAY_ORDER_PLACEHOLDER_PERIODIC}", "${DISPLAY_ORDER_PLACEHOLDER_PROPERTY}",
-              and "${DISPLAY_ORDER_PLACEHOLDER_FOLDER}" are special strings that represent periodic
-              note links, previous/next/parent property links, and folder links, respectively.
-            `,
+            msg.general.displayOrderOfLinks.desc
+              .replaceAll("{periodic}", DISPLAY_ORDER_PLACEHOLDER_PERIODIC)
+              .replaceAll("{property}", DISPLAY_ORDER_PLACEHOLDER_PROPERTY)
+              .replaceAll("{folder}", DISPLAY_ORDER_PLACEHOLDER_FOLDER),
           )
           .addText((text) => {
             const order = this.plugin.settingsUnderChange.displayOrderOfLinks.join(",");
@@ -461,17 +447,12 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       })
       .addSetting((setting) => {
         setting
-          .setName("Property name to specify display text")
-          .setDesc(
-            `
-              If you want to use file properties to specify the note's display text, set the
-              property name to this field. Leave this field blank if you are not using this feature.
-            `,
-          )
+          .setName(msg.general.propertyNameForDisplayText.name)
+          .setDesc(msg.general.propertyNameForDisplayText.desc)
           .addText((text) => {
             text
               .setValue(this.plugin.settingsUnderChange.propertyNameForDisplayText)
-              .setPlaceholder("title")
+              .setPlaceholder(msg.general.propertyNameForDisplayText.placeholder)
               .onChange((value) => {
                 this.plugin.settingsUnderChange.propertyNameForDisplayText = value.trim();
                 this.plugin.triggerSettingsChangedDebounced();
@@ -480,13 +461,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       })
       .addSetting((setting) => {
         setting
-          .setName("Filter duplicate links")
-          .setDesc(
-            `
-              Filter out duplicates when multiple links with the same destination are detected.
-              This setting does not apply to prev/next/parent-type links and pinned note contents.
-            `,
-          )
+          .setName(msg.general.filterDuplicateLinks.name)
+          .setDesc(msg.general.filterDuplicateLinks.desc)
           .addToggle((toggle) => {
             toggle
               .setValue(this.plugin.settingsUnderChange.filterDuplicateNotes)
@@ -498,14 +474,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       })
       .addSetting((setting) => {
         setting
-          .setName("Duplicate link filtering priority")
-          .setDesc(
-            `
-              Specify the filtering priority.
-              For example, if you specify 🏠,⬆️,📌,🔗 here,
-              links with "🏠" will be displayed with the highest priority.
-            `,
-          )
+          .setName(msg.general.duplicateLinkFilteringPriority.name)
+          .setDesc(msg.general.duplicateLinkFilteringPriority.desc)
           .addText((text) => {
             const priority =
               this.plugin.settingsUnderChange.duplicateNoteFilteringPriority.join(",");
@@ -521,14 +491,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       })
       .addSetting((setting) => {
         setting
-          .setName("Item collapse prefixes")
-          .setDesc(
-            `
-              Items whose prefix (e.g., an emoji) matches any of these strings will be collapsed
-              into a single entry.
-              Prefixes can also be added or removed by clicking them in the navigation header.
-            `,
-          )
+          .setName(msg.general.itemCollapsePrefixes.name)
+          .setDesc(msg.general.itemCollapsePrefixes.desc)
           .addText((text) => {
             const prefixes = this.plugin.settingsUnderChange.itemCollapsePrefixes.join(",");
             text.setValue(prefixes).onChange((value) => {
@@ -543,15 +507,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       })
       .addSetting((setting) => {
         setting
-          .setName("Merge prefixes")
-          .setDesc(
-            `
-              Specify the prefixes to merge. For example, setting 🔗 will merge links like
-              🔗[[Note 1]] 🔗[[Note 2]] 🔗[[Note 3]] into 🔗[[Note 1]] [[Note 2]] [[Note 3]]
-              in the navigation header.
-              Multiple prefixes can be specified by separating them with commas.
-            `,
-          )
+          .setName(msg.general.mergePrefixes.name)
+          .setDesc(msg.general.mergePrefixes.desc)
           .addText((text) => {
             const prefixes = this.plugin.settingsUnderChange.mergePrefixes.join(",");
             text.setValue(prefixes).onChange((value) => {
@@ -566,13 +523,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       })
       .addSetting((setting) => {
         setting
-          .setName("Display loading message")
-          .setDesc(
-            `
-              Display a loading message ("Loading...") in the navigation header
-              while links are being loaded.
-            `,
-          )
+          .setName(msg.general.displayLoadingMessage.name)
+          .setDesc(msg.general.displayLoadingMessage.desc)
           .addToggle((toggle) => {
             toggle
               .setValue(this.plugin.settingsUnderChange.displayLoadingMessage)
@@ -584,12 +536,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       })
       .addSetting((setting) => {
         setting
-          .setName("Display placeholder")
-          .setDesc(
-            `
-              Display a placeholder ("No links") when there is nothing to display.
-            `,
-          )
+          .setName(msg.general.displayPlaceholder.name)
+          .setDesc(msg.general.displayPlaceholder.desc)
           .addToggle((toggle) => {
             toggle
               .setValue(this.plugin.settingsUnderChange.displayPlaceholder)
@@ -601,13 +549,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       })
       .addSetting((setting) => {
         setting
-          .setName("Confirm when creating a new file")
-          .setDesc(
-            `
-              Display a confirmation dialog when a new file is created.
-              This option is currently only used for periodic notes.
-            `,
-          )
+          .setName(msg.general.confirmFileCreation.name)
+          .setDesc(msg.general.confirmFileCreation.desc)
           .addToggle((toggle) => {
             toggle
               .setValue(this.plugin.settingsUnderChange.confirmFileCreation)
@@ -618,38 +561,17 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           });
       })
       .addSetting((setting) => {
-        const affectedSettings = [
-          "Display order of links",
-          "Duplicate link filtering priority",
-          "Item collapse prefixes",
-          "Merge prefixes",
-          "Annotation strings for backlinks",
-          "Annotation strings for current note",
-          "Advanced annotation strings for backlinks",
-          "Advanced annotation strings for current note",
-          "Previous note property mappings",
-          "Next note property mappings",
-          "Parent note property mappings",
-          "Link prefix (Periodic note links)",
-          "Annotation strings (Pinned note content)",
-          "Start marker",
-          "End marker",
-          "Include patterns",
-          "Exclude patterns",
-          "Link prefix (Folder links)",
-        ]
+        const affectedSettings = msg.general.trimWhitespaceInInputFields.affectedSettings
           .map((s) => `"${s}"`)
           .join(", ");
 
         setting
-          .setName("Trim whitespace in input fields")
+          .setName(msg.general.trimWhitespaceInInputFields.name)
           .setDesc(
-            `
-              When enabled, leading and trailing whitespace will be trimmed from the strings
-              entered in the settings below.
-              Disable this option if you want to include spaces intentionally.
-              Affected settings: ${affectedSettings}.
-            `,
+            msg.general.trimWhitespaceInInputFields.desc.replace(
+              "{affectedSettings}",
+              affectedSettings,
+            ),
           )
           .addToggle((toggle) => {
             toggle
@@ -662,17 +584,11 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       });
 
     new SettingGroup(containerEl)
-      .setHeading("Display targets")
+      .setHeading(msg.displayTargets.heading)
       .addSetting((setting) => {
         setting
-          .setName("Display navigation header in panes")
-          .setDesc(
-            `
-              Show navigation header when notes are opened in panes.
-              This setting applies to note containers (panes). To show the navigation header,
-              also enable view-specific options below.
-            `,
-          )
+          .setName(msg.displayTargets.inPanes.name)
+          .setDesc(msg.displayTargets.inPanes.desc)
           .addToggle((toggle) => {
             toggle.setValue(this.plugin.settingsUnderChange.displayInLeaves).onChange((value) => {
               this.plugin.settingsUnderChange.displayInLeaves = value;
@@ -682,14 +598,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       })
       .addSetting((setting) => {
         setting
-          .setName("Display navigation header in page previews")
-          .setDesc(
-            `
-              Show navigation header when notes are shown in page previews.
-              This setting applies to note containers (page previews).
-              To show the navigation header, also enable view-specific options below.
-            `,
-          )
+          .setName(msg.displayTargets.inPagePreviews.name)
+          .setDesc(msg.displayTargets.inPagePreviews.desc)
           .addToggle((toggle) => {
             toggle
               .setValue(this.plugin.settingsUnderChange.displayInHoverPopovers)
@@ -701,8 +611,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       })
       .addSetting((setting) => {
         setting
-          .setName("Display navigation header in Markdown views")
-          .setDesc("Show navigation header when viewing Markdown documents.")
+          .setName(msg.displayTargets.inMarkdownViews.name)
+          .setDesc(msg.displayTargets.inMarkdownViews.desc)
           .addToggle((toggle) => {
             toggle
               .setValue(this.plugin.settingsUnderChange.displayInMarkdownViews)
@@ -714,8 +624,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       })
       .addSetting((setting) => {
         setting
-          .setName("Display navigation header in Image views")
-          .setDesc("Show navigation header when viewing images.")
+          .setName(msg.displayTargets.inImageViews.name)
+          .setDesc(msg.displayTargets.inImageViews.desc)
           .addToggle((toggle) => {
             toggle
               .setValue(this.plugin.settingsUnderChange.displayInImageViews)
@@ -727,8 +637,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       })
       .addSetting((setting) => {
         setting
-          .setName("Display navigation header in Video views")
-          .setDesc("Show navigation header when viewing videos.")
+          .setName(msg.displayTargets.inVideoViews.name)
+          .setDesc(msg.displayTargets.inVideoViews.desc)
           .addToggle((toggle) => {
             toggle
               .setValue(this.plugin.settingsUnderChange.displayInVideoViews)
@@ -740,8 +650,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       })
       .addSetting((setting) => {
         setting
-          .setName("Display navigation header in Audio views")
-          .setDesc("Show navigation header when viewing audio.")
+          .setName(msg.displayTargets.inAudioViews.name)
+          .setDesc(msg.displayTargets.inAudioViews.desc)
           .addToggle((toggle) => {
             toggle
               .setValue(this.plugin.settingsUnderChange.displayInAudioViews)
@@ -753,8 +663,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       })
       .addSetting((setting) => {
         setting
-          .setName("Display navigation header in PDF views")
-          .setDesc("Show navigation header when viewing PDFs.")
+          .setName(msg.displayTargets.inPdfViews.name)
+          .setDesc(msg.displayTargets.inPdfViews.desc)
           .addToggle((toggle) => {
             toggle.setValue(this.plugin.settingsUnderChange.displayInPdfViews).onChange((value) => {
               this.plugin.settingsUnderChange.displayInPdfViews = value;
@@ -764,8 +674,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       })
       .addSetting((setting) => {
         setting
-          .setName("Display navigation header in Canvas views")
-          .setDesc("Show navigation header when viewing Canvas.")
+          .setName(msg.displayTargets.inCanvasViews.name)
+          .setDesc(msg.displayTargets.inCanvasViews.desc)
           .addToggle((toggle) => {
             toggle
               .setValue(this.plugin.settingsUnderChange.displayInCanvasViews)
@@ -777,8 +687,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       })
       .addSetting((setting) => {
         setting
-          .setName("Display navigation header in Bases views")
-          .setDesc("Show navigation header when viewing Bases.")
+          .setName(msg.displayTargets.inBasesViews.name)
+          .setDesc(msg.displayTargets.inBasesViews.desc)
           .addToggle((toggle) => {
             toggle
               .setValue(this.plugin.settingsUnderChange.displayInBasesViews)
@@ -790,13 +700,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       })
       .addSetting((setting) => {
         setting
-          .setName("Display navigation header in other views")
-          .setDesc(
-            `
-          Show navigation header in other views (such as views introduced by community plugins).
-          This may not work depending on the view type.
-        `,
-          )
+          .setName(msg.displayTargets.inOtherViews.name)
+          .setDesc(msg.displayTargets.inOtherViews.desc)
           .addToggle((toggle) => {
             toggle
               .setValue(this.plugin.settingsUnderChange.displayInOtherViews)
@@ -808,25 +713,15 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       });
 
     new SettingGroup(containerEl)
-      .setHeading("Annotated links")
+      .setHeading(msg.annotatedLinks.heading)
       .addSetting((setting) => {
         setting
-          .setName("Annotation strings for backlinks")
+          .setName(msg.annotatedLinks.annotationStringsForBacklinks.name)
           .setDesc(
-            `
-              Define the annotation strings.
-              If one of the annotation strings (e.g., emojis) is placed immediately before
-              a link in a note content, the link is recognized as an annotated link.
-              Notes with annotated links appear as backlinks in the navigation header of the
-              destination note. Any string, including emoji, is acceptable as long as the following
-              link is recognized as a link (Wikilink or Markdown link).
-              To specify multiple annotations, separate them with commas. e.g., 📌,🔗.
-              ${EMOJI_ANNOTATION_PLACEHOLDER} can be used as a special placeholder
-              that represents any single emoji. For example, if you specify only
-              ${EMOJI_ANNOTATION_PLACEHOLDER}, all links preceded by an emoji will be matched.
-              It can also be mixed with other entries, e.g., ${EMOJI_ANNOTATION_PLACEHOLDER}📌,🔗.
-              Leave this field blank if you are not using this feature.
-            `,
+            msg.annotatedLinks.annotationStringsForBacklinks.desc.replaceAll(
+              "{emojiPlaceholder}",
+              EMOJI_ANNOTATION_PLACEHOLDER,
+            ),
           )
           .addText((text) => {
             const annotations =
@@ -843,14 +738,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       })
       .addSetting((setting) => {
         setting
-          .setName("Annotation strings for current note")
-          .setDesc(
-            `
-              Define the annotation strings for links in the current note.
-              This setting works the same way as "Annotation strings for backlinks",
-              but applies to links in the current note.
-            `,
-          )
+          .setName(msg.annotatedLinks.annotationStringsForCurrentNote.name)
+          .setDesc(msg.annotatedLinks.annotationStringsForCurrentNote.desc)
           .addText((text) => {
             const annotations =
               this.plugin.settingsUnderChange.annotationStringsForCurrentNote.join(",");
@@ -866,8 +755,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       })
       .addSetting((setting) => {
         setting
-          .setName("Hide prefixes in the navigation header")
-          .setDesc("If enabled, prefixes (e.g., emojis) will be hidden in the navigation header.")
+          .setName(msg.annotatedLinks.hidePrefixes.name)
+          .setDesc(msg.annotatedLinks.hidePrefixes.desc)
           .addToggle((toggle) => {
             toggle
               .setValue(this.plugin.settingsUnderChange.hideAnnotatedLinkPrefix)
@@ -879,18 +768,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       })
       .addSetting((setting) => {
         setting
-          .setName("Advanced annotation strings for backlinks")
-          .setDesc(
-            `
-              An advanced version of "Annotation strings for backlinks".
-              This setting allows regular expressions to be used as
-              annotation strings and any prefix (e.g., an emoji) to be assigned for display
-              in the navigation header.
-              Enter one mapping per line using the format regex:prefix.
-              To include a colon in the prefix, escape it as "\\:".
-              An empty string is also acceptable as a prefix.
-            `,
-          )
+          .setName(msg.annotatedLinks.advancedAnnotationStringsForBacklinks.name)
+          .setDesc(msg.annotatedLinks.advancedAnnotationStringsForBacklinks.desc)
           .addTextArea((text) => {
             const annotations =
               this.plugin.settingsUnderChange.advancedAnnotationStringsForBacklinks
@@ -900,7 +779,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
                 .join("\n");
             text
               .setValue(annotations)
-              .setPlaceholder("📌:🔗\n(?:^|\\n)-:\n\\[\\[E\\]\\]:🔗")
+              .setPlaceholder(msg.annotatedLinks.advancedAnnotationStringsForBacklinks.placeholder)
               .onChange((value) => {
                 this.plugin.settingsUnderChange.advancedAnnotationStringsForBacklinks =
                   parseAdvancedAnnotationStrings(value, this.plugin.settings.trimStringsInSettings);
@@ -910,13 +789,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       })
       .addSetting((setting) => {
         setting
-          .setName("Advanced annotation strings for current note")
-          .setDesc(
-            `
-              An advanced version of "Annotation strings for current note".
-              The syntax is the same as that of "Advanced annotation strings for backlinks".
-            `,
-          )
+          .setName(msg.annotatedLinks.advancedAnnotationStringsForCurrentNote.name)
+          .setDesc(msg.annotatedLinks.advancedAnnotationStringsForCurrentNote.desc)
           .addTextArea((text) => {
             const annotations =
               this.plugin.settingsUnderChange.advancedAnnotationStringsForCurrentNote
@@ -933,13 +807,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       })
       .addSetting((setting) => {
         setting
-          .setName("Allow a space between the annotation string and the link")
-          .setDesc(
-            `
-              If enabled, a link will still be recognized as an annotated link even if there is a
-              space between the annotation string and the link.
-            `,
-          )
+          .setName(msg.annotatedLinks.allowSpaceAfterAnnotationString.name)
+          .setDesc(msg.annotatedLinks.allowSpaceAfterAnnotationString.desc)
           .addToggle((toggle) => {
             toggle
               .setValue(this.plugin.settingsUnderChange.allowSpaceAfterAnnotationString)
@@ -951,10 +820,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       })
       .addSetting((setting) => {
         setting
-          .setName("Ignore variation selectors")
-          .setDesc(
-            "If enabled, emoji variation selectors (VS15/VS16) are ignored when matching links.",
-          )
+          .setName(msg.annotatedLinks.ignoreVariationSelectors.name)
+          .setDesc(msg.annotatedLinks.ignoreVariationSelectors.desc)
           .addToggle((toggle) => {
             toggle
               .setValue(this.plugin.settingsUnderChange.ignoreVariationSelectors)
@@ -966,32 +833,18 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       });
 
     new SettingGroup(containerEl)
-      .setHeading("Property links")
+      .setHeading(msg.propertyLinks.heading)
       .addSetting((setting) => {
         setting
-          .setName("Property mappings")
-          .setDesc(
-            `
-              Define the property mappings.
-              If the file property specified here points to a specific note,
-              that note will be displayed in the navigation header
-              (URLs to the website are also supported).
-              Each mapping consists of a property name and a string that will
-              be placed at the beginning of the link when it appears in the navigation header
-              (use emojis in this string if you want it to appear like an icon).
-              Each line should be in the format property_name:prefix.
-              To include a colon in the prefix, escape it as \\:.
-              An empty string is also acceptable as a prefix.
-              Leave this field blank if you are not using this feature.
-            `,
-          )
+          .setName(msg.propertyLinks.propertyMappings.name)
+          .setDesc(msg.propertyLinks.propertyMappings.desc)
           .addTextArea((text) => {
             const mappings = this.plugin.settingsUnderChange.propertyMappings
               .map((mapping) => `${mapping.property}:${mapping.prefix.replace(/:/g, "\\:")}`)
               .join("\n");
             text
               .setValue(mappings)
-              .setPlaceholder("up:⬆️\nhome:🏠")
+              .setPlaceholder(msg.propertyLinks.propertyMappings.placeholder)
               .onChange((value) => {
                 this.plugin.settingsUnderChange.propertyMappings = parsePropertyMappings(
                   value,
@@ -1003,21 +856,15 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       })
       .addSetting((setting) => {
         setting
-          .setName("Previous note property mappings")
-          .setDesc(
-            `
-              Enter the mapping that specifies the previous note. The note specified here will
-              appear in the navigation header as < previous | parent | next >.
-              The syntax is the same as "Property mappings".
-            `,
-          )
+          .setName(msg.propertyLinks.previousNotePropertyMappings.name)
+          .setDesc(msg.propertyLinks.previousNotePropertyMappings.desc)
           .addTextArea((text) => {
             const mappings = this.plugin.settingsUnderChange.previousLinkPropertyMappings
               .map((mapping) => `${mapping.property}:${mapping.prefix.replace(/:/g, "\\:")}`)
               .join("\n");
             text
               .setValue(mappings)
-              .setPlaceholder("previous:")
+              .setPlaceholder(msg.propertyLinks.previousNotePropertyMappings.placeholder)
               .onChange((value) => {
                 this.plugin.settingsUnderChange.previousLinkPropertyMappings =
                   parsePropertyMappings(value, this.plugin.settings.trimStringsInSettings);
@@ -1027,21 +874,15 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       })
       .addSetting((setting) => {
         setting
-          .setName("Next note property mappings")
-          .setDesc(
-            `
-              Enter the mapping that specifies the next note. The note specified here will appear
-              in the navigation header as < previous | parent | next >.
-              The syntax is the same as "Property mappings".
-            `,
-          )
+          .setName(msg.propertyLinks.nextNotePropertyMappings.name)
+          .setDesc(msg.propertyLinks.nextNotePropertyMappings.desc)
           .addTextArea((text) => {
             const mappings = this.plugin.settingsUnderChange.nextLinkPropertyMappings
               .map((mapping) => `${mapping.property}:${mapping.prefix.replace(/:/g, "\\:")}`)
               .join("\n");
             text
               .setValue(mappings)
-              .setPlaceholder("next:")
+              .setPlaceholder(msg.propertyLinks.nextNotePropertyMappings.placeholder)
               .onChange((value) => {
                 this.plugin.settingsUnderChange.nextLinkPropertyMappings = parsePropertyMappings(
                   value,
@@ -1053,21 +894,15 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       })
       .addSetting((setting) => {
         setting
-          .setName("Parent note property mappings")
-          .setDesc(
-            `
-              Enter the mapping that specifies the parent note. The note specified here will appear
-              in the navigation header as < previous | parent | next >.
-              The syntax is the same as "Property mappings".
-            `,
-          )
+          .setName(msg.propertyLinks.parentNotePropertyMappings.name)
+          .setDesc(msg.propertyLinks.parentNotePropertyMappings.desc)
           .addTextArea((text) => {
             const mappings = this.plugin.settingsUnderChange.parentLinkPropertyMappings
               .map((mapping) => `${mapping.property}:${mapping.prefix.replace(/:/g, "\\:")}`)
               .join("\n");
             text
               .setValue(mappings)
-              .setPlaceholder("parent:\nup:")
+              .setPlaceholder(msg.propertyLinks.parentNotePropertyMappings.placeholder)
               .onChange((value) => {
                 this.plugin.settingsUnderChange.parentLinkPropertyMappings = parsePropertyMappings(
                   value,
@@ -1079,17 +914,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       })
       .addSetting((setting) => {
         setting
-          .setName("Link display style")
-          .setDesc(
-            `
-              Specify the display style of prev/next/parent links in the navigation header.
-              Full: < previous | parent | next >,
-              Full (double separator): < previous || parent || next >,
-              Separator: previous | parent | next,
-              Double separator: previous || parent || next,
-              None: previous parent next.
-            `,
-          )
+          .setName(msg.propertyLinks.linkDisplayStyle.name)
+          .setDesc(msg.propertyLinks.linkDisplayStyle.desc)
           .addDropdown((dropdown) => {
             dropdown
               .addOptions(threeWayDelimiterOptions)
@@ -1103,23 +929,15 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       })
       .addSetting((setting) => {
         setting
-          .setName("Implicit reciprocal property pairs")
-          .setDesc(
-            `
-              Specify pairs of property names here to implicitly create reciprocal links
-              in the navigation header. For example, if you enter prev:next here,
-              when Note A has a property "next: [[Note B]]", Note B will be treated as if
-              it also had "prev: [[Note A]]" even if it isn't explicitly set.
-              Enter one pair per line.
-            `,
-          )
+          .setName(msg.propertyLinks.implicitReciprocalPropertyPairs.name)
+          .setDesc(msg.propertyLinks.implicitReciprocalPropertyPairs.desc)
           .addTextArea((text) => {
             const pairs = this.plugin.settingsUnderChange.implicitReciprocalPropertyPairs
               .map((pair) => `${pair.propertyA}:${pair.propertyB}`)
               .join("\n");
             text
               .setValue(pairs)
-              .setPlaceholder("prev:next\nparent:child")
+              .setPlaceholder(msg.propertyLinks.implicitReciprocalPropertyPairs.placeholder)
               .onChange((value) => {
                 this.plugin.settingsUnderChange.implicitReciprocalPropertyPairs =
                   parsePropertyPairs(value);
@@ -1129,16 +947,11 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       });
 
     new SettingGroup(containerEl)
-      .setHeading("Periodic note links")
+      .setHeading(msg.periodicNotes.heading)
       .addSetting((setting) => {
         setting
-          .setName("Display previous and next links in daily notes")
-          .setDesc(
-            `
-              To use this option, daily notes must be enabled
-              in Daily Notes plugin or Periodic Notes plugin.
-            `,
-          )
+          .setName(msg.periodicNotes.displayPrevNextInDailyNotes.name)
+          .setDesc(msg.periodicNotes.displayPrevNextInDailyNotes.desc)
           .addToggle((toggle) => {
             toggle
               .setValue(this.plugin.settingsUnderChange.prevNextLinksEnabledInDailyNotes)
@@ -1149,14 +962,14 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           });
       })
       .addSetting((setting) => {
-        setting.setName("Parent for daily notes").addDropdown((dropdown) => {
+        setting.setName(msg.periodicNotes.parentForDailyNotes.name).addDropdown((dropdown) => {
           dropdown
             .addOptions({
-              none: "None",
-              week: "Weekly",
-              month: "Monthly",
-              quarter: "Quarterly",
-              year: "Yearly",
+              none: msg.periodicNotes.granularityOptions.none,
+              week: msg.periodicNotes.granularityOptions.week,
+              month: msg.periodicNotes.granularityOptions.month,
+              quarter: msg.periodicNotes.granularityOptions.quarter,
+              year: msg.periodicNotes.granularityOptions.year,
             })
             .setValue(this.plugin.settingsUnderChange.parentLinkGranularityInDailyNotes ?? "none")
             .onChange((value) => {
@@ -1168,8 +981,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       })
       .addSetting((setting) => {
         setting
-          .setName("Display previous and next links in weekly notes")
-          .setDesc("To use this option, weekly notes must be enabled in Periodic Notes plugin.")
+          .setName(msg.periodicNotes.displayPrevNextInWeeklyNotes.name)
+          .setDesc(msg.periodicNotes.displayPrevNextInWeeklyNotes.desc)
           .addToggle((toggle) => {
             toggle
               .setValue(this.plugin.settingsUnderChange.prevNextLinksEnabledInWeeklyNotes)
@@ -1180,13 +993,13 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           });
       })
       .addSetting((setting) => {
-        setting.setName("Parent for weekly notes").addDropdown((dropdown) => {
+        setting.setName(msg.periodicNotes.parentForWeeklyNotes.name).addDropdown((dropdown) => {
           dropdown
             .addOptions({
-              none: "None",
-              month: "Monthly",
-              quarter: "Quarterly",
-              year: "Yearly",
+              none: msg.periodicNotes.granularityOptions.none,
+              month: msg.periodicNotes.granularityOptions.month,
+              quarter: msg.periodicNotes.granularityOptions.quarter,
+              year: msg.periodicNotes.granularityOptions.year,
             })
             .setValue(this.plugin.settingsUnderChange.parentLinkGranularityInWeeklyNotes ?? "none")
             .onChange((value) => {
@@ -1198,8 +1011,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       })
       .addSetting((setting) => {
         setting
-          .setName("Display previous and next links in monthly notes")
-          .setDesc("To use this option, monthly notes must be enabled in Periodic Notes plugin.")
+          .setName(msg.periodicNotes.displayPrevNextInMonthlyNotes.name)
+          .setDesc(msg.periodicNotes.displayPrevNextInMonthlyNotes.desc)
           .addToggle((toggle) => {
             toggle
               .setValue(this.plugin.settingsUnderChange.prevNextLinksEnabledInMonthlyNotes)
@@ -1210,12 +1023,12 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           });
       })
       .addSetting((setting) => {
-        setting.setName("Parent for monthly notes").addDropdown((dropdown) => {
+        setting.setName(msg.periodicNotes.parentForMonthlyNotes.name).addDropdown((dropdown) => {
           dropdown
             .addOptions({
-              none: "None",
-              quarter: "Quarterly",
-              year: "Yearly",
+              none: msg.periodicNotes.granularityOptions.none,
+              quarter: msg.periodicNotes.granularityOptions.quarter,
+              year: msg.periodicNotes.granularityOptions.year,
             })
             .setValue(this.plugin.settingsUnderChange.parentLinkGranularityInMonthlyNotes ?? "none")
             .onChange((value) => {
@@ -1227,8 +1040,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       })
       .addSetting((setting) => {
         setting
-          .setName("Display previous and next links in quarterly notes")
-          .setDesc("To use this option, quarterly notes must be enabled in Periodic Notes plugin.")
+          .setName(msg.periodicNotes.displayPrevNextInQuarterlyNotes.name)
+          .setDesc(msg.periodicNotes.displayPrevNextInQuarterlyNotes.desc)
           .addToggle((toggle) => {
             toggle
               .setValue(this.plugin.settingsUnderChange.prevNextLinksEnabledInQuarterlyNotes)
@@ -1239,11 +1052,11 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           });
       })
       .addSetting((setting) => {
-        setting.setName("Parent for quarterly notes").addDropdown((dropdown) => {
+        setting.setName(msg.periodicNotes.parentForQuarterlyNotes.name).addDropdown((dropdown) => {
           dropdown
             .addOptions({
-              none: "None",
-              year: "Yearly",
+              none: msg.periodicNotes.granularityOptions.none,
+              year: msg.periodicNotes.granularityOptions.year,
             })
             .setValue(
               this.plugin.settingsUnderChange.parentLinkGranularityInQuarterlyNotes ?? "none",
@@ -1257,8 +1070,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       })
       .addSetting((setting) => {
         setting
-          .setName("Display previous and next links in yearly notes")
-          .setDesc("To use this option, yearly notes must be enabled in Periodic Notes plugin.")
+          .setName(msg.periodicNotes.displayPrevNextInYearlyNotes.name)
+          .setDesc(msg.periodicNotes.displayPrevNextInYearlyNotes.desc)
           .addToggle((toggle) => {
             toggle
               .setValue(this.plugin.settingsUnderChange.prevNextLinksEnabledInYearlyNotes)
@@ -1270,17 +1083,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       })
       .addSetting((setting) => {
         setting
-          .setName("Link display style")
-          .setDesc(
-            `
-              Specify the display style of links in the navigation header.
-              Full: < previous | parent | next >,
-              Full (double separator): < previous || parent || next >,
-              Separator: previous | parent | next,
-              Double separator: previous || parent || next,
-              None: previous parent next.
-            `,
-          )
+          .setName(msg.periodicNotes.linkDisplayStyle.name)
+          .setDesc(msg.periodicNotes.linkDisplayStyle.desc)
           .addDropdown((dropdown) => {
             dropdown
               .addOptions(threeWayDelimiterOptions)
@@ -1294,8 +1098,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       })
       .addSetting((setting) => {
         setting
-          .setName("Link prefix")
-          .setDesc("The string to display before each link (e.g., an emoji).")
+          .setName(msg.periodicNotes.linkPrefix.name)
+          .setDesc(msg.periodicNotes.linkPrefix.desc)
           .addText((text) => {
             text
               .setValue(this.plugin.settingsUnderChange.periodicNoteLinkPrefix)
@@ -1310,22 +1114,11 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       });
 
     new SettingGroup(containerEl)
-      .setHeading("Pinned note content")
+      .setHeading(msg.pinnedContent.heading)
       .addSetting((setting) => {
         setting
-          .setName("Annotation strings")
-          .setDesc(
-            `
-              Display part of the current note in the navigation header.
-              The text shown starts immediately after the specified annotation string and
-              continues up to the end of the line.
-              If the start and end markers defined below appear immediately after
-              the annotation string, only the content between those markers is displayed instead.
-              Example: 📌[[note 1]]/[[note 2]](end of line) → 📌[[note 1]]/[[note 2]],
-              📌([[note 1]]/[[note 2]])[[note 3]] → 📌[[note 1]]/[[note 2]].
-              To specify multiple annotations, separate them with commas.
-            `,
-          )
+          .setName(msg.pinnedContent.annotationStrings.name)
+          .setDesc(msg.pinnedContent.annotationStrings.desc)
           .addText((text) => {
             const annotations =
               this.plugin.settingsUnderChange.annotationStringsForPinning.join(",");
@@ -1339,11 +1132,11 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
                 );
                 this.plugin.triggerSettingsChangedDebounced();
               })
-              .setPlaceholder("📌,🔗");
+              .setPlaceholder(msg.pinnedContent.annotationStrings.placeholder);
           });
       })
       .addSetting((setting) => {
-        setting.setName("Start marker").addText((text) => {
+        setting.setName(msg.pinnedContent.startMarker.name).addText((text) => {
           text
             .setValue(this.plugin.settingsUnderChange.startMarkerForPinning)
             .onChange((value) => {
@@ -1353,11 +1146,11 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
                 : value;
               this.plugin.triggerSettingsChangedDebounced();
             })
-            .setPlaceholder("(");
+            .setPlaceholder(msg.pinnedContent.startMarker.placeholder);
         });
       })
       .addSetting((setting) => {
-        setting.setName("End marker").addText((text) => {
+        setting.setName(msg.pinnedContent.endMarker.name).addText((text) => {
           text
             .setValue(this.plugin.settingsUnderChange.endMarkerForPinning)
             .onChange((value) => {
@@ -1367,13 +1160,13 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
                 : value;
               this.plugin.triggerSettingsChangedDebounced();
             })
-            .setPlaceholder(")");
+            .setPlaceholder(msg.pinnedContent.endMarker.placeholder);
         });
       })
       .addSetting((setting) => {
         setting
-          .setName("Ignore code blocks")
-          .setDesc("If enabled, code blocks will be ignored when searching for pinned content.")
+          .setName(msg.pinnedContent.ignoreCodeBlocks.name)
+          .setDesc(msg.pinnedContent.ignoreCodeBlocks.desc)
           .addToggle((toggle) => {
             toggle
               .setValue(this.plugin.settingsUnderChange.ignoreCodeBlocksInPinning)
@@ -1385,31 +1178,23 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       });
 
     const folderLinksSettingsArray = this.plugin.settingsUnderChange.folderLinksSettingsArray;
-    const folderLinksSettingGroup = new SettingGroup(containerEl).setHeading("Folder links");
+    const folderLinksSettingGroup = new SettingGroup(containerEl).setHeading(msg.folderLinks.heading);
     for (let i = 0; i < folderLinksSettingsArray.length; i++) {
       const folderLinkSettings = folderLinksSettingsArray[i];
 
       folderLinksSettingGroup
         .addSetting((setting) => {
           // The actual index will be the number shown here - 1.
-          setting.setName(`Folder setting #${i + 1}`).setHeading();
+          setting.setName(msg.folderLinks.folderSettingHeading(i + 1)).setHeading();
         })
         .addSetting((setting) => {
           setting
-            .setName("Folder paths")
-            .setDesc(
-              `
-                For each folder specified here, files in the same folder as the currently opened
-                file will be shown in the navigation header. Multiple folders can be specified
-                (enter one path per line). Glob patterns are supported
-                (e.g., **: all folders; *: all folders directly under root;
-                folder/*: all folders directly under "folder").
-              `,
-            )
+            .setName(msg.folderLinks.folderPaths.name)
+            .setDesc(msg.folderLinks.folderPaths.desc)
             .addTextArea((text) => {
               text
                 .setValue(folderLinkSettings.folderPaths.join("\n"))
-                .setPlaceholder("path/to/the/folder\nanother/folder/*")
+                .setPlaceholder(msg.folderLinks.folderPaths.placeholder)
                 .onChange((value) => {
                   folderLinkSettings.folderPaths = parseMultiLineInput(value, true);
                   this.plugin.triggerSettingsChangedDebounced();
@@ -1418,17 +1203,12 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
         })
         .addSetting((setting) => {
           setting
-            .setName("Excluded folder paths")
-            .setDesc(
-              `
-                Specify the folder paths to exclude. Multiple folders can be specified
-                (enter one path per line). Glob patterns are supported.
-              `,
-            )
+            .setName(msg.folderLinks.excludedFolderPaths.name)
+            .setDesc(msg.folderLinks.excludedFolderPaths.desc)
             .addTextArea((text) => {
               text
                 .setValue(folderLinkSettings.excludedFolderPaths.join("\n"))
-                .setPlaceholder("path/to/the/folder\nanother/folder/*")
+                .setPlaceholder(msg.folderLinks.excludedFolderPaths.placeholder)
                 .onChange((value) => {
                   folderLinkSettings.excludedFolderPaths = parseMultiLineInput(value, true);
                   this.plugin.triggerSettingsChangedDebounced();
@@ -1437,8 +1217,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
         })
         .addSetting((setting) => {
           setting
-            .setName("Recursive")
-            .setDesc("Whether to include files in subfolders.")
+            .setName(msg.folderLinks.recursive.name)
+            .setDesc(msg.folderLinks.recursive.desc)
             .addToggle((toggle) => {
               toggle.setValue(folderLinkSettings.recursive).onChange((value) => {
                 folderLinkSettings.recursive = value;
@@ -1448,17 +1228,12 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
         })
         .addSetting((setting) => {
           setting
-            .setName("Include patterns")
-            .setDesc(
-              `
-                Include files that match these patterns partially. Enter one per line.
-                Leave empty for all files.
-              `,
-            )
+            .setName(msg.folderLinks.includePatterns.name)
+            .setDesc(msg.folderLinks.includePatterns.desc)
             .addTextArea((text) => {
               text
                 .setValue(folderLinkSettings.includePatterns.join("\n"))
-                .setPlaceholder("Chapter\n.pdf")
+                .setPlaceholder(msg.folderLinks.includePatterns.placeholder)
                 .onChange((value) => {
                   folderLinkSettings.includePatterns = parseMultiLineInput(
                     value,
@@ -1470,12 +1245,12 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
         })
         .addSetting((setting) => {
           setting
-            .setName("Exclude patterns")
-            .setDesc("Exclude files that match these patterns partially. Enter one per line.")
+            .setName(msg.folderLinks.excludePatterns.name)
+            .setDesc(msg.folderLinks.excludePatterns.desc)
             .addTextArea((text) => {
               text
                 .setValue(folderLinkSettings.excludePatterns.join("\n"))
-                .setPlaceholder(".canvas")
+                .setPlaceholder(msg.folderLinks.excludePatterns.placeholder)
                 .onChange((value) => {
                   folderLinkSettings.excludePatterns = parseMultiLineInput(
                     value,
@@ -1487,8 +1262,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
         })
         .addSetting((setting) => {
           setting
-            .setName("Enable regular expressions")
-            .setDesc("Whether to enable regular expressions for include/exclude patterns.")
+            .setName(msg.folderLinks.enableRegex.name)
+            .setDesc(msg.folderLinks.enableRegex.desc)
             .addToggle((toggle) => {
               toggle.setValue(folderLinkSettings.enableRegex).onChange((value) => {
                 folderLinkSettings.enableRegex = value;
@@ -1498,15 +1273,13 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
         })
         .addSetting((setting) => {
           setting
-            .setName("Filter by")
-            .setDesc(
-              "Specify whether to use file names or property values for include/exclude patterns.",
-            )
+            .setName(msg.folderLinks.filterBy.name)
+            .setDesc(msg.folderLinks.filterBy.desc)
             .addDropdown((dropdown) => {
               dropdown
                 .addOptions({
-                  filename: "File name",
-                  property: "Property",
+                  filename: msg.folderLinks.filterBy.options.filename,
+                  property: msg.folderLinks.filterBy.options.property,
                 })
                 .setValue(folderLinkSettings.filterBy)
                 .onChange((value) => {
@@ -1517,13 +1290,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
         })
         .addSetting((setting) => {
           setting
-            .setName("Property name to filter by")
-            .setDesc(
-              `
-                The name of the property to filter by.
-                This is required when "Filter by" is set to "Property".
-              `,
-            )
+            .setName(msg.folderLinks.propertyNameToFilterBy.name)
+            .setDesc(msg.folderLinks.propertyNameToFilterBy.desc)
             .addText((text) => {
               text.setValue(folderLinkSettings.filterPropertyName).onChange((value) => {
                 folderLinkSettings.filterPropertyName = value.trim();
@@ -1532,11 +1300,11 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
             });
         })
         .addSetting((setting) => {
-          setting.setName("Sort order").addDropdown((dropdown) => {
+          setting.setName(msg.folderLinks.sortOrder.name).addDropdown((dropdown) => {
             dropdown
               .addOptions({
-                asc: "Ascending",
-                desc: "Descending",
+                asc: msg.folderLinks.sortOrder.options.asc,
+                desc: msg.folderLinks.sortOrder.options.desc,
               })
               .setValue(folderLinkSettings.sortOrder)
               .onChange((value) => {
@@ -1546,13 +1314,13 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           });
         })
         .addSetting((setting) => {
-          setting.setName("Sort by").addDropdown((dropdown) => {
+          setting.setName(msg.folderLinks.sortBy.name).addDropdown((dropdown) => {
             dropdown
               .addOptions({
-                filename: "File name",
-                created: "Creation date",
-                modified: "Modification date",
-                property: "Property",
+                filename: msg.folderLinks.sortBy.options.filename,
+                created: msg.folderLinks.sortBy.options.created,
+                modified: msg.folderLinks.sortBy.options.modified,
+                property: msg.folderLinks.sortBy.options.property,
               })
               .setValue(folderLinkSettings.sortBy)
               .onChange((value) => {
@@ -1567,13 +1335,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
         })
         .addSetting((setting) => {
           setting
-            .setName("Property name to sort by")
-            .setDesc(
-              `
-                The name of the property to sort by.
-                This is required when "Sort by" is set to "Property".
-              `,
-            )
+            .setName(msg.folderLinks.propertyNameToSortBy.name)
+            .setDesc(msg.folderLinks.propertyNameToSortBy.desc)
             .addText((text) => {
               text.setValue(folderLinkSettings.sortPropertyName).onChange((value) => {
                 folderLinkSettings.sortPropertyName = value.trim();
@@ -1583,14 +1346,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
         })
         .addSetting((setting) => {
           setting
-            .setName("Max links")
-            .setDesc(
-              `
-                The maximum number of folder links to display.
-                For example, if set to 3, the display would look like
-                <prev3 prev2 prev1 | parent | next1 next2 next3>.
-              `,
-            )
+            .setName(msg.folderLinks.maxLinks.name)
+            .setDesc(msg.folderLinks.maxLinks.desc)
             .addText((text) => {
               text.inputEl.type = "number";
               text.setValue(String(folderLinkSettings.maxLinks)).onChange((value) => {
@@ -1604,10 +1361,10 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
             });
         })
         .addSetting((setting) => {
-          setting.setName("Path to the parent note").addText((text) => {
+          setting.setName(msg.folderLinks.pathToParentNote.name).addText((text) => {
             text
               .setValue(folderLinkSettings.parentPath)
-              .setPlaceholder("path/to/the/note.md")
+              .setPlaceholder(msg.folderLinks.pathToParentNote.placeholder)
               .onChange((value) => {
                 const trimmed = value.trim();
                 folderLinkSettings.parentPath = trimmed === "" ? "" : normalizePath(trimmed);
@@ -1617,17 +1374,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
         })
         .addSetting((setting) => {
           setting
-            .setName("Link display style")
-            .setDesc(
-              `
-                Specify the display style of prev/next/parent links in the navigation header.
-                Full: < previous | parent | next >,
-                Full (double separator): < previous || parent || next >,
-                Separator: previous | parent | next,
-                Double separator: previous || parent || next,
-                None: previous parent next.
-              `,
-            )
+            .setName(msg.folderLinks.linkDisplayStyle.name)
+            .setDesc(msg.folderLinks.linkDisplayStyle.desc)
             .addDropdown((dropdown) => {
               dropdown
                 .addOptions(threeWayDelimiterOptions)
@@ -1640,8 +1388,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
         })
         .addSetting((setting) => {
           setting
-            .setName("Link prefix")
-            .setDesc("The string to display before each link (e.g., an emoji).")
+            .setName(msg.folderLinks.linkPrefix.name)
+            .setDesc(msg.folderLinks.linkPrefix.desc)
             .addText((text) => {
               text.setValue(folderLinkSettings.linkPrefix).onChange((value) => {
                 folderLinkSettings.linkPrefix = this.plugin.settings.trimStringsInSettings
@@ -1655,14 +1403,14 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
           setting
             .setName("")
             .addButton((button) => {
-              button.setButtonText("Move up").onClick(() => {
+              button.setButtonText(msg.folderLinks.controls.moveUp).onClick(() => {
                 this.swapFolderLinksSettings(i, i - 1);
                 this.plugin.triggerSettingsChangedDebounced();
                 this.display(); // Force re-render.
               });
             })
             .addButton((button) => {
-              button.setButtonText("Move down").onClick(() => {
+              button.setButtonText(msg.folderLinks.controls.moveDown).onClick(() => {
                 this.swapFolderLinksSettings(i, i + 1);
                 this.plugin.triggerSettingsChangedDebounced();
                 this.display(); // Force re-render.
@@ -1670,7 +1418,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
             })
             .addButton((button) => {
               button
-                .setButtonText("Remove")
+                .setButtonText(msg.folderLinks.controls.remove)
                 .setWarning()
                 .onClick(() => {
                   folderLinksSettingsArray.splice(i, 1);
@@ -1683,7 +1431,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
     folderLinksSettingGroup.addSetting((setting) => {
       setting.setName("").addButton((button) => {
         button
-          .setButtonText("Add folder setting")
+          .setButtonText(msg.folderLinks.controls.addFolderSetting)
           .setCta()
           .onClick(() => {
             this.plugin.settingsUnderChange.folderLinksSettingsArray.push(

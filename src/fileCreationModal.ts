@@ -1,5 +1,6 @@
 import { Modal, Setting } from "obsidian";
 import type NavLinkHeader from "./main";
+import { t } from "./i18n/i18n";
 
 /**
  * Modal to confirm the creation of a new file.
@@ -19,14 +20,15 @@ export class FileCreationModal extends Modal {
 
   public onOpen(): void {
     const { contentEl } = this;
-    contentEl.createEl("h1", { text: "Create a new note" });
+    const msg = t().modal;
+    contentEl.createEl("h1", { text: msg.createNewNote });
     contentEl.createEl("p", {
-      text: `File "${this.fileTitle}" does not exist. Are you sure you want to create a new note?`,
+      text: msg.fileNotExist(this.fileTitle),
     });
     new Setting(contentEl)
       .addButton((button) => {
         button
-          .setButtonText("Create")
+          .setButtonText(msg.create)
           .setCta()
           .onClick(() => {
             this.close();
@@ -34,7 +36,7 @@ export class FileCreationModal extends Modal {
           });
       })
       .addButton((button) => {
-        button.setButtonText("Create (Don't ask again)").onClick(() => {
+        button.setButtonText(msg.createDontAskAgain).onClick(() => {
           this.plugin.settingsUnderChange.confirmFileCreation = false;
           this.plugin.triggerSettingsChangedDebounced();
           this.close();
@@ -42,7 +44,7 @@ export class FileCreationModal extends Modal {
         });
       })
       .addButton((button) => {
-        button.setButtonText("Cancel").onClick(() => {
+        button.setButtonText(msg.cancel).onClick(() => {
           this.close();
         });
       });
