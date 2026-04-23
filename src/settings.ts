@@ -662,7 +662,6 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       });
 
     new SettingGroup(enabledViewsPanel)
-      .setHeading(msg.sections.displayPosition)
       .addSetting((setting) => {
         setting
           .setName(msg.displayTargets.inPanes.name)
@@ -1049,6 +1048,52 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
       });
 
     new SettingGroup(periodicNotesPanel)
+      .addSetting((setting) => {
+        setting
+          .setName(msg.general.confirmFileCreation.name)
+          .setDesc(msg.general.confirmFileCreation.desc)
+          .addToggle((toggle) => {
+            toggle
+              .setValue(this.plugin.settingsUnderChange.confirmFileCreation)
+              .onChange((value) => {
+                this.plugin.settingsUnderChange.confirmFileCreation = value;
+                this.plugin.triggerSettingsChangedDebounced();
+              });
+          });
+      })
+      .addSetting((setting) => {
+        setting
+          .setName(msg.periodicNotes.linkDisplayStyle.name)
+          .setDesc(msg.periodicNotes.linkDisplayStyle.desc)
+          .addDropdown((dropdown) => {
+            dropdown
+              .addOptions(threeWayDelimiterOptions)
+              .setValue(this.plugin.settingsUnderChange.periodicNoteLinkDisplayStyle)
+              .onChange((value) => {
+                this.plugin.settingsUnderChange.periodicNoteLinkDisplayStyle =
+                  value as ThreeWayDelimiters;
+                this.plugin.triggerSettingsChangedDebounced();
+              });
+          });
+      })
+      .addSetting((setting) => {
+        setting
+          .setName(msg.periodicNotes.linkPrefix.name)
+          .setDesc(msg.periodicNotes.linkPrefix.desc)
+          .addText((text) => {
+            text
+              .setValue(this.plugin.settingsUnderChange.periodicNoteLinkPrefix)
+              .onChange((value) => {
+                this.plugin.settingsUnderChange.periodicNoteLinkPrefix = this.plugin.settings
+                  .trimStringsInSettings
+                  ? value.trim()
+                  : value;
+                this.plugin.triggerSettingsChangedDebounced();
+              });
+          });
+      });
+
+    new SettingGroup(periodicNotesPanel)
       .setHeading(msg.periodicNotes.sections.daily)
       .addSetting((setting) => {
         setting
@@ -1193,50 +1238,6 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
               });
           });
       })
-      .addSetting((setting) => {
-        setting
-          .setName(msg.general.confirmFileCreation.name)
-          .setDesc(msg.general.confirmFileCreation.desc)
-          .addToggle((toggle) => {
-            toggle
-              .setValue(this.plugin.settingsUnderChange.confirmFileCreation)
-              .onChange((value) => {
-                this.plugin.settingsUnderChange.confirmFileCreation = value;
-                this.plugin.triggerSettingsChangedDebounced();
-              });
-          });
-      })
-      .addSetting((setting) => {
-        setting
-          .setName(msg.periodicNotes.linkDisplayStyle.name)
-          .setDesc(msg.periodicNotes.linkDisplayStyle.desc)
-          .addDropdown((dropdown) => {
-            dropdown
-              .addOptions(threeWayDelimiterOptions)
-              .setValue(this.plugin.settingsUnderChange.periodicNoteLinkDisplayStyle)
-              .onChange((value) => {
-                this.plugin.settingsUnderChange.periodicNoteLinkDisplayStyle =
-                  value as ThreeWayDelimiters;
-                this.plugin.triggerSettingsChangedDebounced();
-              });
-          });
-      })
-      .addSetting((setting) => {
-        setting
-          .setName(msg.periodicNotes.linkPrefix.name)
-          .setDesc(msg.periodicNotes.linkPrefix.desc)
-          .addText((text) => {
-            text
-              .setValue(this.plugin.settingsUnderChange.periodicNoteLinkPrefix)
-              .onChange((value) => {
-                this.plugin.settingsUnderChange.periodicNoteLinkPrefix = this.plugin.settings
-                  .trimStringsInSettings
-                  ? value.trim()
-                  : value;
-                this.plugin.triggerSettingsChangedDebounced();
-              });
-          });
-      });
 
     new SettingGroup(pinnedContentPanel)
       .addSetting((setting) => {
@@ -1302,25 +1303,23 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
               });
           });
       });
-
     const folderLinksSettingsArray = this.plugin.settingsUnderChange.folderLinksSettingsArray;
 
-    const addFolderSettingRow = folderLinksPanel.createDiv();
-    addFolderSettingRow.style.display = "flex";
-    addFolderSettingRow.style.justifyContent = "flex-end";
-    addFolderSettingRow.style.marginBottom = "10px";
+    new SettingGroup(folderLinksPanel).addSetting((setting) => {
+      setting
+        .setName("")
+        .setDesc(msg.folderLinks.intro.desc)
+        .addButton((button) => {
+          button.setButtonText(msg.folderLinks.controls.addFolderSetting).setCta().onClick(() => {
+            this.plugin.settingsUnderChange.folderLinksSettingsArray.push(
+              deepCopy(DEFAULT_FOLDER_LINKS_SETTINGS),
+            );
+            this.plugin.triggerSettingsChangedDebounced();
+            this.display();
+          });
+        });
 
-    const addFolderSettingButton = addFolderSettingRow.createEl("button", {
-      text: msg.folderLinks.controls.addFolderSetting,
-      cls: "mod-cta",
-    });
-    addFolderSettingButton.setAttr("type", "button");
-    addFolderSettingButton.addEventListener("click", () => {
-      this.plugin.settingsUnderChange.folderLinksSettingsArray.push(
-        deepCopy(DEFAULT_FOLDER_LINKS_SETTINGS),
-      );
-      this.plugin.triggerSettingsChangedDebounced();
-      this.display();
+      this.addTipToDescription(setting, msg.folderLinks.intro.tip);
     });
 
     for (let i = 0; i < folderLinksSettingsArray.length; i++) {
@@ -1732,15 +1731,16 @@ class FolderRuleNameModal extends Modal {
       text.inputEl.select();
     });
 
+    const msg = t().modal;
     new Setting(contentEl)
       .addButton((button) => {
-        button.setButtonText("保存").setCta().onClick(() => {
+        button.setButtonText(msg.save).setCta().onClick(() => {
           this.onSubmit(this.value);
           this.close();
         });
       })
       .addButton((button) => {
-        button.setButtonText("取消").onClick(() => {
+        button.setButtonText(msg.cancel).onClick(() => {
           this.close();
         });
       });

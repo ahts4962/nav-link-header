@@ -4,7 +4,7 @@ const en: BaseMessage = {
   setting: {
     tabs: {
       common: "Common",
-      enabledViews: "Displayed views",
+      enabledViews: "Views",
       annotatedLinks: "Annotated links",
       propertyLinks: "Property links",
       periodicNotes: "Periodic notes",
@@ -13,7 +13,6 @@ const en: BaseMessage = {
     },
     sections: {
       display: "Display",
-      displayPosition: "Display positions",
       enabledViews: "Displayed views",
     },
     threeWayDelimiterOptions: {
@@ -352,6 +351,11 @@ Example: 📌[[note 1]]/[[note 2]](end of line) → 📌[[note 1]]/[[note 2]],
     },
     folderLinks: {
       heading: "Folder links",
+      intro: {
+        desc: `Create folder link rules to display links to files in specific folders.
+You can add multiple rules, each with its own configuration.`,
+        tip: `Click on the Folder Setting title to rename it.`,
+      },
       folderSettingHeading: (index: number) => `Folder setting #${index}`,
       folderPaths: {
         name: "Folder paths",
@@ -477,6 +481,7 @@ None: previous parent next.`,
       `File "${fileTitle}" does not exist. Are you sure you want to create a new note?`,
     create: "Create",
     createDontAskAgain: "Create (Don't ask again)",
+    save: "Save",
     cancel: "Cancel",
   },
   ui: {

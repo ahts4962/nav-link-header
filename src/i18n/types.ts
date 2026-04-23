@@ -13,7 +13,6 @@ export interface BaseMessage {
     };
     sections: {
       display: string;
-      displayPosition: string;
       enabledViews: string;
     };
     threeWayDelimiterOptions: Record<ThreeWayDelimiters, string>;
@@ -125,6 +124,7 @@ export interface BaseMessage {
     };
     folderLinks: {
       heading: string;
+      intro: { desc: string; tip: string };
       folderSettingHeading: (index: number) => string;
       folderPaths: { name: string; desc: string; placeholder: string };
       excludedFolderPaths: { name: string; desc: string; placeholder: string };
@@ -180,6 +180,7 @@ export interface BaseMessage {
     fileNotExist: (fileTitle: string) => string;
     create: string;
     createDontAskAgain: string;
+    save: string;
     cancel: string;
   };
   ui: {

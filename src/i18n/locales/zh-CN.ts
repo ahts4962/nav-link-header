@@ -13,7 +13,6 @@ const zhCN: BaseMessage = {
     },
     sections: {
       display: "显示",
-      displayPosition: "显示位置",
       enabledViews: "显示视图",
     },
     threeWayDelimiterOptions: {
@@ -335,6 +334,11 @@ const zhCN: BaseMessage = {
     },
     folderLinks: {
       heading: "文件夹链接",
+      intro: {
+        desc: `创建文件夹链接规则，在导航栏中显示特定文件夹内的文件链接。
+你可以添加多个规则，每个规则都有自己的配置选项。`,
+        tip: `提示：点击规则名称可以重命名。`,
+      },
       folderSettingHeading: (index: number) => `文件夹设置 #${index}`,
       folderPaths: {
         name: "文件夹路径",
@@ -460,6 +464,7 @@ folder/*：folder 下一级所有文件夹）。`,
       `文件「${fileTitle}」不存在。确定要创建新笔记吗？`,
     create: "创建",
     createDontAskAgain: "创建（不再询问）",
+    save: "保存",
     cancel: "取消",
   },
   ui: {
