@@ -8,7 +8,7 @@ import {
   removeCodeBlocks,
   removeFrontMatter,
   removeInlineCode,
-} from "src/utils";
+} from "../src/utils";
 
 test("deep equal", () => {
   expect(deepEqual(1, 1)).toBe(true);

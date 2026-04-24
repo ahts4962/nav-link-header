@@ -1,4 +1,4 @@
-import type { LinkInfo, ThreeWayDirection } from "src/types";
+import type { LinkInfo, ThreeWayDirection } from "../types";
 
 export type LinkEventHandler = (target: LinkProps, e: MouseEvent) => void;
 export type PrefixEventHandler = (target: PrefixProps) => void;

@@ -1,7 +1,7 @@
 import { expect, test } from "vitest";
 import emojiRegex from "emoji-regex-xs";
-import { EMOJI_ANNOTATION_PLACEHOLDER, exportedForTesting } from "src/annotatedLink";
-import { sanitizeRegexInput } from "src/utils";
+import { EMOJI_ANNOTATION_PLACEHOLDER, exportedForTesting } from "../src/annotatedLink";
+import { sanitizeRegexInput } from "../src/utils";
 
 const { constructAnnotationRegex } = exportedForTesting;
 
