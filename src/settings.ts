@@ -94,7 +94,7 @@ export interface FolderLinksSettings {
 }
 
 export const DEFAULT_SETTINGS: NavLinkHeaderSettings = {
-  version: "2.7.3",
+  version: "2.8.0",
   matchNavigationWidthToLineLength: false,
   displayOrderOfLinks: [],
   propertyNameForDisplayText: "",
