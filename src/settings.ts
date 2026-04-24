@@ -1375,6 +1375,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
                 this.display();
               });
           });
+        setting.controlEl.style.flexWrap = "wrap";
 
         const nameEl = setting.nameEl;
         nameEl.empty();
