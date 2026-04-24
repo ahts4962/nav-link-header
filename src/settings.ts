@@ -420,8 +420,10 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
 
     const msg = t().setting;
 
-    const threeWayDelimiterOptions =
-      msg.threeWayDelimiterOptions satisfies Record<ThreeWayDelimiters, string>;
+    const threeWayDelimiterOptions = msg.threeWayDelimiterOptions satisfies Record<
+      ThreeWayDelimiters,
+      string
+    >;
 
     const tabsEl = containerEl.createDiv();
     tabsEl.style.display = "flex";
@@ -532,8 +534,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
                 this.plugin.triggerSettingsChangedDebounced();
               });
           });
-      })
-      ;
+      });
 
     new SettingGroup(commonPanel)
       .setHeading(msg.sections.display)
@@ -897,7 +898,10 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
             });
           });
 
-        this.addTipToDescription(setting, msg.annotatedLinks.advancedAnnotationStringsForCurrentNote.tip);
+        this.addTipToDescription(
+          setting,
+          msg.annotatedLinks.advancedAnnotationStringsForCurrentNote.tip,
+        );
       })
       .addSetting((setting) => {
         setting
@@ -907,7 +911,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
             toggle
               .setValue(this.plugin.settingsUnderChange.allowSpaceAfterAnnotationString)
               .onChange((value) => {
-              this.plugin.settingsUnderChange.allowSpaceAfterAnnotationString = value;
+                this.plugin.settingsUnderChange.allowSpaceAfterAnnotationString = value;
                 this.plugin.triggerSettingsChangedDebounced();
               });
           });
@@ -963,8 +967,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
               .onChange((value) => {
                 this.plugin.settingsUnderChange.previousLinkPropertyMappings =
                   parsePropertyMappings(value, this.plugin.settings.trimStringsInSettings);
-              this.plugin.triggerSettingsChangedDebounced();
-            });
+                this.plugin.triggerSettingsChangedDebounced();
+              });
           });
 
         this.addTipToDescription(setting, msg.propertyLinks.previousNotePropertyMappings.tip);
@@ -985,8 +989,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
                   value,
                   this.plugin.settings.trimStringsInSettings,
                 );
-              this.plugin.triggerSettingsChangedDebounced();
-            });
+                this.plugin.triggerSettingsChangedDebounced();
+              });
           });
 
         this.addTipToDescription(setting, msg.propertyLinks.nextNotePropertyMappings.tip);
@@ -1007,8 +1011,8 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
                   value,
                   this.plugin.settings.trimStringsInSettings,
                 );
-              this.plugin.triggerSettingsChangedDebounced();
-            });
+                this.plugin.triggerSettingsChangedDebounced();
+              });
           });
 
         this.addTipToDescription(setting, msg.propertyLinks.parentNotePropertyMappings.tip);
@@ -1214,7 +1218,9 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
               none: msg.periodicNotes.granularityOptions.none,
               year: msg.periodicNotes.granularityOptions.year,
             })
-            .setValue(this.plugin.settingsUnderChange.parentLinkGranularityInQuarterlyNotes ?? "none")
+            .setValue(
+              this.plugin.settingsUnderChange.parentLinkGranularityInQuarterlyNotes ?? "none",
+            )
             .onChange((value) => {
               this.plugin.settingsUnderChange.parentLinkGranularityInQuarterlyNotes =
                 value !== "none" ? (value as IGranularity) : "none";
@@ -1237,7 +1243,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
                 this.plugin.triggerSettingsChangedDebounced();
               });
           });
-      })
+      });
 
     new SettingGroup(pinnedContentPanel)
       .addSetting((setting) => {
@@ -1252,12 +1258,12 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
               .onChange((value) => {
                 this.plugin.settingsUnderChange.annotationStringsForPinning = parsePrefixStrings(
                   value,
-                this.plugin.settings.trimStringsInSettings,
-                false,
-              );
-              this.plugin.triggerSettingsChangedDebounced();
-            })
-            .setPlaceholder(msg.pinnedContent.annotationStrings.placeholder);
+                  this.plugin.settings.trimStringsInSettings,
+                  false,
+                );
+                this.plugin.triggerSettingsChangedDebounced();
+              })
+              .setPlaceholder(msg.pinnedContent.annotationStrings.placeholder);
           });
 
         this.addTipToDescription(setting, msg.pinnedContent.annotationStrings.tip);
@@ -1310,13 +1316,16 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
         .setName("")
         .setDesc(msg.folderLinks.intro.desc)
         .addButton((button) => {
-          button.setButtonText(msg.folderLinks.controls.addFolderSetting).setCta().onClick(() => {
-            this.plugin.settingsUnderChange.folderLinksSettingsArray.push(
-              deepCopy(DEFAULT_FOLDER_LINKS_SETTINGS),
-            );
-            this.plugin.triggerSettingsChangedDebounced();
-            this.display();
-          });
+          button
+            .setButtonText(msg.folderLinks.controls.addFolderSetting)
+            .setCta()
+            .onClick(() => {
+              this.plugin.settingsUnderChange.folderLinksSettingsArray.push(
+                deepCopy(DEFAULT_FOLDER_LINKS_SETTINGS),
+              );
+              this.plugin.triggerSettingsChangedDebounced();
+              this.display();
+            });
         });
 
       this.addTipToDescription(setting, msg.folderLinks.intro.tip);
@@ -1331,90 +1340,89 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
 
       const folderLinksSettingGroup = new SettingGroup(folderLinksPanel);
 
-      folderLinksSettingGroup
-        .addSetting((setting) => {
-          setting
-            .setName("")
-            .addButton((button) => {
-              button.buttonEl.style.marginLeft = "auto";
-              button.setButtonText(msg.folderLinks.controls.pinToTop).onClick(() => {
-                this.swapFolderLinksSettings(i, 0);
-                this.plugin.triggerSettingsChangedDebounced();
-                this.display();
-              });
-            })
-            .addButton((button) => {
-              button.setButtonText(msg.folderLinks.controls.moveUp).onClick(() => {
-                this.swapFolderLinksSettings(i, i - 1);
-                this.plugin.triggerSettingsChangedDebounced();
-                this.display();
-              });
-            })
-            .addButton((button) => {
-              button.setButtonText(msg.folderLinks.controls.moveDown).onClick(() => {
-                this.swapFolderLinksSettings(i, i + 1);
-                this.plugin.triggerSettingsChangedDebounced();
-                this.display();
-              });
-            })
-            .addButton((button) => {
-              button
-                .setButtonText(msg.folderLinks.controls.remove)
-                .setWarning()
-                .onClick(() => {
-                  folderLinksSettingsArray.splice(i, 1);
-                  this.plugin.triggerSettingsChangedDebounced();
-                  this.display();
-                });
+      folderLinksSettingGroup.addSetting((setting) => {
+        setting
+          .setName("")
+          .addButton((button) => {
+            button.buttonEl.style.marginLeft = "auto";
+            button.setButtonText(msg.folderLinks.controls.pinToTop).onClick(() => {
+              this.swapFolderLinksSettings(i, 0);
+              this.plugin.triggerSettingsChangedDebounced();
+              this.display();
             });
-
-          const nameEl = setting.nameEl;
-          nameEl.empty();
-          nameEl.style.display = "flex";
-          nameEl.style.alignItems = "center";
-          nameEl.style.gap = "6px";
-
-          const collapseToggleEl = nameEl.createEl("button", {
-            cls: "clickable-icon",
-          });
-          collapseToggleEl.setAttr("type", "button");
-          collapseToggleEl.style.padding = "0";
-          collapseToggleEl.style.minWidth = "16px";
-          collapseToggleEl.style.minHeight = "16px";
-          collapseToggleEl.style.border = "none";
-          collapseToggleEl.style.background = "transparent";
-          collapseToggleEl.style.display = "inline-flex";
-          collapseToggleEl.style.alignItems = "center";
-          collapseToggleEl.style.justifyContent = "center";
-          collapseToggleEl.style.transform = isCollapsed ? "rotate(-90deg)" : "rotate(0deg)";
-          collapseToggleEl.style.transition = "transform 0.2s ease-in-out";
-          setIcon(collapseToggleEl, "chevron-down");
-          collapseToggleEl.addEventListener("click", () => {
-            if (this.collapsedFolderLinkSettings.has(folderLinkSettings)) {
-              this.collapsedFolderLinkSettings.delete(folderLinkSettings);
-            } else {
-              this.collapsedFolderLinkSettings.add(folderLinkSettings);
-            }
-            this.display();
-          });
-
-          const ruleNameEl = nameEl.createEl("span", { text: ruleDisplayName });
-          ruleNameEl.style.cursor = "pointer";
-          ruleNameEl.style.fontWeight = "var(--font-medium)";
-          ruleNameEl.style.userSelect = "none";
-          ruleNameEl.addEventListener("click", () => {
-            new FolderRuleNameModal(
-              this.plugin,
-              msg.folderLinks.controls.rename,
-              ruleDisplayName,
-              (renamed) => {
-                folderLinkSettings.ruleName = renamed.trim();
+          })
+          .addButton((button) => {
+            button.setButtonText(msg.folderLinks.controls.moveUp).onClick(() => {
+              this.swapFolderLinksSettings(i, i - 1);
+              this.plugin.triggerSettingsChangedDebounced();
+              this.display();
+            });
+          })
+          .addButton((button) => {
+            button.setButtonText(msg.folderLinks.controls.moveDown).onClick(() => {
+              this.swapFolderLinksSettings(i, i + 1);
+              this.plugin.triggerSettingsChangedDebounced();
+              this.display();
+            });
+          })
+          .addButton((button) => {
+            button
+              .setButtonText(msg.folderLinks.controls.remove)
+              .setWarning()
+              .onClick(() => {
+                folderLinksSettingsArray.splice(i, 1);
                 this.plugin.triggerSettingsChangedDebounced();
                 this.display();
-              },
-            ).open();
+              });
           });
+
+        const nameEl = setting.nameEl;
+        nameEl.empty();
+        nameEl.style.display = "flex";
+        nameEl.style.alignItems = "center";
+        nameEl.style.gap = "6px";
+
+        const collapseToggleEl = nameEl.createEl("button", {
+          cls: "clickable-icon",
         });
+        collapseToggleEl.setAttr("type", "button");
+        collapseToggleEl.style.padding = "0";
+        collapseToggleEl.style.minWidth = "16px";
+        collapseToggleEl.style.minHeight = "16px";
+        collapseToggleEl.style.border = "none";
+        collapseToggleEl.style.background = "transparent";
+        collapseToggleEl.style.display = "inline-flex";
+        collapseToggleEl.style.alignItems = "center";
+        collapseToggleEl.style.justifyContent = "center";
+        collapseToggleEl.style.transform = isCollapsed ? "rotate(-90deg)" : "rotate(0deg)";
+        collapseToggleEl.style.transition = "transform 0.2s ease-in-out";
+        setIcon(collapseToggleEl, "chevron-down");
+        collapseToggleEl.addEventListener("click", () => {
+          if (this.collapsedFolderLinkSettings.has(folderLinkSettings)) {
+            this.collapsedFolderLinkSettings.delete(folderLinkSettings);
+          } else {
+            this.collapsedFolderLinkSettings.add(folderLinkSettings);
+          }
+          this.display();
+        });
+
+        const ruleNameEl = nameEl.createEl("span", { text: ruleDisplayName });
+        ruleNameEl.style.cursor = "pointer";
+        ruleNameEl.style.fontWeight = "var(--font-medium)";
+        ruleNameEl.style.userSelect = "none";
+        ruleNameEl.addEventListener("click", () => {
+          new FolderRuleNameModal(
+            this.plugin,
+            msg.folderLinks.controls.rename,
+            ruleDisplayName,
+            (renamed) => {
+              folderLinkSettings.ruleName = renamed.trim();
+              this.plugin.triggerSettingsChangedDebounced();
+              this.display();
+            },
+          ).open();
+        });
+      });
 
       if (isCollapsed) {
         continue;
@@ -1632,8 +1640,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
                 this.plugin.triggerSettingsChangedDebounced();
               });
             });
-        })
-        ;
+        });
     }
 
     this.applyDescriptionLineBreaks(containerEl);
@@ -1656,7 +1663,7 @@ export class NavLinkHeaderSettingTab extends PluginSettingTab {
     }
 
     const tipEl = document.createElement("span");
-    tipEl.className = "nav-link-header-tip-text header-tip-etxt";
+    tipEl.className = "nav-link-header-tip-text header-tip-text";
     tipEl.textContent = content;
     setting.descEl.appendChild(document.createElement("br"));
     setting.descEl.appendChild(tipEl);
@@ -1734,10 +1741,13 @@ class FolderRuleNameModal extends Modal {
     const msg = t().modal;
     new Setting(contentEl)
       .addButton((button) => {
-        button.setButtonText(msg.save).setCta().onClick(() => {
-          this.onSubmit(this.value);
-          this.close();
-        });
+        button
+          .setButtonText(msg.save)
+          .setCta()
+          .onClick(() => {
+            this.onSubmit(this.value);
+            this.close();
+          });
       })
       .addButton((button) => {
         button.setButtonText(msg.cancel).onClick(() => {
