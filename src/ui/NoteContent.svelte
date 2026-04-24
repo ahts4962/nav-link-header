@@ -12,7 +12,7 @@
 -->
 <div class="nav-link-header-link-container nav-link-header-pinned-note-content">
   <Prefix props={props.prefix} />
-  {#each props.content as item (item)}
+  {#each props.content as item, i (typeof item === "string" ? `${item}-${i}` : item)}
     {#if typeof item === "string"}
       {item}
     {:else}
