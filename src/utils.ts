@@ -25,8 +25,8 @@ export function deepEqual(a: unknown, b: unknown): boolean {
     return a.every((item, index) => deepEqual(item, b[index]));
   }
 
-  const keysA = Object.keys(a as Record<string, unknown>);
-  const keysB = Object.keys(b as Record<string, unknown>);
+  const keysA = Object.keys(a);
+  const keysB = Object.keys(b);
 
   if (keysA.length !== keysB.length) {
     return false;

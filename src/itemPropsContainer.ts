@@ -8,7 +8,6 @@ import type {
   PrefixEventHandler,
   RawNavigationItemProps,
   ThreeWayContentProps,
-  ThreeWayLinkProps,
 } from "./ui/props";
 
 export const DISPLAY_ORDER_PLACEHOLDER_PERIODIC = "[[p]]";
@@ -162,7 +161,7 @@ export class ItemPropsContainer {
             next: { ...item.links.next, links: [...item.links.next.links] },
             parent: { ...item.links.parent, links: [...item.links.parent.links] },
           },
-        } as ThreeWayLinkProps;
+        };
       } else {
         return item;
       }
