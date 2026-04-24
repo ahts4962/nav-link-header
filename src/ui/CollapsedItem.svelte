@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { CollapsedItemProps } from "./props";
   import Prefix from "./Prefix.svelte";
+  import { t } from "../i18n/i18n";
 
   const { props }: { props: CollapsedItemProps } = $props();
 </script>
@@ -12,7 +13,7 @@
 <div class="nav-link-header-link-container nav-link-header-collapsed-item">
   <Prefix props={props.prefix} />
   <div class="nav-link-header-muted">
-    {`(${props.itemCount} ${props.itemCount === 1 ? "item" : "items"})`}
+    {t().ui.collapsedCount(props.itemCount)}
   </div>
 </div>
 

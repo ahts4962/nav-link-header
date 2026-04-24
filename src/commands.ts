@@ -5,15 +5,18 @@ import { PeriodicNotesManager } from "./periodicNotes";
 import { getThreeWayPropertyLink } from "./propertyLink";
 import { FolderLinksManager } from "./folderLink";
 import { openExternalLink } from "./utils";
+import { t } from "./i18n/i18n";
 
 /**
  * Adds commands to the plugin.
  * @param plugin The plugin instance.
  */
 export function addCommands(plugin: NavLinkHeader): void {
+  const msg = t().command;
+
   plugin.addCommand({
     id: "open-previous-property-link",
-    name: "Open previous property link",
+    name: msg.openPreviousPropertyLink,
     checkCallback: (checking: boolean) => {
       const file = plugin.app.workspace.getActiveFile();
       if (!file) {
@@ -25,7 +28,7 @@ export function addCommands(plugin: NavLinkHeader): void {
 
   plugin.addCommand({
     id: "open-next-property-link",
-    name: "Open next property link",
+    name: msg.openNextPropertyLink,
     checkCallback: (checking: boolean) => {
       const file = plugin.app.workspace.getActiveFile();
       if (!file) {
@@ -37,7 +40,7 @@ export function addCommands(plugin: NavLinkHeader): void {
 
   plugin.addCommand({
     id: "open-parent-property-link",
-    name: "Open parent property link",
+    name: msg.openParentPropertyLink,
     checkCallback: (checking: boolean) => {
       const file = plugin.app.workspace.getActiveFile();
       if (!file) {
@@ -49,7 +52,7 @@ export function addCommands(plugin: NavLinkHeader): void {
 
   plugin.addCommand({
     id: "open-previous-periodic-note",
-    name: "Open previous periodic note",
+    name: msg.openPreviousPeriodicNote,
     checkCallback: (checking: boolean) => {
       const file = plugin.app.workspace.getActiveFile();
       if (!file) {
@@ -61,7 +64,7 @@ export function addCommands(plugin: NavLinkHeader): void {
 
   plugin.addCommand({
     id: "open-next-periodic-note",
-    name: "Open next periodic note",
+    name: msg.openNextPeriodicNote,
     checkCallback: (checking: boolean) => {
       const file = plugin.app.workspace.getActiveFile();
       if (!file) {
@@ -73,7 +76,7 @@ export function addCommands(plugin: NavLinkHeader): void {
 
   plugin.addCommand({
     id: "open-parent-periodic-note",
-    name: "Open parent periodic note",
+    name: msg.openParentPeriodicNote,
     checkCallback: (checking: boolean) => {
       const file = plugin.app.workspace.getActiveFile();
       if (!file) {
@@ -85,7 +88,7 @@ export function addCommands(plugin: NavLinkHeader): void {
 
   plugin.addCommand({
     id: "open-previous-folder-link",
-    name: "Open previous folder link",
+    name: msg.openPreviousFolderLink,
     checkCallback: (checking: boolean) => {
       const file = plugin.app.workspace.getActiveFile();
       if (!file) {
@@ -97,7 +100,7 @@ export function addCommands(plugin: NavLinkHeader): void {
 
   plugin.addCommand({
     id: "open-next-folder-link",
-    name: "Open next folder link",
+    name: msg.openNextFolderLink,
     checkCallback: (checking: boolean) => {
       const file = plugin.app.workspace.getActiveFile();
       if (!file) {
@@ -109,7 +112,7 @@ export function addCommands(plugin: NavLinkHeader): void {
 
   plugin.addCommand({
     id: "open-parent-folder-link",
-    name: "Open parent folder link",
+    name: msg.openParentFolderLink,
     checkCallback: (checking: boolean) => {
       const file = plugin.app.workspace.getActiveFile();
       if (!file) {
@@ -121,7 +124,7 @@ export function addCommands(plugin: NavLinkHeader): void {
 
   plugin.addCommand({
     id: "open-previous-note",
-    name: "Open previous link (for any type)",
+    name: msg.openPreviousAny,
     checkCallback: (checking: boolean) => {
       const file = plugin.app.workspace.getActiveFile();
       if (!file) {
@@ -146,7 +149,7 @@ export function addCommands(plugin: NavLinkHeader): void {
 
   plugin.addCommand({
     id: "open-next-note",
-    name: "Open next link (for any type)",
+    name: msg.openNextAny,
     checkCallback: (checking: boolean) => {
       const file = plugin.app.workspace.getActiveFile();
       if (!file) {
@@ -171,7 +174,7 @@ export function addCommands(plugin: NavLinkHeader): void {
 
   plugin.addCommand({
     id: "open-parent-note",
-    name: "Open parent link (for any type)",
+    name: msg.openParentAny,
     checkCallback: (checking: boolean) => {
       const file = plugin.app.workspace.getActiveFile();
       if (!file) {
@@ -196,7 +199,7 @@ export function addCommands(plugin: NavLinkHeader): void {
 
   plugin.addCommand({
     id: "toggle-match-navigation-width",
-    name: 'Toggle "Match navigation width to line length"',
+    name: msg.toggleMatchNavigationWidth,
     checkCallback: (checking: boolean) => {
       if (!checking) {
         plugin.settingsUnderChange.matchNavigationWidthToLineLength =

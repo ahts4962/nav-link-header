@@ -5,6 +5,7 @@
   import PrefixedLink from "./PrefixedLink.svelte";
   import PrefixedMultiLink from "./PrefixedMultiLink.svelte";
   import ThreeWayLink from "./ThreeWayLink.svelte";
+  import { t } from "../i18n/i18n";
 
   const {
     items,
@@ -69,10 +70,10 @@
         {/if}
       {/each}
       {#if isLoading && displayLoadingMessage}
-        <div class="nav-link-header-message nav-link-header-muted">Loading...</div>
+        <div class="nav-link-header-message nav-link-header-muted">{t().ui.loading}</div>
       {/if}
       {#if items.length === 0 && !isLoading && displayPlaceholder}
-        <div class="nav-link-header-message nav-link-header-muted">No links</div>
+        <div class="nav-link-header-message nav-link-header-muted">{t().ui.noLinks}</div>
       {/if}
     </div>
   </div>
